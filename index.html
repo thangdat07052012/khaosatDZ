@@ -82,7 +82,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 
 #sheet{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--bg);border-top:1px solid var(--line);
   border-radius:16px 16px 0 0;box-shadow:0 -6px 24px rgba(0,0,0,.18);padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px));
-  display:flex;flex-direction:column;gap:8px;max-height:64%;overflow-y:auto}
+  display:flex;flex-direction:column;gap:8px;max-height:76%;overflow-y:auto}
 .shh{display:flex;align-items:center;gap:8px}
 .seg{display:flex;border:1.5px solid var(--line);border-radius:10px;overflow:hidden;flex:1 1 auto;min-width:0}
 .seg button{flex:1 1 0;min-width:0;height:38px;border:0;background:transparent;padding:0 4px;font-weight:600;font-size:13px;
@@ -103,9 +103,13 @@ button{font:inherit;color:inherit;cursor:pointer}
 #preview span{font-size:12.5px;font-weight:600;padding:3px 8px;border-radius:6px;background:var(--paper);border:1px solid var(--line)}
 .k-so{color:var(--fg)}.k-cot{color:var(--k-cot)}.k-day{color:var(--k-day)}.k-ct{color:var(--k-ct)}.k-sau{color:var(--k-sau)}
 .k-kc{color:var(--k-kc)}.k-gc,.k-dd{color:var(--k-gc)}.k-tu{color:var(--k-ct)}
-.trow{display:flex;align-items:center;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
-.trow::-webkit-scrollbar{display:none}
-.trow .lab{flex:0 0 58px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.tbar{display:flex;gap:6px;flex-wrap:wrap}
+.cols{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;height:min(40vh,330px)}
+.col{display:flex;flex-direction:column;gap:5px;overflow-y:auto;min-width:0;scrollbar-width:none;padding-bottom:10px}
+.col::-webkit-scrollbar{display:none}
+.col .lab{position:sticky;top:0;z-index:1;background:var(--bg);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);padding:1px 0 3px;text-align:center}
+.col .lab2{font-size:10.5px;font-weight:700;text-transform:uppercase;color:var(--muted);text-align:center;margin-top:4px}
+.col .tk{width:100%;height:auto;min-height:36px;padding:4px 2px;font-size:12.5px;white-space:normal;line-height:1.15;border-radius:10px;overflow-wrap:anywhere}
 .tk{flex:0 0 auto;height:38px;border-radius:19px;border:1.5px solid var(--line);background:var(--paper);padding:0 12px;
   font:600 14px var(--mono);white-space:nowrap}
 .tk.on{background:var(--hi);border-color:var(--hi);color:var(--hi-fg)}
@@ -152,6 +156,7 @@ label.btn{display:flex;align-items:center;justify-content:center}
   <div class="shh">
     <button id="sh-del" class="btn danger">Xoá</button>
     <span class="grow"></span>
+    <button id="sh-new" class="btn">Đoạn mới</button>
     <button id="sh-end" class="btn">Kết thúc</button>
     <button id="sh-ok" class="btn pri">Xong ▸</button>
   </div>
@@ -182,7 +187,7 @@ const SHAPE_NAME={tron:'Cột tròn',vuong:'Cột vuông',cs:'Cột CS',tba:'TBA
 
 /* ================= lưu trữ ================= */
 let DB=(()=>{try{return JSON.parse(localStorage.getItem(LSK))||{ds:{},cur:null}}catch(e){return {ds:{},cur:null}}})();
-if(DB.snap===undefined)DB.snap=true;
+DB.snap=true;
 for(const d of Object.values(DB.ds)){d.roads=d.roads||[];d.mocs=d.mocs||[];d.edges=d.edges||[]}
 let saveT=null;
 function saveNow(){clearTimeout(saveT);saveT=null;try{localStorage.setItem(LSK,JSON.stringify(DB))}catch(e){toast('Bộ nhớ đầy — xuất file rồi xoá bớt bản vẽ cũ')}}
@@ -280,16 +285,6 @@ function nearestRoad(x,y,extra){
   for(const r of D.roads){const n=nearestOn(r.pts,x,y);if(n&&n.d<=r.w/2+extra&&(!best||n.d<best.n.d))best={r,n}}
   return best;
 }
-function simplify(pts,eps){
-  if(pts.length<3)return pts;
-  const keep=new Array(pts.length).fill(false);keep[0]=keep[pts.length-1]=true;
-  const st=[[0,pts.length-1]];
-  while(st.length){const [a,b]=st.pop();let md=0,mi=-1;
-    const [ax,ay]=pts[a],[bx,by]=pts[b],L=Math.hypot(bx-ax,by-ay)||1;
-    for(let i=a+1;i<b;i++){const d=Math.abs((bx-ax)*(ay-pts[i][1])-(ax-pts[i][0])*(by-ay))/L;if(d>md){md=d;mi=i}}
-    if(md>eps){keep[mi]=true;st.push([a,mi],[mi,b])}}
-  return pts.filter((_,i)=>keep[i]);
-}
 function offsetPts(pts,o){return pts.map((p,i)=>{const a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)];
   let ux=b[0]-a[0],uy=b[1]-a[1];const L=Math.hypot(ux,uy)||1;ux/=L;uy/=L;return [p[0]-uy*o,p[1]+ux*o]})}
 function junctions(){
@@ -367,7 +362,7 @@ function nextPos(p){
 
 /* ================= vẽ ================= */
 const cv=$('#cv'), stage=$('#stage');
-let W=0,H=0,V=D.view||null,tool='cot',noiA=null,editId=null,selRoad=null,fix=null,watchId=null,gpsPending=false,tmpRoad=null;
+let W=0,H=0,V=D.view||null,tool='cot',noiA=null,editId=null,selRoad=null,roadStart=null,fix=null,watchId=null,gpsPending=false,tmpRoad=null;
 function sizeUp(){const r=stage.getBoundingClientRect();W=r.width;H=r.height;cv.setAttribute('viewBox',`0 0 ${W} ${H}`)}
 function allPts(){const a=D.poles.map(p=>[p.x,p.y]);for(const r of D.roads)a.push(...r.pts);for(const m of D.mocs)a.push([m.x,m.y]);return a}
 function fitView(w,h,pad){
@@ -395,6 +390,7 @@ function svgInner(v,w,h,o={}){
   for(const r of D.roads){const d='M'+r.pts.map(q=>X(q[0])+' '+Y(q[1])).join('L');
     g+=`<path class="road${r.id===selRoad&&!o.print?' sel':''}" d="${d}" style="stroke-width:${Math.max(r.w*v.s,6).toFixed(1)}px"/><path class="roadc" d="${d}"/>`}
   if(tmpRoad)g+=`<path class="tmp" d="M${tmpRoad.map(q=>X(q[0])+' '+Y(q[1])).join('L')}"/>`;
+  if(roadStart&&!o.print)g+=`<circle class="noiA" cx="${X(roadStart[0])}" cy="${Y(roadStart[1])}" r="7"/>`;
   const mocNear=(x,y)=>D.mocs.some(m=>Math.hypot(m.x-x,m.y-y)<8);
   for(const j of junctions()){const x=X(j.x),y=Y(j.y),a=5*k;
     g+=`<path class="jn" d="M${x} ${y-a}L${x+a} ${y}L${x} ${y+a}L${x-a} ${y}Z"/>`;
@@ -430,12 +426,12 @@ function status(){
   else if(tool==='chon')h=`<span class="pill solo">Kéo cột, mốc để dời · chạm cột để sửa</span>`;
   else if(tool==='moc')h=`<span class="pill solo">Chạm để đặt mốc · chạm mốc để đổi tên / xoá</span>`;
   else if(tool==='duong'){const r=selRoad&&D.roads.find(x=>x.id===selRoad);
-    h=r?`<span class="pill">Đường rộng ${r.w} m<button data-st="w-">−</button><button data-st="w+">+</button><button data-st="rdel">Xoá đường</button><button data-st="rx">✕</button></span>`
-      :`<span class="pill solo">Kéo ngón tay theo con đường · 2 ngón để kéo bản vẽ</span>`}
+    if(r)h+=`<span class="pill">Đường rộng ${r.w} m<button data-st="w-">−</button><button data-st="w+">+</button><button data-st="rdel">Xoá đường</button></span>`;
+    h+=roadStart?`<span class="pill">Chạm điểm cuối của đường<button data-st="rx">Huỷ</button></span>`
+      :`<span class="pill solo">Chạm điểm đầu rồi điểm cuối để vẽ đường thẳng</span>`}
   else if(ed&&ed.auto)h=`<span class="pill solo">Cột tự đặt thẳng tuyến — chạm chỗ khác để dời tới đó</span>`;
-  else if(a)h=`<span class="pill">Vẽ tiếp từ ${esc(parse(a.code).so||'cột ?')}<button data-st="new">Đoạn mới</button></span>`;
+  else if(a)h=`<span class="pill solo">Vẽ tiếp từ ${esc(parse(a.code).so||'cột ?')}</span>`;
   else h=`<span class="pill solo">${D.poles.length?'Đoạn mới — cột sau không nối':'Chạm lên bảng để đặt cột đầu tiên'}</span>`;
-  if(D.roads.length&&tool==='cot')h+=`<span class="pill">Bám mép đường<button data-st="snap">${DB.snap?'Bật':'Tắt'}</button></span>`;
   if(gpsPending)h+=`<span class="pill solo">Đang bắt GPS…</span>`;
   $('#status').innerHTML=h;
 }
@@ -458,11 +454,11 @@ cv.addEventListener('pointermove',e=>{
   if(!ptrs.has(e.pointerId)||!G)return;const pt=loc(e);ptrs.set(e.pointerId,pt);
   if(G.type==='tap'){if(Math.hypot(pt.x-G.p0.x,pt.y-G.p0.y)>8){
       if(G.hit&&(tool==='chon'||G.hit.id===editId)){snap();G.type='drag'}
-      else if(tool==='duong'){G.type='road';tmpRoad=[toW(G.p0)]}
+      else if(tool==='duong'){G.type='road';roadStart=null;tmpRoad=[toW(G.p0),toW(pt)]}
       else G.type='pan'}else return}
   if(G.type==='pan'){V.tx=G.v0.tx+pt.x-G.p0.x;V.ty=G.v0.ty+pt.y-G.p0.y;draw()}
   else if(G.type==='drag'){const [x,y]=toW(pt);G.hit.x=x;G.hit.y=y;if(G.hit.auto)G.hit.auto=false;draw()}
-  else if(G.type==='road'){const w=toW(pt),l=tmpRoad[tmpRoad.length-1];if(Math.hypot(w[0]-l[0],w[1]-l[1])*V.s>5){tmpRoad.push(w);draw()}}
+  else if(G.type==='road'){tmpRoad[1]=toW(pt);draw()}
   else if(G.type==='pinch'&&ptrs.size===2){const [a,b]=[...ptrs.values()];
     const d=Math.hypot(a.x-b.x,a.y-b.y),c={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
     const s=Math.min(Math.max(G.v0.s*d/G.d0,0.05),60);
@@ -474,23 +470,31 @@ function pEnd(e){
   if(!G)return;
   if(G.type==='tap'&&ptrs.size===0)onTap(G.p0,G.hit);
   if(G.type==='drag')save();
-  if(G.type==='road'&&ptrs.size===0)finishRoad();
+  if(G.type==='road'&&ptrs.size===0){const t=tmpRoad;tmpRoad=null;if(t)makeRoad(t[0],t[1]);else draw()}
   if(G.type==='pan'||G.type==='pinch')persistView();
   if(ptrs.size===0||G.type==='pinch')G=null;
 }
 cv.addEventListener('pointerup',pEnd);cv.addEventListener('pointercancel',e=>{ptrs.delete(e.pointerId);G=null;tmpRoad=null;draw()});
 cv.addEventListener('wheel',e=>{e.preventDefault();const pt=loc(e),f=Math.exp(-e.deltaY*0.0015);
   const s=Math.min(Math.max(V.s*f,0.05),60),wx=(pt.x-V.tx)/V.s,wy=(pt.y-V.ty)/V.s;V.s=s;V.tx=pt.x-wx*s;V.ty=pt.y-wy*s;draw();persistView()},{passive:false});
-function finishRoad(){
-  let pts=tmpRoad;tmpRoad=null;
-  if(!pts||pts.length<2){draw();return}
-  pts=simplify(pts,4/V.s).map(q=>[+q[0].toFixed(2),+q[1].toFixed(2)]);
-  const len=pts.slice(1).reduce((s,q,i)=>s+Math.hypot(q[0]-pts[i][0],q[1]-pts[i][1]),0);
-  if(len*V.s<30){draw();return}
-  for(const k of [0,pts.length-1]){let best=null;
-    for(const r of D.roads){const n=nearestOn(r.pts,pts[k][0],pts[k][1]);if(n&&n.d<Math.max(r.w,22/V.s)&&(!best||n.d<best.d))best=n}
-    if(best)pts[k]=[+best.px.toFixed(3),+best.py.toFixed(3)]}
-  snap();const r={id:uid(),pts,w:DB.roadW||7};D.roads.push(r);selRoad=r.id;save();draw();
+/* điểm đầu/cuối đường: hít vào đầu mút đường cũ (nối dài) hoặc vào thân đường (ngã ba) */
+function snapRoadPt(p){
+  let best=null;const tolE=24/V.s;
+  for(const r of D.roads){const L=r.pts.length;for(const [e,first] of [[r.pts[0],true],[r.pts[L-1],false]]){
+    const d=Math.hypot(e[0]-p[0],e[1]-p[1]);if(d<tolE&&(!best||d<best.d))best={d,pt:[e[0],e[1]],end:{r,first}}}}
+  if(best)return best;
+  for(const r of D.roads){const n=nearestOn(r.pts,p[0],p[1]);if(n&&n.d<Math.max(r.w/2,22/V.s)&&(!best||n.d<best.d))best={d:n.d,pt:[n.px,n.py]}}
+  return best||{pt:p};
+}
+function makeRoad(a,b){
+  const A=snapRoadPt(a),B=snapRoadPt(b),r3=q=>[+q[0].toFixed(3),+q[1].toFixed(3)],pa=r3(A.pt),pb=r3(B.pt);
+  if(Math.hypot(pa[0]-pb[0],pa[1]-pb[1])*V.s<20){draw();return}
+  snap();
+  const extend=(E,q)=>{const r=E.r;if(E.first)r.pts.unshift(q);else r.pts.push(q);selRoad=r.id};
+  if(A.end&&!(B.end&&B.end.r===A.end.r))extend(A.end,pb);
+  else if(B.end&&!(A.end&&A.end.r===B.end.r))extend(B.end,pa);
+  else{const r={id:uid(),pts:[pa,pb],w:DB.roadW||7};D.roads.push(r);selRoad=r.id}
+  save();draw();
 }
 function onTap(pt,h){
   if(tool==='noi'){
@@ -500,7 +504,9 @@ function onTap(pt,h){
       else{D.edges.push([noiA,h.id]);toast('Đã nối dây')}save()}
     noiA=null;draw();return;
   }
-  if(tool==='duong'){const r=hitRoad(pt);selRoad=r?r.id:null;draw();return}
+  if(tool==='duong'){const w=toW(pt);
+    if(roadStart){const a=roadStart;roadStart=null;makeRoad(a,w);return}
+    const r=hitRoad(pt);selRoad=r?r.id:null;roadStart=w;draw();return}
   if(tool==='moc'){
     if(h&&h.ten!==undefined){const t=prompt('Tên mốc (xoá hết chữ để bỏ mốc)',h.ten);if(t===null)return;snap();
       if(t.trim())h.ten=t.trim();else D.mocs=D.mocs.filter(m=>m!==h);save();draw();return}
@@ -526,6 +532,14 @@ const BASE={
   dd:['Néo','Góc','Cuối','Rẽ nhánh','Đầu nguồn','Nghiêng','Nứt'],
   gc:['Tủ bù','Tủ ĐKCS','Tiếp địa','Hộp đấu dây','Chống sét','Tủ:1','Tủ cũ:1']
 };
+/* xếp tăng dần theo loại rồi kích cỡ: LT7,5 < LT8,5 < 2LT8,5 < LT10 … ; VX2x25 < VX4x35 < … < VX4x240 */
+const ORD=['LT','H','BT','NPC','VX','AV','ABC','A','AC','CXV','CU','M','MULLER'];
+function sizeKey(v){
+  const u=norm(v),m=u.match(/^(\d*)([A-ZĐ]+)(\d+(?:[.,]\d+)?)(?:X(\d+(?:[.,]\d+)?))?$/),f=x=>parseFloat(String(x).replace(',','.'));
+  if(!m)return [99,0,0,0,u];
+  const ti=ORD.indexOf(m[2]);return [ti<0?50:ti,f(m[3]),m[4]?f(m[4]):0,+m[1]||1,u];
+}
+function cmpSize(a,b,boLoai){const A=sizeKey(a),B=sizeKey(b);for(let i=boLoai&&A[0]<50&&B[0]<50?1:0;i<4;i++)if(A[i]!==B[i])return A[i]-B[i];return A[4]<B[4]?-1:A[4]>B[4]?1:0}
 function learned(kind){
   const cnt={};
   for(const d of Object.values(DB.ds))for(const p of d.poles)for(const x of parse(p.code).toks){
@@ -535,21 +549,22 @@ function learned(kind){
     else if(kind==='gc'&&x.k==='gc')v=x.t;
     if(v){v=v.trim();cnt[v]=(cnt[v]||0)+1}}
   const base=BASE[kind],have=new Set(base.map(norm));
-  return base.concat(Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a]).filter(v=>!have.has(norm(v))).slice(0,12));
+  const all=base.concat(Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a]).filter(v=>!have.has(norm(v))).slice(0,12));
+  return kind==='gc'?all:all.sort((x,y)=>cmpSize(x,y,kind==='sau'));   /* dây sau CT: xếp theo tiết diện, không theo loại */
 }
 function renderChips(){
   const r=parse(inp.value);
-  const row=(lab,items)=>`<div class="trow"><span class="lab">${lab}</span>${items}</div>`;
   const tk=(kind,v,txt,on)=>`<button type="button" class="tk${on?' on':''}" data-k="${kind}" data-v="${esc(v)}">${esc(txt??v)}</button>`;
-  let h='';
-  h+=row('Cột',`<button type="button" class="tk bs${thayMode?' on':''}" data-k="thay">⇄ Thay</button>`+learned('cot').map(v=>tk('cot',v)).join(''));
-  h+=row('Dây',learned('day').map(v=>tk('day',v)).join(''));
-  h+=row('Công tơ',BASE.ct.map(v=>{const n=r[{H1:'h1',H2:'h2',H4:'h4','3P':'p3'}[v]];return tk('ct',v,n?`${v} ×${n}`:`${v} +`,n>0)}).join('')+`<button type="button" class="tk bs" data-k="ctx">Bớt</button>`);
-  h+=row('Sau CT',learned('sau').map(v=>tk('sau',v)).join(''));
-  h+=row('Khoảng',BASE.kc.map(v=>tk('kc',v,v+' m',String(r.kc)===v)).join(''));
-  h+=row('Ghi chú',BASE.dd.map(v=>tk('dd',v)).join('')+learned('gc').map(v=>tk('gc',v)).join(''));
-  h+=row('Sửa',`<button type="button" class="tk bs" data-k="bs">⌫ Bỏ mục cuối</button><button type="button" class="tk bs" data-k="sc">;</button>`);
-  $('#chips').innerHTML=h;
+  const col=(lab,items)=>`<div class="col"><span class="lab">${lab}</span>${items}</div>`;
+  let h=`<div class="tbar"><button type="button" class="tk bs${thayMode?' on':''}" data-k="thay">⇄ Thay thế</button>`+
+    `<button type="button" class="tk bs" data-k="bs">⌫ Bỏ mục cuối</button><button type="button" class="tk bs" data-k="sc">;</button></div><div class="cols">`;
+  h+=col('Cột',learned('cot').map(v=>tk('cot',v)).join(''));
+  h+=col('Dây',learned('day').map(v=>tk('day',v)).join(''));
+  h+=col('Sau CT',learned('sau').map(v=>tk('sau',v)).join(''));
+  h+=col('Công tơ',BASE.ct.map(v=>{const n=r[{H1:'h1',H2:'h2',H4:'h4','3P':'p3'}[v]];return tk('ct',v,n?`${v} ×${n}`:`${v} +`,n>0)}).join('')+
+    `<button type="button" class="tk bs" data-k="ctx">Bớt</button><span class="lab2">Khoảng</span>`+BASE.kc.map(v=>tk('kc',v,v+' m',String(r.kc)===v)).join(''));
+  h+=col('Ghi chú',BASE.dd.map(v=>tk('dd',v)).join('')+learned('gc').map(v=>tk('gc',v)).join(''));
+  $('#chips').innerHTML=h+'</div>';
 }
 function preview(){
   const r=parse(inp.value);
@@ -623,6 +638,7 @@ for(const b of sheet.querySelectorAll('[data-shape]'))b.addEventListener('click'
 $('#sh-doi').addEventListener('click',()=>{const p=byId(editId);if(!p)return;if(!sheetSnap){snap();sheetSnap=true}p.doi=!p.doi;p.auto=false;save();syncShapeBtns(p);draw()});
 $('#sh-ok').addEventListener('click',xong);
 $('#sh-end').addEventListener('click',finishSheet);
+$('#sh-new').addEventListener('click',()=>{finishSheet();D.active=null;save();draw();toast('Cột tiếp theo bắt đầu đoạn mới, không nối dây')});
 let delT=null;
 $('#sh-del').addEventListener('click',e=>{
   const b=e.currentTarget;
@@ -633,16 +649,15 @@ $('#sh-del').addEventListener('click',e=>{
 
 /* ================= công cụ ================= */
 for(const b of document.querySelectorAll('[data-tool]'))b.addEventListener('click',()=>{
-  tool=b.dataset.tool;noiA=null;if(tool!=='duong')selRoad=null;
+  tool=b.dataset.tool;noiA=null;roadStart=null;if(tool!=='duong')selRoad=null;
   for(const x of document.querySelectorAll('[data-tool]'))x.classList.toggle('on',x===b);
   if(tool!=='cot')finishSheet();draw()});
 $('#status').addEventListener('click',e=>{
   const s=e.target.dataset&&e.target.dataset.st;if(!s)return;const r=selRoad&&D.roads.find(x=>x.id===selRoad);
   if(s==='new'){finishSheet();D.active=null;save();draw();toast('Cột tiếp theo bắt đầu đoạn mới')}
-  else if(s==='snap'){DB.snap=!DB.snap;saveNow();draw()}
   else if(r&&(s==='w-'||s==='w+')){snap();r.w=Math.min(Math.max(r.w+(s==='w+'?1:-1),3),40);DB.roadW=r.w;save();draw()}
   else if(r&&s==='rdel'){snap();D.roads=D.roads.filter(x=>x!==r);selRoad=null;save();draw();toast('Đã xoá đường')}
-  else if(s==='rx'){selRoad=null;draw()}
+  else if(s==='rx'){roadStart=null;selRoad=null;draw()}
 });
 $('#b-undo').addEventListener('click',()=>{const s=undoSt.pop();if(!s){toast('Không còn gì để hoàn tác');return}
   Object.assign(D,JSON.parse(s));editId=null;selRoad=null;sheet.hidden=true;save();draw();toast('Đã hoàn tác')});
