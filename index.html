@@ -13,7 +13,7 @@
 :root{
   --bg:#F4F6F5; --paper:#FFFFFF; --grid:#E3E9E6; --line:#CBD5D0; --fg:#15201C; --muted:#5A6964;
   --ink:#12443B; --ink-fg:#FFFFFF; --hi:#F2B01E; --hi-fg:#241A00; --hi-soft:#FBEFCB;
-  --wire:#2F5FA8; --warn:#B4361F;
+  --wire:#2F5FA8; --warn:#B4361F; --road:rgba(120,130,126,.22); --road-c:rgba(120,130,126,.55); --moc:#B4361F;
   --k-cot:#12443B; --k-day:#2F5FA8; --k-ct:#8A4B00; --k-sau:#6B3FA0; --k-kc:#1F7A4D; --k-gc:#56655F;
   --f:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   --mono:ui-monospace,"Cascadia Mono",Consolas,"Roboto Mono",monospace;
@@ -22,7 +22,7 @@
 @media (prefers-color-scheme:dark){:root{
   --bg:#0F1513; --paper:#141C19; --grid:#1F2A26; --line:#2E3B36; --fg:#E5ECE8; --muted:#98A9A2;
   --ink:#17594C; --ink-fg:#FFFFFF; --hi:#F5BD3A; --hi-fg:#241A00; --hi-soft:#3A2F10;
-  --wire:#7FA8EC; --warn:#F08A6E;
+  --wire:#7FA8EC; --warn:#F08A6E; --road:rgba(170,185,178,.16); --road-c:rgba(170,185,178,.4); --moc:#F08A6E;
   --k-cot:#6FD0B6; --k-day:#8FB4F0; --k-ct:#F0B060; --k-sau:#C3A0F0; --k-kc:#7AD6A0; --k-gc:#9AABA4;
   color-scheme:dark }}
 *{box-sizing:border-box}
@@ -42,44 +42,58 @@ button{font:inherit;color:inherit;cursor:pointer}
 #stage{flex:1;position:relative;min-height:0;background:var(--paper)}
 #cv{position:absolute;inset:0;width:100%;height:100%;touch-action:none;user-select:none;-webkit-user-select:none}
 #status{position:absolute;left:10px;top:10px;right:10px;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none}
-#status .pill{pointer-events:auto;display:inline-flex;align-items:center;gap:8px;background:var(--fg);color:var(--paper);
-  border-radius:999px;padding:6px 6px 6px 12px;font-size:13.5px;font-weight:600;min-height:34px}
+#status .pill{pointer-events:auto;display:inline-flex;align-items:center;gap:6px;background:var(--fg);color:var(--paper);
+  border-radius:999px;padding:5px 5px 5px 12px;font-size:13.5px;font-weight:600;min-height:34px}
 #status .pill.solo{padding-right:12px}
-#status .pill button{border:0;background:rgba(255,255,255,.18);border-radius:999px;height:26px;padding:0 10px;font-size:12.5px;font-weight:700;color:inherit}
+#status .pill button{border:0;background:rgba(255,255,255,.2);border-radius:999px;height:26px;min-width:30px;padding:0 10px;font-size:12.5px;font-weight:700;color:inherit}
+@media (prefers-color-scheme:dark){#status .pill button{background:rgba(0,0,0,.18)}}
 
 .grid{stroke:var(--grid);stroke-width:1}
+.road{stroke:var(--road);fill:none;stroke-linecap:round;stroke-linejoin:round}
+.road.sel{stroke:var(--hi);opacity:.45}
+.roadc{stroke:var(--road-c);fill:none;stroke-width:1.2;stroke-dasharray:6 6}
+.jn{fill:var(--paper);stroke:var(--muted);stroke-width:1.6}
 .ed{stroke:var(--wire);stroke-width:2.2}
 .pole{fill:var(--paper);stroke:var(--fg);stroke-width:2.2}
 .pole.act{stroke:var(--hi);stroke-width:3.5}
+.fillk{fill:var(--fg)}
 .ring{fill:none;stroke:var(--hi);stroke-width:2;stroke-dasharray:4 3}
 .noiA{fill:var(--hi)}
 .lb{fill:var(--fg);paint-order:stroke;stroke:var(--paper);stroke-width:3.5px;stroke-linejoin:round}
 .lb.so{font:700 13.5px var(--f)}
 .lb.dt{font:500 11px var(--f);fill:var(--muted)}
 .lb.kc{font:700 11px var(--mono);fill:var(--k-kc)}
+.lb.mc{font:700 12px var(--f);fill:var(--moc)}
+.lb.jt{font:600 10.5px var(--f);fill:var(--muted)}
+.moc{fill:var(--moc);stroke:var(--paper);stroke-width:1.5}
+.tmp{stroke:var(--hi);stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round}
 .me{fill:#2F7DF6;stroke:#fff;stroke-width:2.5}
 .meacc{fill:rgba(47,125,246,.14);stroke:rgba(47,125,246,.4)}
 
-.tools{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));
+.tools{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:3px;padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));
   background:var(--bg);border-top:1px solid var(--line)}
-.tools button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;height:58px;border-radius:12px;
-  border:1.5px solid transparent;background:transparent;font-size:11.5px;font-weight:600;color:var(--muted)}
-.tools button i{font-style:normal;font-size:20px;line-height:22px;color:var(--fg);display:flex;align-items:center;justify-content:center;height:22px}
+.tools button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;height:56px;border-radius:12px;
+  border:1.5px solid transparent;background:transparent;font-size:11.5px;font-weight:600;color:var(--muted);min-width:0}
+.tools button i{font-style:normal;font-size:19px;line-height:22px;color:var(--fg);display:flex;align-items:center;justify-content:center;height:22px}
 .tools button.on{background:var(--hi-soft);border-color:var(--hi);color:var(--fg)}
-.ic-tron{width:18px;height:18px;border-radius:50%;border:2.5px solid var(--fg)}
-.ic-vuong{width:17px;height:17px;border:2.5px solid var(--fg)}
+.ic-tron{display:inline-block;width:17px;height:17px;border-radius:50%;border:2.5px solid currentColor}
+.ic-vuong{display:inline-block;width:15px;height:15px;border:2.5px solid currentColor}
+.ic-road{display:inline-block;width:22px;height:9px;border-radius:5px;background:var(--road-c)}
 
 #sheet{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--bg);border-top:1px solid var(--line);
   border-radius:16px 16px 0 0;box-shadow:0 -6px 24px rgba(0,0,0,.18);padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px));
-  display:flex;flex-direction:column;gap:8px;max-height:62%;overflow-y:auto}
+  display:flex;flex-direction:column;gap:8px;max-height:64%;overflow-y:auto}
 .shh{display:flex;align-items:center;gap:8px}
-.seg{display:flex;border:1.5px solid var(--line);border-radius:10px;overflow:hidden}
-.seg button{height:40px;border:0;background:transparent;padding:0 12px;font-weight:600;font-size:14px;display:flex;align-items:center;gap:6px}
+.seg{display:flex;border:1.5px solid var(--line);border-radius:10px;overflow:hidden;flex:1 1 auto;min-width:0}
+.seg button{flex:1 1 0;min-width:0;height:38px;border:0;background:transparent;padding:0 4px;font-weight:600;font-size:13px;
+  display:flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap}
+.seg button+button{border-left:1px solid var(--line)}
 .seg button.on{background:var(--ink);color:var(--ink-fg)}
-.seg button.on .ic-tron,.seg button.on .ic-vuong{border-color:var(--ink-fg)}
-.seg .ic-tron{width:14px;height:14px;border-width:2px}.seg .ic-vuong{width:13px;height:13px;border-width:2px}
+.seg .ic-tron{width:12px;height:12px;border-width:2px}.seg .ic-vuong{width:11px;height:11px;border-width:2px}
 .grow{flex:1}
-.btn{height:42px;border-radius:10px;border:1.5px solid var(--line);background:var(--paper);padding:0 14px;font-weight:700;font-size:14.5px}
+.btn{height:42px;border-radius:10px;border:1.5px solid var(--line);background:var(--paper);padding:0 13px;font-weight:700;font-size:14.5px;white-space:nowrap}
+.btn.sm{height:38px;padding:0 10px;font-size:13px}
+.btn.on{background:var(--hi);border-color:var(--hi);color:var(--hi-fg)}
 .btn.pri{background:var(--ink);color:var(--ink-fg);border-color:var(--ink)}
 .btn.danger{color:var(--warn);border-color:currentColor;background:transparent}
 .btn.armed{background:var(--warn);color:#fff;border-color:var(--warn)}
@@ -87,9 +101,8 @@ button{font:inherit;color:inherit;cursor:pointer}
   font:700 18px var(--mono);padding:0 12px}
 #preview{display:flex;flex-wrap:wrap;gap:5px;min-height:24px}
 #preview span{font-size:12.5px;font-weight:600;padding:3px 8px;border-radius:6px;background:var(--paper);border:1px solid var(--line)}
-#preview b{font-weight:700}
 .k-so{color:var(--fg)}.k-cot{color:var(--k-cot)}.k-day{color:var(--k-day)}.k-ct{color:var(--k-ct)}.k-sau{color:var(--k-sau)}
-.k-kc{color:var(--k-kc)}.k-gc,.k-dd{color:var(--k-gc)}.k-tu,.k-tucu{color:var(--k-ct)}
+.k-kc{color:var(--k-kc)}.k-gc,.k-dd{color:var(--k-gc)}.k-tu{color:var(--k-ct)}
 .trow{display:flex;align-items:center;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
 .trow::-webkit-scrollbar{display:none}
 .trow .lab{flex:0 0 58px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
@@ -107,7 +120,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .card .tx span{font:13px var(--mono);color:var(--muted)}
 .card.cur{border-color:var(--hi);border-width:2px}
 .big{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;text-align:left;background:var(--paper);
-  border:1.5px solid var(--line);border-radius:14px;padding:14px 16px}
+  border:1.5px solid var(--line);border-radius:14px;padding:14px 16px;cursor:pointer}
 .big b{font-size:16.5px}.big span{font-size:13.5px;color:var(--muted)}
 .big.pri{border-color:var(--ink)}
 .note{font-size:13.5px;color:var(--muted);line-height:1.55;margin:0}
@@ -128,20 +141,30 @@ label.btn{display:flex;align-items:center;justify-content:center}
 </header>
 <div id="stage"><svg id="cv" role="img" aria-label="Sơ đồ tuyến"></svg><div id="status"></div></div>
 <nav class="tools" aria-label="Công cụ">
-  <button data-tool="tron" class="on"><i><span class="ic-tron"></span></i>Cột tròn</button>
-  <button data-tool="vuong"><i><span class="ic-vuong"></span></i>Cột vuông</button>
-  <button data-tool="chon"><i>✥</i>Di chuyển</button>
+  <button data-tool="cot" class="on"><i><span class="ic-tron"></span></i>Cột</button>
+  <button data-tool="duong"><i><span class="ic-road"></span></i>Đường</button>
+  <button data-tool="moc"><i>⚑</i>Mốc</button>
+  <button data-tool="chon"><i>✥</i>Dời</button>
   <button data-tool="noi"><i>╱</i>Nối dây</button>
   <button id="b-gps"><i>⌖</i><span id="gps-lab">GPS</span></button>
 </nav>
 <section id="sheet" hidden aria-label="Nhập cột">
   <div class="shh">
-    <div class="seg"><button data-shape="tron"><span class="ic-tron"></span>Tròn</button><button data-shape="vuong"><span class="ic-vuong"></span>Vuông</button></div>
-    <span class="grow"></span>
     <button id="sh-del" class="btn danger">Xoá</button>
-    <button id="sh-ok" class="btn pri">Xong</button>
+    <span class="grow"></span>
+    <button id="sh-end" class="btn">Kết thúc</button>
+    <button id="sh-ok" class="btn pri">Xong ▸</button>
   </div>
-  <input id="code" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="done" placeholder="2.19;LT8,5;VX4x120;H4:1">
+  <div class="shh">
+    <div class="seg">
+      <button data-shape="tron"><span class="ic-tron"></span>Tròn</button>
+      <button data-shape="vuong"><span class="ic-vuong"></span>Vuông</button>
+      <button data-shape="cs">⊗ CS</button>
+      <button data-shape="tba">◩ TBA</button>
+    </div>
+    <button id="sh-doi" class="btn sm">Đôi</button>
+  </div>
+  <input id="code" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="next" placeholder="2.19;LT8,5;VX4x120;H4:1">
   <div id="preview"></div>
   <div id="chips"></div>
 </section>
@@ -155,15 +178,18 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
 const LSK='kstuyen_v1';
+const SHAPE_NAME={tron:'Cột tròn',vuong:'Cột vuông',cs:'Cột CS',tba:'TBA'};
 
 /* ================= lưu trữ ================= */
 let DB=(()=>{try{return JSON.parse(localStorage.getItem(LSK))||{ds:{},cur:null}}catch(e){return {ds:{},cur:null}}})();
+if(DB.snap===undefined)DB.snap=true;
+for(const d of Object.values(DB.ds)){d.roads=d.roads||[];d.mocs=d.mocs||[];d.edges=d.edges||[]}
 let saveT=null;
 function saveNow(){clearTimeout(saveT);saveT=null;try{localStorage.setItem(LSK,JSON.stringify(DB))}catch(e){toast('Bộ nhớ đầy — xuất file rồi xoá bớt bản vẽ cũ')}}
 function save(){if(D)D.capNhat=Date.now();clearTimeout(saveT);saveT=setTimeout(saveNow,400)}
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&saveT)saveNow()});
 window.addEventListener('pagehide',()=>{if(saveT)saveNow()});
-function newD(ten){const d={id:uid(),ten:ten||('Tuyến '+today()),ngay:today(),poles:[],edges:[],geo:null,active:null,view:null,capNhat:Date.now()};
+function newD(ten){const d={id:uid(),ten:ten||('Tuyến '+today()),ngay:today(),poles:[],edges:[],roads:[],mocs:[],geo:null,active:null,view:null,capNhat:Date.now()};
   DB.ds[d.id]=d;DB.cur=d.id;saveNow();return d}
 let D=DB.ds[DB.cur]||Object.values(DB.ds).sort((a,b)=>b.capNhat-a.capNhat)[0]||newD();
 DB.cur=D.id;
@@ -171,6 +197,7 @@ DB.cur=D.id;
 /* ================= đọc mã cột ================= */
 const norm=t=>String(t).toUpperCase().replace(/\s+/g,'');
 const DD=/^(ĐỠ|NÉO|GÓC|CUỐI|RẼ|ĐẦU|NGHIÊNG|NỨT|GÃY|TRONGNGÕ|RUỘNG|VƯỜN)/;
+const SAU_RE=/^\s*(s|sau|sct)\s*:\s*/i;
 function kindOf(tok){
   const u=norm(tok);if(!u)return '';
   if(/^(S|SAU|SCT):/.test(u))return 'sau';
@@ -192,7 +219,7 @@ function parse(code){
   for(const t of toks.slice(1)){
     const k=kindOf(t);r.toks.push({t,k});
     if(k==='cot'||k==='day'){const [a,b]=t.split(/>|→/).map(s=>s.trim());if(a)r[k+'HT'].push(a);if(b)r[k+'TT'].push(b)}
-    else if(k==='sau')r.sau.push(t.replace(/^\s*(s|sau|sct)\s*:\s*/i,''));
+    else if(k==='sau')r.sau.push(t.replace(SAU_RE,''));
     else if(k==='kc')r.kc=parseFloat(t.replace(',','.'));
     else if(k==='ct'){const u=norm(t),n=+u.split(/[:=]/)[1]||0;r[u.startsWith('H1')?'h1':u.startsWith('H2')?'h2':u.startsWith('H4')?'h4':'p3']+=n}
     else if(k==='tu')r.tuMoi+=+norm(t).replace(/^\D+/,'')||0;
@@ -202,22 +229,94 @@ function parse(code){
   }
   return r;
 }
+/* viết hoa chữ ký hiệu (vx4x120 → VX4x120) khi chốt cột; ghi chú để nguyên */
+function chuanHoa(code){
+  const t=splitCode(code);
+  return t.map((x,i)=>{
+    if(!i)return x;const k=kindOf(x);
+    if(!['cot','day','sau','ct'].includes(k)||/\s/.test(x.replace(SAU_RE,'')))return x;
+    return x.replace(/[a-zA-ZđĐ]+/g,(m,o,s)=>/^x$/i.test(m)&&/\d/.test(s[o-1]||'')&&/\d/.test(s[o+1]||'')?'x':m.toUpperCase());
+  }).join(';')+(t.length>1?';':'');
+}
 const J=a=>a.join(' + ');
 const pair=(h,t)=>h.length||t.length?(J(h)||'—')+(t.length?' → '+J(t):''):'';
 function ctText(r){return [['H1',r.h1],['H2',r.h2],['H4',r.h4],['3P',r.p3]].filter(x=>x[1]).map(x=>x[0]+':'+x[1]).join(' ')}
 function tuText(r){return [r.tuMoi?r.tuMoi+' tủ mới':'',r.tuCu?r.tuCu+' tủ cũ':''].filter(Boolean).join(', ')}
-function detail(r){return [pair(r.cotHT,r.cotTT),pair(r.dayHT,r.dayTT),ctText(r),J(r.sau),tuText(r)].filter(Boolean).join(' · ')}
+function isDoi(p,r){return !!p.doi||/^2/.test((r||parse(p.code)).cotHT[0]||'')}
+function ddText(p,r){const a=[];if(p.shape==='tba'||p.shape==='cs')a.push(SHAPE_NAME[p.shape]);if(p.doi&&!/^2/.test(r.cotHT[0]||''))a.push('Cột đôi');return a.concat(r.dd)}
+function labelLines(p,r){
+  return [[pair(r.cotHT,r.cotTT),pair(r.dayHT,r.dayTT)].filter(Boolean).join(' · '),
+    [ctText(r),J(r.sau),tuText(r)].filter(Boolean).join(' · '),
+    r.dd.concat(r.gc).join('; ')].filter(Boolean);
+}
+function wrap(s,n){const out=[];let cur='';for(const w of s.split(' ')){if(cur&&(cur+' '+w).length>n){out.push(cur);cur=w}else cur=cur?cur+' '+w:w}if(cur)out.push(cur);return out}
 function parseSo(s){const m=String(s||'').trim().split(/\s+/)[0].match(/^(.*?)(\d+)$/);return m?{pre:m[1],num:+m[2]}:null}
 function soTiep(a,b){const pa=parseSo(a);if(!pa)return '';let step=1;
   if(b){const pb=parseSo(b);if(pb&&pb.pre===pa.pre&&pb.num-pa.num===1)step=-1}
   const v=pa.num+step;return v<0?'':pa.pre+v}
+
+/* ================= hình học đường ================= */
+function nearestOn(pts,x,y){
+  let best=null,acc=0;
+  for(let i=0;i<pts.length-1;i++){
+    const [ax,ay]=pts[i],[bx,by]=pts[i+1],dx=bx-ax,dy=by-ay,L=Math.hypot(dx,dy);if(!L)continue;
+    const t=Math.max(0,Math.min(1,((x-ax)*dx+(y-ay)*dy)/(L*L))),px=ax+t*dx,py=ay+t*dy,d=Math.hypot(x-px,y-py);
+    if(!best||d<best.d)best={d,px,py,s:acc+t*L,ux:dx/L,uy:dy/L,side:Math.sign((dx/L)*(y-py)-(dy/L)*(x-px))||1};
+    acc+=L;
+  }
+  return best;
+}
+function pointAt(pts,s){
+  let acc=0;
+  for(let i=0;i<pts.length-1;i++){
+    const [ax,ay]=pts[i],[bx,by]=pts[i+1],L=Math.hypot(bx-ax,by-ay);if(!L)continue;const ux=(bx-ax)/L,uy=(by-ay)/L;
+    if(s<=acc+L||i===pts.length-2){const t=Math.max(s-acc,i===0?s-acc:0);return {x:ax+ux*t,y:ay+uy*t,ux,uy}}
+    acc+=L;
+  }
+  return {x:pts[0][0],y:pts[0][1],ux:1,uy:0};
+}
+function nearestRoad(x,y,extra){
+  let best=null;
+  for(const r of D.roads){const n=nearestOn(r.pts,x,y);if(n&&n.d<=r.w/2+extra&&(!best||n.d<best.n.d))best={r,n}}
+  return best;
+}
+function simplify(pts,eps){
+  if(pts.length<3)return pts;
+  const keep=new Array(pts.length).fill(false);keep[0]=keep[pts.length-1]=true;
+  const st=[[0,pts.length-1]];
+  while(st.length){const [a,b]=st.pop();let md=0,mi=-1;
+    const [ax,ay]=pts[a],[bx,by]=pts[b],L=Math.hypot(bx-ax,by-ay)||1;
+    for(let i=a+1;i<b;i++){const d=Math.abs((bx-ax)*(ay-pts[i][1])-(ax-pts[i][0])*(by-ay))/L;if(d>md){md=d;mi=i}}
+    if(md>eps){keep[mi]=true;st.push([a,mi],[mi,b])}}
+  return pts.filter((_,i)=>keep[i]);
+}
+function offsetPts(pts,o){return pts.map((p,i)=>{const a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)];
+  let ux=b[0]-a[0],uy=b[1]-a[1];const L=Math.hypot(ux,uy)||1;ux/=L;uy/=L;return [p[0]-uy*o,p[1]+ux*o]})}
+function junctions(){
+  const out=[],add=(x,y,n)=>{const e=out.find(j=>Math.hypot(j.x-x,j.y-y)<4);if(e)e.n=Math.max(e.n,n);else out.push({x,y,n})};
+  const R=D.roads;
+  for(let i=0;i<R.length;i++)for(let j=0;j<R.length;j++){if(i===j)continue;
+    for(const e of [R[i].pts[0],R[i].pts[R[i].pts.length-1]]){const n=nearestOn(R[j].pts,e[0],e[1]);
+      if(n&&n.d<0.8){const L=R[j].pts.length,end=Math.hypot(n.px-R[j].pts[0][0],n.py-R[j].pts[0][1])<0.8||Math.hypot(n.px-R[j].pts[L-1][0],n.py-R[j].pts[L-1][1])<0.8;
+        if(!end)add(n.px,n.py,3)}}
+    if(j<i)continue;
+    const A=R[i].pts,B=R[j].pts;
+    for(let a=0;a<A.length-1;a++)for(let b=0;b<B.length-1;b++){
+      const [x1,y1]=A[a],[x2,y2]=A[a+1],[x3,y3]=B[b],[x4,y4]=B[b+1],den=(x1-x2)*(y3-y4)-(y1-y2)*(x3-x4);if(Math.abs(den)<1e-9)continue;
+      const t=((x1-x3)*(y3-y4)-(y1-y3)*(x3-x4))/den,u=-((x1-x2)*(y1-y3)-(y1-y2)*(x1-x3))/den;
+      const inA=(t>0.001&&t<0.999)||(t>=-1e-9&&t<=1+1e-9&&((a>0&&t<=0.001)||(a<A.length-2&&t>=0.999)));
+      const inB=(u>0.001&&u<0.999)||(u>=-1e-9&&u<=1+1e-9&&((b>0&&u<=0.001)||(b<B.length-2&&u>=0.999)));
+      if(inA&&inB)add(x1+t*(x2-x1),y1+t*(y2-y1),4)}
+  }
+  return out;
+}
 
 /* ================= mô hình ================= */
 const byId=id=>D.poles.find(p=>p.id===id);
 const activeP=()=>D.active?byId(D.active):null;
 const hasEdge=(a,b)=>D.edges.some(([x,y])=>(x===a&&y===b)||(x===b&&y===a));
 let undoSt=[];
-function snap(){undoSt.push(JSON.stringify({poles:D.poles,edges:D.edges,geo:D.geo,active:D.active}));if(undoSt.length>50)undoSt.shift()}
+function snap(){undoSt.push(JSON.stringify({poles:D.poles,edges:D.edges,roads:D.roads,mocs:D.mocs,geo:D.geo,active:D.active}));if(undoSt.length>60)undoSt.shift()}
 function haversine(a,b){const R=6371000,r=Math.PI/180,dLa=(b.lat-a.lat)*r,dLo=(b.lon-a.lon)*r;
   const h=Math.sin(dLa/2)**2+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dLo/2)**2;return 2*R*Math.asin(Math.sqrt(h))}
 function nextCode(prev,gpsKc){
@@ -229,67 +328,114 @@ function nextCode(prev,gpsKc){
   const t=[so,...carry];if(gpsKc)t.push(gpsKc+'m');
   return t.join(';')+';';
 }
-function addPole(x,y,shape,gps){
+const inheritShape=p=>!p||p.shape==='tba'?'tron':p.shape;
+function snapToRoad(x,y){
+  if(!DB.snap||!D.roads.length)return {x,y};
+  const b=nearestRoad(x,y,Math.max(6,26/V.s));if(!b)return {x,y};
+  const o=b.r.w/2+1.5,n=b.n;return {x:n.px+n.side*o*(-n.uy),y:n.py+n.side*o*n.ux};
+}
+function addPole(x,y,shape,gps,auto){
   snap();
   const prev=activeP();
+  if(prev){prev.code=chuanHoa(prev.code);prev.auto=false}
   let kc='';if(gps&&prev&&prev.lat!=null)kc=Math.round(haversine(prev,gps));
-  const p={id:uid(),x,y,shape,code:nextCode(prev,kc),from:prev?prev.id:null,t:Date.now()};
+  const p={id:uid(),x,y,shape:shape||inheritShape(prev),doi:!!(prev&&prev.doi&&prev.shape!=='tba'),code:nextCode(prev,kc),from:prev?prev.id:null,t:Date.now()};
   if(gps){p.lat=+gps.lat.toFixed(7);p.lon=+gps.lon.toFixed(7);p.acc=Math.round(gps.acc)}
+  if(auto){p.auto=true;p.autoCode=p.code}
   D.poles.push(p);if(prev)D.edges.push([prev.id,p.id]);
   D.active=p.id;save();draw();openSheet(p);
 }
-function delPole(id){
-  snap();
+function removePole(id){
   D.poles=D.poles.filter(p=>p.id!==id);D.edges=D.edges.filter(([a,b])=>a!==id&&b!==id);
   for(const p of D.poles)if(p.from===id)p.from=null;
   if(D.active===id)D.active=null;save();
 }
+/* cột tự đặt mà chưa nhập gì thì bỏ khi rời đi */
+function dropAuto(){const p=editId&&byId(editId);if(p&&p.auto&&p.code===p.autoCode){const f=p.from;removePole(p.id);D.active=f||null;return true}return false}
+function nextPos(p){
+  const f=p.from?byId(p.from):null;
+  let sp=+parse(p.code).kc||(f?Math.hypot(p.x-f.x,p.y-f.y):30);sp=Math.min(Math.max(sp,5),200);
+  const b=D.roads.length?nearestRoad(p.x,p.y,8):null;
+  if(b){const r=b.r,n=b.n;let dir=1;
+    if(f){const nf=nearestOn(r.pts,f.x,f.y);if(nf&&nf.s>n.s)dir=-1}
+    const q=pointAt(r.pts,n.s+dir*sp),o=n.d,side=n.side;
+    return {x:q.x+side*o*(-q.uy),y:q.y+side*o*q.ux};
+  }
+  let ux=1,uy=0;if(f){const L=Math.hypot(p.x-f.x,p.y-f.y);if(L>0.01){ux=(p.x-f.x)/L;uy=(p.y-f.y)/L}}
+  return {x:p.x+ux*sp,y:p.y+uy*sp};
+}
 
 /* ================= vẽ ================= */
 const cv=$('#cv'), stage=$('#stage');
-let W=0,H=0,V=D.view||null,tool='tron',noiA=null,editId=null,fix=null,watchId=null,gpsPending=false;
+let W=0,H=0,V=D.view||null,tool='cot',noiA=null,editId=null,selRoad=null,fix=null,watchId=null,gpsPending=false,tmpRoad=null;
 function sizeUp(){const r=stage.getBoundingClientRect();W=r.width;H=r.height;cv.setAttribute('viewBox',`0 0 ${W} ${H}`)}
+function allPts(){const a=D.poles.map(p=>[p.x,p.y]);for(const r of D.roads)a.push(...r.pts);for(const m of D.mocs)a.push([m.x,m.y]);return a}
 function fitView(w,h,pad){
-  if(!D.poles.length)return {s:3,tx:w/2,ty:h/2};
+  const pts=allPts();if(!pts.length)return {s:3,tx:w/2,ty:h/2};
   let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
-  for(const p of D.poles){x0=Math.min(x0,p.x);y0=Math.min(y0,p.y);x1=Math.max(x1,p.x);y1=Math.max(y1,p.y)}
+  for(const [x,y] of pts){x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y)}
   const bw=Math.max(x1-x0,20),bh=Math.max(y1-y0,20);
   const s=Math.min(Math.max(Math.min((w-2*pad-120)/bw,(h-2*pad)/bh),0.2),20);
   return {s,tx:w/2-(x0+x1)/2*s-40,ty:h/2-(y0+y1)/2*s};
 }
+function symSvg(p,x,y,R,cls,r){
+  const one=(cx)=>p.shape==='vuong'?`<rect class="${cls}" x="${cx-R}" y="${y-R}" width="${2*R}" height="${2*R}"/>`
+    :p.shape==='cs'?`<circle class="${cls}" cx="${cx}" cy="${y}" r="${R}"/><path class="${cls}" style="fill:none" d="M${cx-R*.7} ${y-R*.7}L${cx+R*.7} ${y+R*.7}M${cx+R*.7} ${y-R*.7}L${cx-R*.7} ${y+R*.7}"/>`
+    :`<circle class="${cls}" cx="${cx}" cy="${y}" r="${R}"/>`;
+  if(p.shape==='tba'){const a=R*1.5;return `<rect class="${cls}" x="${x-a}" y="${y-a}" width="${2*a}" height="${2*a}"/><path class="fillk" d="M${x-a} ${y+a}L${x+a} ${y-a}L${x+a} ${y+a}Z"/>`}
+  return isDoi(p,r)?one(x-R*0.95)+one(x+R*0.95):one(x);
+}
 function svgInner(v,w,h,o={}){
-  const X=x=>(x*v.s+v.tx).toFixed(1), Y=y=>(y*v.s+v.ty).toFixed(1), k=o.k||1;
+  const X=x=>+(x*v.s+v.tx).toFixed(1), Y=y=>+(y*v.s+v.ty).toFixed(1), k=o.k||1;
   let g='';
   if(!o.noGrid){let st=10;while(st*v.s<18)st*=5;
     const gx0=Math.floor(-v.tx/v.s/st)*st, gy0=Math.floor(-v.ty/v.s/st)*st;
     for(let x=gx0;x*v.s+v.tx<w;x+=st)g+=`<line class="grid" x1="${X(x)}" y1="0" x2="${X(x)}" y2="${h}"/>`;
     for(let y=gy0;y*v.s+v.ty<h;y+=st)g+=`<line class="grid" x1="0" y1="${Y(y)}" x2="${w}" y2="${Y(y)}"/>`;}
+  for(const r of D.roads){const d='M'+r.pts.map(q=>X(q[0])+' '+Y(q[1])).join('L');
+    g+=`<path class="road${r.id===selRoad&&!o.print?' sel':''}" d="${d}" style="stroke-width:${Math.max(r.w*v.s,6).toFixed(1)}px"/><path class="roadc" d="${d}"/>`}
+  if(tmpRoad)g+=`<path class="tmp" d="M${tmpRoad.map(q=>X(q[0])+' '+Y(q[1])).join('L')}"/>`;
+  const mocNear=(x,y)=>D.mocs.some(m=>Math.hypot(m.x-x,m.y-y)<8);
+  for(const j of junctions()){const x=X(j.x),y=Y(j.y),a=5*k;
+    g+=`<path class="jn" d="M${x} ${y-a}L${x+a} ${y}L${x} ${y+a}L${x-a} ${y}Z"/>`;
+    if(!mocNear(j.x,j.y))g+=`<text class="lb jt" x="${x+8*k}" y="${y+12*k}">Ngã ${j.n===4?'tư':'ba'}</text>`}
   for(const [a,b] of D.edges){const A=byId(a),B=byId(b);if(A&&B)g+=`<line class="ed" x1="${X(A.x)}" y1="${Y(A.y)}" x2="${X(B.x)}" y2="${Y(B.y)}"/>`}
   const pr={};for(const p of D.poles)pr[p.id]=parse(p.code);
   for(const p of D.poles){const q=p.from&&byId(p.from);const kc=pr[p.id].kc;
     if(q&&kc&&hasEdge(p.id,q.id))g+=`<text class="lb kc" x="${((p.x+q.x)/2*v.s+v.tx).toFixed(1)}" y="${((p.y+q.y)/2*v.s+v.ty-5*k).toFixed(1)}" text-anchor="middle">${esc(String(kc).replace('.',','))}</text>`}
+  for(const m of D.mocs){const x=X(m.x),y=Y(m.y);
+    g+=`<path class="moc" d="M${x} ${y}L${x} ${y-16*k}L${x+11*k} ${y-12*k}L${x} ${y-8*k}Z"/><circle class="moc" cx="${x}" cy="${y}" r="${2.5*k}"/>`;
+    g+=`<text class="lb mc" x="${x+13*k}" y="${y-6*k}">${esc(m.ten)}</text>`}
   const R=7*k;
   for(const p of D.poles){
-    const x=+X(p.x),y=+Y(p.y),c='pole'+(p.id===D.active&&!o.print?' act':'');
-    if(p.id===editId&&!o.print)g+=`<circle class="ring" cx="${x}" cy="${y}" r="${R+7}"/>`;
-    if(p.id===noiA)g+=`<circle class="noiA" cx="${x}" cy="${y}" r="${R+6}"/>`;
-    g+=p.shape==='vuong'?`<rect class="${c}" x="${x-R}" y="${y-R}" width="${2*R}" height="${2*R}"/>`:`<circle class="${c}" cx="${x}" cy="${y}" r="${R}"/>`;
-    const r=pr[p.id];
-    g+=`<text class="lb so" x="${x+R+5}" y="${y-3*k}">${esc(r.so||'?')}</text>`;
-    const d=detail(r);if(d)g+=`<text class="lb dt" x="${x+R+5}" y="${y+11*k}">${esc(d)}</text>`;
+    const x=X(p.x),y=Y(p.y),c='pole'+(p.id===D.active&&!o.print?' act':''),r=pr[p.id],doi=isDoi(p,r)&&p.shape!=='tba';
+    if(p.id===editId&&!o.print)g+=`<circle class="ring" cx="${x}" cy="${y}" r="${R*(doi?2:1)+7}"/>`;
+    if(p.id===noiA)g+=`<circle class="noiA" cx="${x}" cy="${y}" r="${R*(doi?2:1)+6}"/>`;
+    g+=symSvg(p,x,y,R,c,r);
+    const lx=x+R*(p.shape==='tba'?1.5:doi?2:1)+5;
+    g+=`<text class="lb so" x="${lx}" y="${y-3*k}">${esc(r.so||(p.shape==='tba'?'TBA':'?'))}</text>`;
+    const lines=[];for(const l of labelLines(p,r))lines.push(...wrap(l,o.print?40:30));
+    if(lines.length)g+=`<text class="lb dt" x="${lx}" y="${y+11*k}">${lines.map((l,i)=>`<tspan x="${lx}" dy="${i?12.5*k:0}">${esc(l)}</tspan>`).join('')}</text>`;
   }
-  if(fix&&D.geo&&!o.print){const m=geoToXY(fix.lat,fix.lon,false);const mx=+X(m.x),my=+Y(m.y);
+  if(fix&&D.geo&&!o.print){const m=geoToXY(fix.lat,fix.lon,false);const mx=X(m.x),my=Y(m.y);
     g+=`<circle class="meacc" cx="${mx}" cy="${my}" r="${Math.min(fix.acc*v.s,200).toFixed(1)}"/><circle class="me" cx="${mx}" cy="${my}" r="7"/>`}
   return g;
 }
 let rafP=false;
-function draw(){if(rafP)return;rafP=true;requestAnimationFrame(()=>{rafP=false;cv.innerHTML=svgInner(V,W,H);status()})}
+function draw(){if(rafP)return;rafP=true;requestAnimationFrame(()=>{rafP=false;render()})}
+function render(){cv.innerHTML=svgInner(V,W,H);status()}
 function status(){
-  const a=activeP();let h='';
+  const a=activeP(),ed=editId&&byId(editId);let h='';
   if(tool==='noi')h=`<span class="pill solo">${noiA?'Chạm cột thứ hai để nối / bỏ nối':'Nối dây: chạm cột thứ nhất'}</span>`;
-  else if(tool==='chon')h=`<span class="pill solo">Kéo cột để dời · chạm cột để sửa</span>`;
-  else if(a)h=`<span class="pill">Vẽ tiếp từ cột ${esc(parse(a.code).so||'?')}<button id="st-x">Đoạn mới</button></span>`;
+  else if(tool==='chon')h=`<span class="pill solo">Kéo cột, mốc để dời · chạm cột để sửa</span>`;
+  else if(tool==='moc')h=`<span class="pill solo">Chạm để đặt mốc · chạm mốc để đổi tên / xoá</span>`;
+  else if(tool==='duong'){const r=selRoad&&D.roads.find(x=>x.id===selRoad);
+    h=r?`<span class="pill">Đường rộng ${r.w} m<button data-st="w-">−</button><button data-st="w+">+</button><button data-st="rdel">Xoá đường</button><button data-st="rx">✕</button></span>`
+      :`<span class="pill solo">Kéo ngón tay theo con đường · 2 ngón để kéo bản vẽ</span>`}
+  else if(ed&&ed.auto)h=`<span class="pill solo">Cột tự đặt thẳng tuyến — chạm chỗ khác để dời tới đó</span>`;
+  else if(a)h=`<span class="pill">Vẽ tiếp từ ${esc(parse(a.code).so||'cột ?')}<button data-st="new">Đoạn mới</button></span>`;
   else h=`<span class="pill solo">${D.poles.length?'Đoạn mới — cột sau không nối':'Chạm lên bảng để đặt cột đầu tiên'}</span>`;
+  if(D.roads.length&&tool==='cot')h+=`<span class="pill">Bám mép đường<button data-st="snap">${DB.snap?'Bật':'Tắt'}</button></span>`;
   if(gpsPending)h+=`<span class="pill solo">Đang bắt GPS…</span>`;
   $('#status').innerHTML=h;
 }
@@ -298,19 +444,25 @@ function persistView(){D.view={s:V.s,tx:V.tx,ty:V.ty};save()}
 /* ================= chạm / kéo / thu phóng ================= */
 const ptrs=new Map();let G=null;
 const loc=e=>{const r=cv.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top}};
-function hit(pt){let best=null,bd=24*24;for(const p of D.poles){const dx=p.x*V.s+V.tx-pt.x,dy=p.y*V.s+V.ty-pt.y,d=dx*dx+dy*dy;if(d<bd){bd=d;best=p}}return best}
+const toW=pt=>[(pt.x-V.tx)/V.s,(pt.y-V.ty)/V.s];
+function hit(pt){let best=null,bd=26*26;for(const p of D.poles){const dx=p.x*V.s+V.tx-pt.x,dy=p.y*V.s+V.ty-pt.y,d=dx*dx+dy*dy;if(d<bd){bd=d;best=p}}return best}
+function hitMoc(pt){return D.mocs.find(m=>Math.hypot(m.x*V.s+V.tx-pt.x,m.y*V.s+V.ty-8-pt.y)<22)}
+function hitRoad(pt){const [x,y]=toW(pt);const b=nearestRoad(x,y,14/V.s);return b&&b.r}
 cv.addEventListener('pointerdown',e=>{
   cv.setPointerCapture(e.pointerId);const pt=loc(e);ptrs.set(e.pointerId,pt);
-  if(ptrs.size===1)G={type:'tap',p0:pt,v0:{...V},hit:hit(pt),moved:false};
-  else if(ptrs.size===2){const [a,b]=[...ptrs.values()];
-    G={type:'pinch',d0:Math.hypot(a.x-b.x,a.y-b.y)||1,c0:{x:(a.x+b.x)/2,y:(a.y+b.y)/2},v0:{...V}}}
+  if(ptrs.size===1)G={type:'tap',p0:pt,v0:{...V},hit:tool==='moc'||tool==='chon'?(hit(pt)||hitMoc(pt)):hit(pt),moved:false};
+  else if(ptrs.size===2){tmpRoad=null;const [a,b]=[...ptrs.values()];
+    G={type:'pinch',d0:Math.hypot(a.x-b.x,a.y-b.y)||1,c0:{x:(a.x+b.x)/2,y:(a.y+b.y)/2},v0:{...V}};draw()}
 });
 cv.addEventListener('pointermove',e=>{
   if(!ptrs.has(e.pointerId)||!G)return;const pt=loc(e);ptrs.set(e.pointerId,pt);
   if(G.type==='tap'){if(Math.hypot(pt.x-G.p0.x,pt.y-G.p0.y)>8){
-      if(tool==='chon'&&G.hit){snap();G.type='drag'}else G.type='pan'}else return}
+      if(G.hit&&(tool==='chon'||G.hit.id===editId)){snap();G.type='drag'}
+      else if(tool==='duong'){G.type='road';tmpRoad=[toW(G.p0)]}
+      else G.type='pan'}else return}
   if(G.type==='pan'){V.tx=G.v0.tx+pt.x-G.p0.x;V.ty=G.v0.ty+pt.y-G.p0.y;draw()}
-  else if(G.type==='drag'){G.hit.x=(pt.x-V.tx)/V.s;G.hit.y=(pt.y-V.ty)/V.s;draw()}
+  else if(G.type==='drag'){const [x,y]=toW(pt);G.hit.x=x;G.hit.y=y;if(G.hit.auto)G.hit.auto=false;draw()}
+  else if(G.type==='road'){const w=toW(pt),l=tmpRoad[tmpRoad.length-1];if(Math.hypot(w[0]-l[0],w[1]-l[1])*V.s>5){tmpRoad.push(w);draw()}}
   else if(G.type==='pinch'&&ptrs.size===2){const [a,b]=[...ptrs.values()];
     const d=Math.hypot(a.x-b.x,a.y-b.y),c={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
     const s=Math.min(Math.max(G.v0.s*d/G.d0,0.05),60);
@@ -322,12 +474,24 @@ function pEnd(e){
   if(!G)return;
   if(G.type==='tap'&&ptrs.size===0)onTap(G.p0,G.hit);
   if(G.type==='drag')save();
+  if(G.type==='road'&&ptrs.size===0)finishRoad();
   if(G.type==='pan'||G.type==='pinch')persistView();
   if(ptrs.size===0||G.type==='pinch')G=null;
 }
-cv.addEventListener('pointerup',pEnd);cv.addEventListener('pointercancel',e=>{ptrs.delete(e.pointerId);G=null});
+cv.addEventListener('pointerup',pEnd);cv.addEventListener('pointercancel',e=>{ptrs.delete(e.pointerId);G=null;tmpRoad=null;draw()});
 cv.addEventListener('wheel',e=>{e.preventDefault();const pt=loc(e),f=Math.exp(-e.deltaY*0.0015);
   const s=Math.min(Math.max(V.s*f,0.05),60),wx=(pt.x-V.tx)/V.s,wy=(pt.y-V.ty)/V.s;V.s=s;V.tx=pt.x-wx*s;V.ty=pt.y-wy*s;draw();persistView()},{passive:false});
+function finishRoad(){
+  let pts=tmpRoad;tmpRoad=null;
+  if(!pts||pts.length<2){draw();return}
+  pts=simplify(pts,4/V.s).map(q=>[+q[0].toFixed(2),+q[1].toFixed(2)]);
+  const len=pts.slice(1).reduce((s,q,i)=>s+Math.hypot(q[0]-pts[i][0],q[1]-pts[i][1]),0);
+  if(len*V.s<30){draw();return}
+  for(const k of [0,pts.length-1]){let best=null;
+    for(const r of D.roads){const n=nearestOn(r.pts,pts[k][0],pts[k][1]);if(n&&n.d<Math.max(r.w,22/V.s)&&(!best||n.d<best.d))best=n}
+    if(best)pts[k]=[+best.px.toFixed(3),+best.py.toFixed(3)]}
+  snap();const r={id:uid(),pts,w:DB.roadW||7};D.roads.push(r);selRoad=r.id;save();draw();
+}
 function onTap(pt,h){
   if(tool==='noi'){
     if(!h){noiA=null;draw();return}
@@ -336,9 +500,18 @@ function onTap(pt,h){
       else{D.edges.push([noiA,h.id]);toast('Đã nối dây')}save()}
     noiA=null;draw();return;
   }
-  if(h){D.active=h.id;save();openSheet(h);return}
-  if(tool==='chon'){closeSheet();return}
-  addPole((pt.x-V.tx)/V.s,(pt.y-V.ty)/V.s,tool);
+  if(tool==='duong'){const r=hitRoad(pt);selRoad=r?r.id:null;draw();return}
+  if(tool==='moc'){
+    if(h&&h.ten!==undefined){const t=prompt('Tên mốc (xoá hết chữ để bỏ mốc)',h.ten);if(t===null)return;snap();
+      if(t.trim())h.ten=t.trim();else D.mocs=D.mocs.filter(m=>m!==h);save();draw();return}
+    const [x,y]=toW(pt);const t=prompt('Tên mốc (vd: Ngã tư chợ, Cổng UBND)','');if(t===null)return;
+    snap();D.mocs.push({id:uid(),x,y,ten:t.trim()||'Mốc'});save();draw();return;
+  }
+  if(h&&h.ten===undefined){if(h.id!==editId)dropAuto();D.active=h.id;save();openSheet(byId(h.id)||h);return}
+  if(tool==='chon'){finishSheet();return}
+  const [wx,wy]=toW(pt),q=snapToRoad(wx,wy),ed=editId&&byId(editId);
+  if(ed&&ed.auto){snap();ed.x=q.x;ed.y=q.y;save();draw();return}
+  addPole(q.x,q.y);
 }
 
 /* ================= ô nhập cột ================= */
@@ -351,15 +524,14 @@ const BASE={
   sau:['CXV4x10','CXV2x10','CXV2x6','CXV4x16','VX4x35','2VX4x35','VX4x25','VX4x50'],
   kc:['25','30','35','40','45','50'],
   dd:['Néo','Góc','Cuối','Rẽ nhánh','Đầu nguồn','Nghiêng','Nứt'],
-  gc:['Tổ bù','Tiếp địa','Hộp đấu dây','Chống sét','Tủ:1','Tủ cũ:1']
+  gc:['Tủ bù','Tủ ĐKCS','Tiếp địa','Hộp đấu dây','Chống sét','Tủ:1','Tủ cũ:1']
 };
 function learned(kind){
   const cnt={};
   for(const d of Object.values(DB.ds))for(const p of d.poles)for(const x of parse(p.code).toks){
     let v=null;
-    if(kind==='cot'&&x.k==='cot')v=x.t.split(/>|→/).filter(Boolean)[0];
-    else if(kind==='day'&&x.k==='day')v=x.t.split(/>|→/).filter(Boolean)[0];
-    else if(kind==='sau'&&x.k==='sau')v=x.t.replace(/^\s*(s|sau|sct)\s*:\s*/i,'');
+    if((kind==='cot'||kind==='day')&&x.k===kind)v=x.t.split(/>|→/).filter(Boolean)[0];
+    else if(kind==='sau'&&x.k==='sau')v=x.t.replace(SAU_RE,'');
     else if(kind==='gc'&&x.k==='gc')v=x.t;
     if(v){v=v.trim();cnt[v]=(cnt[v]||0)+1}}
   const base=BASE[kind],have=new Set(base.map(norm));
@@ -386,27 +558,44 @@ function preview(){
     sp('ct','CT ',ctText(r))+sp('sau','Sau CT ',J(r.sau))+sp('kc','',r.kc?String(r.kc).replace('.',',')+' m':'')+sp('tu','',tuText(r))+
     sp('dd','',r.dd.join(', '))+sp('gc','Ghi chú ',r.gc.join('; '));
 }
+function syncShapeBtns(p){
+  for(const b of sheet.querySelectorAll('[data-shape]'))b.classList.toggle('on',b.dataset.shape===(p.shape||'tron'));
+  $('#sh-doi').classList.toggle('on',!!p.doi);$('#sh-doi').disabled=p.shape==='tba';
+}
 let sheetSnap=false;
 function openSheet(p){
   editId=p.id;sheetSnap=false;thayMode=false;
-  sheet.hidden=false;inp.value=p.code||'';
-  for(const b of sheet.querySelectorAll('[data-shape]'))b.classList.toggle('on',b.dataset.shape===(p.shape||'tron'));
+  sheet.hidden=false;inp.value=p.code||'';syncShapeBtns(p);
   $('#sh-del').classList.remove('armed');$('#sh-del').textContent='Xoá';
   renderChips();preview();
   requestAnimationFrame(()=>{const sh=sheet.getBoundingClientRect().height,top=stage.getBoundingClientRect().top;
     const visH=window.innerHeight-sh-top, sy=p.y*V.s+V.ty;
-    if(sy>visH-40||sy<40){V.ty+=visH*0.4-sy;persistView()}
-    const sx=p.x*V.s+V.tx;if(sx>W-140||sx<30){V.tx+=W*0.35-sx;persistView()}
+    if(sy>visH-50||sy<50){V.ty+=visH*0.45-sy;persistView()}
+    const sx=p.x*V.s+V.tx;if(sx>W-150||sx<30){V.tx+=W*0.35-sx;persistView()}
     draw()});
 }
 function closeSheet(){if(!editId)return;editId=null;sheet.hidden=true;inp.blur();draw()}
+/* chốt cột đang mở: chuẩn hoá mã, bỏ cột tự đặt chưa dùng */
+function finishSheet(){
+  if(!editId)return;
+  if(!dropAuto()){const p=byId(editId);if(p){const c=chuanHoa(p.code);if(c!==p.code){p.code=c}p.auto=false;save()}}
+  closeSheet();
+}
 function setCode(v){
   const p=byId(editId);if(!p)return;
   if(!sheetSnap){snap();sheetSnap=true}
-  p.code=v;save();preview();draw();
+  p.code=v;if(p.auto&&v!==p.autoCode)p.auto=false;save();preview();draw();
+}
+function xong(){
+  const p=byId(editId);if(!p){closeSheet();return}
+  if(p.auto&&p.code===p.autoCode){p.auto=false}           /* bấm Xong ngay trên cột tự đặt = giữ cột đó */
+  p.code=chuanHoa(p.code);p.auto=false;save();
+  if(p.lat!=null){closeSheet();toast('Đi tới cột sau rồi bấm GPS');return}
+  const n=nextPos(p),q=snapToRoad(n.x,n.y);closeSheet();D.active=p.id;
+  addPole(q.x,q.y,inheritShape(p),null,true);
 }
 inp.addEventListener('input',()=>{setCode(inp.value);renderChips()});
-inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();closeSheet()}});
+inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();xong()}});
 $('#chips').addEventListener('click',e=>{
   const b=e.target.closest('.tk');if(!b)return;const k=b.dataset.k,v=b.dataset.v;
   let t=splitCode(inp.value);
@@ -414,9 +603,8 @@ $('#chips').addEventListener('click',e=>{
   if(k==='bs'){if(t.length>1)t.pop();else t=[''];}
   else if(k==='sc'){inp.value=inp.value.replace(/;?\s*$/,'')+';';inp.focus();return}
   else if(k==='ct'||k==='ctx'){
-    const key=k==='ct'?v:null;
-    if(key){const i=t.findIndex((x,j)=>j>0&&norm(x).startsWith(key+':'));
-      if(i>0){t[i]=key+':'+((+norm(t[i]).split(':')[1]||0)+1)}else t.push(key+':1')}
+    if(k==='ct'){const i=t.findIndex((x,j)=>j>0&&norm(x).startsWith(v+':'));
+      if(i>0){t[i]=v+':'+((+norm(t[i]).split(':')[1]||0)+1)}else t.push(v+':1')}
     else{const i=t.map((x,j)=>j>0&&kindOf(x)==='ct'?j:-1).filter(j=>j>0).pop();
       if(i){const kk=norm(t[i]).split(':');const n=(+kk[1]||0)-1;if(n>0)t[i]=kk[0]+':'+n;else t.splice(i,1)}}
   }
@@ -431,24 +619,33 @@ $('#chips').addEventListener('click',e=>{
   inp.value=t.join(';')+(t.length>1?';':'');setCode(inp.value);renderChips();
 });
 for(const b of sheet.querySelectorAll('[data-shape]'))b.addEventListener('click',()=>{
-  const p=byId(editId);if(!p)return;if(!sheetSnap){snap();sheetSnap=true}p.shape=b.dataset.shape;save();
-  for(const x of sheet.querySelectorAll('[data-shape]'))x.classList.toggle('on',x===b);draw()});
-$('#sh-ok').addEventListener('click',closeSheet);
+  const p=byId(editId);if(!p)return;if(!sheetSnap){snap();sheetSnap=true}p.shape=b.dataset.shape;if(p.shape==='tba')p.doi=false;p.auto=false;save();syncShapeBtns(p);draw()});
+$('#sh-doi').addEventListener('click',()=>{const p=byId(editId);if(!p)return;if(!sheetSnap){snap();sheetSnap=true}p.doi=!p.doi;p.auto=false;save();syncShapeBtns(p);draw()});
+$('#sh-ok').addEventListener('click',xong);
+$('#sh-end').addEventListener('click',finishSheet);
 let delT=null;
 $('#sh-del').addEventListener('click',e=>{
   const b=e.currentTarget;
   if(!delT){b.classList.add('armed');b.textContent='Xoá thật?';delT=setTimeout(()=>{delT=null;b.classList.remove('armed');b.textContent='Xoá'},3000);return}
-  clearTimeout(delT);delT=null;const so=parse(byId(editId)?.code).so;delPole(editId);editId=null;sheet.hidden=true;draw();toast(`Đã xoá cột ${so||''}`);
+  clearTimeout(delT);delT=null;const p=byId(editId),so=p&&parse(p.code).so,f=p&&p.from;snap();removePole(editId);if(f&&byId(f))D.active=f;
+  editId=null;sheet.hidden=true;save();draw();toast(`Đã xoá cột ${so||''}`);
 });
 
 /* ================= công cụ ================= */
 for(const b of document.querySelectorAll('[data-tool]'))b.addEventListener('click',()=>{
-  tool=b.dataset.tool;noiA=null;
+  tool=b.dataset.tool;noiA=null;if(tool!=='duong')selRoad=null;
   for(const x of document.querySelectorAll('[data-tool]'))x.classList.toggle('on',x===b);
-  if(tool==='noi'||tool==='chon')closeSheet();draw()});
-$('#status').addEventListener('click',e=>{if(e.target.id==='st-x'){D.active=null;save();closeSheet();draw();toast('Cột tiếp theo bắt đầu đoạn mới')}});
+  if(tool!=='cot')finishSheet();draw()});
+$('#status').addEventListener('click',e=>{
+  const s=e.target.dataset&&e.target.dataset.st;if(!s)return;const r=selRoad&&D.roads.find(x=>x.id===selRoad);
+  if(s==='new'){finishSheet();D.active=null;save();draw();toast('Cột tiếp theo bắt đầu đoạn mới')}
+  else if(s==='snap'){DB.snap=!DB.snap;saveNow();draw()}
+  else if(r&&(s==='w-'||s==='w+')){snap();r.w=Math.min(Math.max(r.w+(s==='w+'?1:-1),3),40);DB.roadW=r.w;save();draw()}
+  else if(r&&s==='rdel'){snap();D.roads=D.roads.filter(x=>x!==r);selRoad=null;save();draw();toast('Đã xoá đường')}
+  else if(s==='rx'){selRoad=null;draw()}
+});
 $('#b-undo').addEventListener('click',()=>{const s=undoSt.pop();if(!s){toast('Không còn gì để hoàn tác');return}
-  Object.assign(D,JSON.parse(s));editId=null;sheet.hidden=true;save();draw();toast('Đã hoàn tác')});
+  Object.assign(D,JSON.parse(s));editId=null;selRoad=null;sheet.hidden=true;save();draw();toast('Đã hoàn tác')});
 $('#b-fit').addEventListener('click',()=>{V=fitView(W,H,40);persistView();draw()});
 $('#b-title').addEventListener('click',()=>{const t=prompt('Tên TBA / tuyến',D.ten);if(t!=null&&t.trim()){D.ten=t.trim();save();title()}});
 function title(){$('#b-title').textContent=D.ten;document.title=D.ten+' · Khảo sát tuyến'}
@@ -460,21 +657,30 @@ function geoToXY(lat,lon,setOrigin=true){
   return {x:g.x0+(lon-g.lon0)*kx,y:g.y0-(lat-g.lat0)*110574};
 }
 function gpsLab(){$('#gps-lab').textContent=fix?`±${Math.round(fix.acc)} m`:'GPS'}
-function placeGps(){const xy=geoToXY(fix.lat,fix.lon);addPole(xy.x,xy.y,tool==='vuong'?'vuong':'tron',fix);
+function placeGps(){dropAuto();closeSheet();const xy=geoToXY(fix.lat,fix.lon);addPole(xy.x,xy.y,null,fix);
   if(fix.acc>15)toast(`GPS sai số ±${Math.round(fix.acc)} m — đứng chỗ thoáng cho chuẩn hơn`)}
 $('#b-gps').addEventListener('click',()=>{
   if(!('geolocation' in navigator)){toast('Máy này không có định vị');return}
   if(watchId===null)watchId=navigator.geolocation.watchPosition(pos=>{
       fix={lat:pos.coords.latitude,lon:pos.coords.longitude,acc:pos.coords.accuracy,t:Date.now()};gpsLab();
       if(gpsPending){gpsPending=false;placeGps()}else draw()},
-    err=>{gpsPending=false;watchId!==null&&navigator.geolocation.clearWatch(watchId);watchId=null;draw();
+    err=>{gpsPending=false;if(watchId!==null)navigator.geolocation.clearWatch(watchId);watchId=null;draw();
       toast(err.code===1?'Chưa cho phép định vị — bật quyền Vị trí cho trình duyệt':'Chưa bắt được GPS, ra chỗ thoáng rồi bấm lại')},
     {enableHighAccuracy:true,maximumAge:3000,timeout:60000});
   if(fix&&Date.now()-fix.t<15000)placeGps();else{gpsPending=true;draw()}
 });
 
 /* ================= xuất file ================= */
-function sorted(){return D.poles.slice().sort((a,b)=>a.t-b.t)}
+/* thứ tự đi tuyến: đầu mỗi đoạn theo thời gian, rồi lần lượt cột nối tiếp (cả đoạn gộp từ máy khác) */
+function sorted(){
+  const ids=new Set(D.poles.map(p=>p.id)),kids={},out=[],seen=new Set();
+  for(const p of D.poles){const f=p.from&&ids.has(p.from)?p.from:'';(kids[f]=kids[f]||[]).push(p)}
+  for(const k in kids)kids[k].sort((a,b)=>a.t-b.t);
+  const st=(kids['']||[]).slice().reverse();
+  while(st.length){const p=st.pop();if(seen.has(p.id))continue;seen.add(p.id);out.push(p);st.push(...(kids[p.id]||[]).slice().reverse())}
+  for(const p of D.poles)if(!seen.has(p.id))out.push(p);
+  return out;
+}
 function fname(ext){return `${D.ten.replace(/[\\/:*?"<>|]+/g,' ').trim().slice(0,80)||'tuyen'}${ext}`}
 function giao(blob,name){
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.append(a);a.click();
@@ -483,7 +689,7 @@ function giao(blob,name){
 function xuatXlsx(){
   if(!window.XLSX){toast('Chưa tải xong bộ tạo Excel — thử lại sau vài giây');return}
   const rows=sorted().map((p,i)=>{const r=parse(p.code);const n=v=>v||'';
-    return [i+1,r.so,r.dd.join(', '),r.kc===''?'':r.kc,J(r.cotHT),J(r.cotTT),J(r.dayHT),J(r.dayTT),n(r.h1),n(r.h2),n(r.h4),n(r.p3),
+    return [i+1,r.so,ddText(p,r).join(', '),r.kc===''?'':r.kc,J(r.cotHT),J(r.cotTT),J(r.dayHT),J(r.dayTT),n(r.h1),n(r.h2),n(r.h4),n(r.p3),
       r.tuCu?tuText(r):n(r.tuMoi),J(r.sau),r.gc.join('; ')]});
   const sum=(k)=>D.poles.reduce((s,p)=>s+(+parse(p.code)[k]||0),0);
   const aoa=[[`BẢNG TỔNG KÊ KHỐI LƯỢNG HIỆN TRẠNG VÀ THAY THẾ: ${D.ten}`],[`Ngày khảo sát: ${D.ngay||''}`],
@@ -493,46 +699,58 @@ function xuatXlsx(){
   const ws=XLSX.utils.aoa_to_sheet(aoa),M=(a,b,c,d)=>({s:{r:a,c:b},e:{r:c,c:d}});
   ws['!merges']=[M(0,0,0,14),M(1,0,1,14),M(2,0,3,0),M(2,1,3,1),M(2,2,3,2),M(2,3,3,3),M(2,4,2,5),M(2,6,2,7),M(2,8,2,11),M(2,12,3,12),M(2,13,3,13),M(2,14,3,14)];
   ws['!cols']=[5,10,14,9,12,12,22,22,5,5,5,6,12,20,22].map(w=>({wch:w}));
-  const ws2=XLSX.utils.aoa_to_sheet([['STT','Số cột','Mã nhập','Hình','X (m)','Y (m)','Vĩ độ','Kinh độ','Sai số GPS (m)'],
-    ...sorted().map((p,i)=>[i+1,parse(p.code).so,p.code,p.shape==='vuong'?'Vuông':'Tròn',+p.x.toFixed(2),+(-p.y).toFixed(2),p.lat??'',p.lon??'',p.acc??''])]);
-  ws2['!cols']=[5,10,40,8,10,10,12,12,10].map(w=>({wch:w}));
+  const ws2=XLSX.utils.aoa_to_sheet([['STT','Số cột','Mã nhập','Ký hiệu','X (m)','Y (m)','Vĩ độ','Kinh độ','Sai số GPS (m)'],
+    ...sorted().map((p,i)=>[i+1,parse(p.code).so,p.code,SHAPE_NAME[p.shape||'tron']+(isDoi(p)&&p.shape!=='tba'?' đôi':''),+p.x.toFixed(2),+(-p.y).toFixed(2),p.lat??'',p.lon??'',p.acc??'']),
+    ...D.mocs.map(m=>['','Mốc',m.ten,'Mốc',+m.x.toFixed(2),+(-m.y).toFixed(2),'','',''])]);
+  ws2['!cols']=[5,10,40,12,10,10,12,12,10].map(w=>({wch:w}));
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Bang ke');XLSX.utils.book_append_sheet(wb,ws2,'Toa do');
   giao(new Blob([XLSX.write(wb,{bookType:'xlsx',type:'array'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),fname('.xlsx'));
 }
 function dxfTxt(s){return String(s).replace(/[^\x20-\x7e]/g,c=>'\\U+'+c.codePointAt(0).toString(16).toUpperCase().padStart(4,'0'))}
-function xuatDxf(){
+function buildDxf(){
   const L=[],a=(...x)=>{for(let i=0;i<x.length;i+=2)L.push(String(x[i]),String(x[i+1]))};
-  const f=v=>(+v).toFixed(3),X=p=>p.x,Y=p=>-p.y,R=0.8;
+  const f=v=>(+v).toFixed(3),R=0.8;
   a(0,'SECTION',2,'HEADER',9,'$ACADVER',1,'AC1009',0,'ENDSEC');
   a(0,'SECTION',2,'TABLES');
   a(0,'TABLE',2,'LTYPE',70,1,0,'LTYPE',2,'CONTINUOUS',70,0,3,'Solid line',72,65,73,0,40,'0.0',0,'ENDTAB');
-  const LY=[['KS_COT',1],['KS_DAY',5],['KS_CHU',7],['KS_KHOANG',3]];
+  const LY=[['KS_COT',1],['KS_DAY',5],['KS_CHU',7],['KS_KHOANG',3],['KS_DUONG',8],['KS_MOC',6]];
   a(0,'TABLE',2,'LAYER',70,LY.length);for(const [n,c] of LY)a(0,'LAYER',2,n,70,0,62,c,6,'CONTINUOUS');a(0,'ENDTAB');
   a(0,'TABLE',2,'STYLE',70,1,0,'STYLE',2,'KS',70,0,40,'0.0',41,'1.0',50,'0.0',71,0,42,'1.0',3,'arial.ttf',4,'',0,'ENDTAB');
   a(0,'ENDSEC',0,'SECTION',2,'ENTITIES');
+  const line=(x1,y1,x2,y2,ly)=>a(0,'LINE',8,ly,10,f(x1),20,f(y1),30,'0.0',11,f(x2),21,f(y2),31,'0.0');
   const txt=(x,y,h,s,ly)=>a(0,'TEXT',8,ly,10,f(x),20,f(y),30,'0.0',40,h,1,dxfTxt(s),7,'KS');
+  const circ=(x,y,r,ly)=>a(0,'CIRCLE',8,ly,10,f(x),20,f(y),30,'0.0',40,r);
+  const sq=(x,y,r,ly)=>{const c=[[x-r,y-r],[x+r,y-r],[x+r,y+r],[x-r,y+r]];for(let k=0;k<4;k++)line(c[k][0],c[k][1],c[(k+1)%4][0],c[(k+1)%4][1],ly)};
+  for(const r of D.roads){
+    for(const o of [r.w/2,-r.w/2]){const e=offsetPts(r.pts,o);for(let i=0;i<e.length-1;i++)line(e[i][0],-e[i][1],e[i+1][0],-e[i+1][1],'KS_DUONG')}}
+  for(const j of junctions())txt(j.x+1,-j.y-2,'1.2','Ngã '+(j.n===4?'tư':'ba'),'KS_MOC');
+  for(const m of D.mocs){circ(m.x,-m.y,0.5,'KS_MOC');txt(m.x+1,-m.y+1,'1.5',m.ten,'KS_MOC')}
   for(const [i,j] of D.edges){const A=byId(i),B=byId(j);if(!A||!B)continue;
-    const dx=X(B)-X(A),dy=Y(B)-Y(A),l=Math.hypot(dx,dy);if(l<=2*R)continue;const ux=dx/l,uy=dy/l;
-    a(0,'LINE',8,'KS_DAY',10,f(X(A)+ux*R),20,f(Y(A)+uy*R),30,'0.0',11,f(X(B)-ux*R),21,f(Y(B)-uy*R),31,'0.0');
-    const r=parse(B.from===A.id?B.code:A.from===B.id?A.code:'').kc;
-    if(r)txt((X(A)+X(B))/2,(Y(A)+Y(B))/2+0.4,'1.0',String(r).replace('.',','),'KS_KHOANG');}
-  for(const p of D.poles){const x=X(p),y=Y(p),r=parse(p.code);
-    if(p.shape==='vuong'){const c=[[x-R,y-R],[x+R,y-R],[x+R,y+R],[x-R,y+R]];
-      for(let k=0;k<4;k++){const s=c[k],e=c[(k+1)%4];a(0,'LINE',8,'KS_COT',10,f(s[0]),20,f(s[1]),30,'0.0',11,f(e[0]),21,f(e[1]),31,'0.0')}}
-    else a(0,'CIRCLE',8,'KS_COT',10,f(x),20,f(y),30,'0.0',40,R);
-    txt(x+1.2,y+0.9,'1.5',r.so||'?','KS_CHU');
-    const d=detail(r);if(d)txt(x+1.2,y-1.1,'1.0',d,'KS_CHU');
-    if(r.gc.length||r.dd.length)txt(x+1.2,y-2.5,'1.0',r.dd.concat(r.gc).join('; '),'KS_CHU');}
+    const ax=A.x,ay=-A.y,bx=B.x,by=-B.y,dx=bx-ax,dy=by-ay,l=Math.hypot(dx,dy);if(l<=2*R)continue;const ux=dx/l,uy=dy/l;
+    line(ax+ux*R,ay+uy*R,bx-ux*R,by-uy*R,'KS_DAY');
+    const kc=parse(B.from===A.id?B.code:A.from===B.id?A.code:'').kc;
+    if(kc)txt((ax+bx)/2,(ay+by)/2+0.4,'1.0',String(kc).replace('.',','),'KS_KHOANG');}
+  for(const p of D.poles){const x=p.x,y=-p.y,r=parse(p.code),doi=isDoi(p,r)&&p.shape!=='tba';
+    const one=cx=>{if(p.shape==='vuong')sq(cx,y,R,'KS_COT');else{circ(cx,y,R,'KS_COT');if(p.shape==='cs'){const d=R*0.7;line(cx-d,y-d,cx+d,y+d,'KS_COT');line(cx-d,y+d,cx+d,y-d,'KS_COT')}}};
+    let w=R;
+    if(p.shape==='tba'){const s=R*1.5;sq(x,y,s,'KS_COT');a(0,'SOLID',8,'KS_COT',10,f(x-s),20,f(y-s),30,'0.0',11,f(x+s),21,f(y-s),31,'0.0',12,f(x+s),22,f(y+s),32,'0.0',13,f(x+s),23,f(y+s),33,'0.0');w=s}
+    else if(doi){one(x-R*0.95);one(x+R*0.95);w=R*2}else one(x);
+    txt(x+w+0.4,y+0.9,'1.5',r.so||(p.shape==='tba'?'TBA':'?'),'KS_CHU');
+    let yy=y-1.1;for(const l of labelLines(p,r)){txt(x+w+0.4,yy,'1.0',l,'KS_CHU');yy-=1.4}}
   a(0,'ENDSEC',0,'EOF');
-  giao(new Blob([L.join('\r\n')+'\r\n'],{type:'application/dxf'}),fname('.dxf'));
+  return L.join('\r\n')+'\r\n';
 }
+function xuatDxf(){giao(new Blob([buildDxf()],{type:'application/dxf'}),fname('.dxf'))}
 function xuatJson(){
-  const out={app:'khao-sat-tuyen',ver:1,ten:D.ten,ngay:D.ngay,geo:D.geo,poles:D.poles.map(p=>({...p,y:p.y})),edges:D.edges};
+  const out={app:'khao-sat-tuyen',ver:2,ten:D.ten,ngay:D.ngay,geo:D.geo,poles:D.poles,edges:D.edges,roads:D.roads,mocs:D.mocs};
   giao(new Blob([JSON.stringify(out,null,1)],{type:'application/json'}),fname('.json'));
 }
-const PNGCSS=`.ed{stroke:#2F5FA8;stroke-width:3}.pole{fill:#fff;stroke:#15201C;stroke-width:3}
+const PNGCSS=`.ed{stroke:#2F5FA8;stroke-width:3}.pole{fill:#fff;stroke:#15201C;stroke-width:3}.fillk{fill:#15201C}
+.road{stroke:rgba(120,130,126,.22);fill:none;stroke-linecap:round;stroke-linejoin:round}.roadc{stroke:rgba(120,130,126,.55);fill:none;stroke-width:1.5;stroke-dasharray:8 8}
+.jn{fill:#fff;stroke:#5A6964;stroke-width:2}.moc{fill:#B4361F;stroke:#fff;stroke-width:2}
 .lb{fill:#15201C;paint-order:stroke;stroke:#fff;stroke-width:5px;stroke-linejoin:round;font-family:Arial,sans-serif}
 .lb.so{font-weight:700;font-size:20px}.lb.dt{font-size:15px;fill:#42504B}.lb.kc{font-size:15px;font-weight:700;fill:#1F7A4D}
+.lb.mc{font-size:17px;font-weight:700;fill:#B4361F}.lb.jt{font-size:14px;fill:#5A6964}
 .tt{font:700 26px Arial,sans-serif;fill:#15201C}`;
 async function guiAnh(){
   const w=1800,h=1300,v=fitView(w,h,90);
@@ -547,14 +765,44 @@ async function guiAnh(){
   giao(blob,file.name);
 }
 
+/* ================= gộp file ================= */
+function gop(o){
+  if(!o||!Array.isArray(o.poles))throw new Error('sai dinh dang');
+  const soMap={};for(const p of D.poles){const s=parse(p.code).so;if(s)soMap[norm(s)]=p}
+  const exOf=p=>{const s=parse(p.code).so;return s?soMap[norm(s)]:null};
+  const ip=o.poles.map(p=>[p.x,p.y]).concat(...(o.roads||[]).map(r=>r.pts),(o.mocs||[]).map(m=>[m.x,m.y]));
+  let dx=0,dy=0,how;
+  const shared=o.poles.find(exOf);
+  if(o.geo&&D.geo){const g=D.geo,kx=111320*Math.cos(g.lat0*Math.PI/180);
+    dx=g.x0+(o.geo.lon0-g.lon0)*kx-o.geo.x0;dy=g.y0-(o.geo.lat0-g.lat0)*110574-o.geo.y0;how='theo GPS'}
+  else if(shared){const e=exOf(shared);dx=e.x-shared.x;dy=e.y-shared.y;how='nối tại cột '+parse(shared.code).so}
+  else if(allPts().length&&ip.length){const cur=allPts(),mx=Math.max(...cur.map(q=>q[0])),my=Math.min(...cur.map(q=>q[1]));
+    dx=mx+40-Math.min(...ip.map(q=>q[0]));dy=my-Math.min(...ip.map(q=>q[1]));how='đặt bên phải bản vẽ'}
+  else how='bản vẽ trống';
+  if(!D.geo&&o.geo)D.geo={...o.geo,x0:o.geo.x0+dx,y0:o.geo.y0+dy};
+  const idm={},moi=[];let them=0,trung=0;
+  for(const p of o.poles){const ex=exOf(p);
+    if(ex){idm[p.id]=ex.id;trung++;if(parse(p.code).toks.length>parse(ex.code).toks.length)ex.code=p.code;continue}
+    const np={...p,id:uid(),x:p.x+dx,y:p.y+dy,auto:false};idm[p.id]=np.id;moi.push([np,p.from]);D.poles.push(np);them++}
+  for(const [np,f] of moi)np.from=(f&&idm[f])||null;
+  for(const [a,b] of o.edges||[]){const A=idm[a],B=idm[b];if(A&&B&&A!==B&&!hasEdge(A,B))D.edges.push([A,B])}
+  for(const r of o.roads||[])D.roads.push({id:uid(),w:r.w||7,pts:r.pts.map(q=>[q[0]+dx,q[1]+dy])});
+  for(const m of o.mocs||[])D.mocs.push({id:uid(),ten:m.ten,x:m.x+dx,y:m.y+dy});
+  return {them,trung,how};
+}
+const docFile=f=>new Promise((ok,no)=>{const fr=new FileReader();fr.onload=()=>ok(fr.result);fr.onerror=no;fr.readAsText(f)});
+
 /* ================= màn danh sách / xuất ================= */
 const panel=$('#panel');
 function closePanel(){panel.hidden=true;panel.innerHTML=''}
 function showList(){
+  finishSheet();
   const ds=Object.values(DB.ds).sort((a,b)=>b.capNhat-a.capNhat);
   panel.innerHTML=`<div class="pin">
     <div class="row" style="align-items:center"><h2 style="flex:1 1 auto">Bản vẽ khảo sát</h2><button class="btn" data-a="close" style="flex:0 0 auto">Đóng</button></div>
     <div class="row"><button class="btn pri" data-a="new">+ Bản vẽ mới</button><label class="btn">Mở file .json<input id="imp" type="file" accept=".json,application/json" hidden></label></div>
+    <label class="big pri"><b>Gộp file .json vào “${esc(D.ten)}”</b><span>Ghép đoạn người khác vẽ vào bản vẽ đang mở. Cột trùng số được coi là một cột và nối liền; có GPS thì đặt đúng vị trí. Chọn được nhiều file một lúc.</span>
+      <input id="gop" type="file" accept=".json,application/json" multiple hidden></label>
     ${ds.map(d=>`<div class="card${d.id===D.id?' cur':''}"><button class="tx" data-a="open" data-id="${d.id}"><b>${esc(d.ten)}</b>
       <span>${esc(d.ngay||'')} · ${d.poles.length} cột</span></button><button class="btn danger" data-a="del" data-id="${d.id}">Xoá</button></div>`).join('')}
     <p class="note">Bản vẽ lưu ngay trên điện thoại này, không cần mạng. Xoá dữ liệu trình duyệt hoặc gỡ app là mất — xuất file gửi đi trước.</p>
@@ -562,12 +810,13 @@ function showList(){
   panel.hidden=false;
 }
 function showExport(){
+  finishSheet();
   panel.innerHTML=`<div class="pin">
     <div class="row" style="align-items:center"><h2 style="flex:1 1 auto">Xuất · ${esc(D.ten)}</h2><button class="btn" data-a="close" style="flex:0 0 auto">Đóng</button></div>
     <button class="big pri" data-a="png"><b>Gửi ảnh sơ đồ</b><span>Mở Zalo / Messenger gửi ngay ảnh sơ đồ có ghi chú.</span></button>
     <button class="big" data-a="xlsx"><b>Bảng kê Excel (.xlsx)</b><span>Đúng mẫu tờ "Bảng tổng kê khối lượng hiện trạng và thay thế", kèm sheet tọa độ.</span></button>
-    <button class="big" data-a="dxf"><b>Bản vẽ AutoCAD (.dxf)</b><span>Cột tròn / vuông, dây nối, số cột và ghi chú. 1 đơn vị = 1 m.</span></button>
-    <button class="big" data-a="json"><b>File gốc (.json)</b><span>Để mở lại trên máy khác hoặc gửi Claude chuyển sang CAD.</span></button>
+    <button class="big" data-a="dxf"><b>Bản vẽ AutoCAD (.dxf)</b><span>Cột, TBA, dây nối, đường, mốc, số cột và ghi chú. 1 đơn vị = 1 m.</span></button>
+    <button class="big" data-a="json"><b>File gốc (.json)</b><span>Để mở lại / gộp trên máy khác hoặc gửi Claude chuyển sang CAD.</span></button>
     <p class="note">Excel, DXF, JSON lưu vào thư mục <b>Tải xuống (Download)</b>. Gửi qua Zalo: Gửi file → Download.</p>
   </div>`;
   panel.hidden=false;
@@ -584,22 +833,28 @@ panel.addEventListener('click',e=>{
     saveNow();showList()}
   else if(a==='xlsx')xuatXlsx();else if(a==='dxf')xuatDxf();else if(a==='json')xuatJson();else if(a==='png')guiAnh();
 });
-panel.addEventListener('change',e=>{
-  if(e.target.id!=='imp'||!e.target.files[0])return;
-  const fr=new FileReader();fr.onload=()=>{try{const o=JSON.parse(fr.result);if(!Array.isArray(o.poles))throw 0;
-      const d={id:uid(),ten:o.ten||'Tuyến nhập',ngay:o.ngay||today(),poles:o.poles,edges:o.edges||[],geo:o.geo||null,active:null,view:null,capNhat:Date.now()};
-      DB.ds[d.id]=d;saveNow();switchTo(d);closePanel();toast('Đã mở file')}catch(err){toast('File không đúng định dạng của app')}};
-  fr.readAsText(e.target.files[0]);
+panel.addEventListener('change',async e=>{
+  const fl=e.target.files;if(!fl||!fl.length)return;
+  if(e.target.id==='gop'){
+    snap();const kq=[];
+    for(const f of fl){try{const r=gop(JSON.parse(await docFile(f)));kq.push(`${f.name}: thêm ${r.them} cột${r.trung?`, ${r.trung} cột trùng số`:''} (${r.how})`)}
+      catch(err){kq.push(`${f.name}: không đọc được`)}}
+    save();closePanel();V=fitView(W,H,40);persistView();draw();toast(kq.join(' · '));return;
+  }
+  if(e.target.id==='imp'){
+    try{const o=JSON.parse(await docFile(fl[0]));if(!Array.isArray(o.poles))throw 0;
+      const d={id:uid(),ten:o.ten||'Tuyến nhập',ngay:o.ngay||today(),poles:o.poles,edges:o.edges||[],roads:o.roads||[],mocs:o.mocs||[],geo:o.geo||null,active:null,view:null,capNhat:Date.now()};
+      DB.ds[d.id]=d;saveNow();switchTo(d);closePanel();toast('Đã mở file')}catch(err){toast('File không đúng định dạng của app')}
+  }
 });
 $('#b-list').addEventListener('click',showList);
 $('#b-export').addEventListener('click',showExport);
-function switchTo(d){saveNow();D=d;DB.cur=d.id;undoSt=[];editId=null;noiA=null;sheet.hidden=true;V=D.view||fitView(W,H,40);saveNow();title();draw()}
+function switchTo(d){saveNow();D=d;D.roads=D.roads||[];D.mocs=D.mocs||[];DB.cur=d.id;undoSt=[];editId=null;noiA=null;selRoad=null;sheet.hidden=true;V=D.view||fitView(W,H,40);saveNow();title();draw()}
 
 /* ================= toast / khởi động ================= */
 let toastT=null;
-function toast(m){const el=$('#toast');el.textContent=m;el.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>{el.hidden=true},2600)}
-let wake=null;
-async function keepAwake(){try{if('wakeLock' in navigator&&!document.hidden)wake=await navigator.wakeLock.request('screen')}catch(e){}}
+function toast(m){const el=$('#toast');el.textContent=m;el.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>{el.hidden=true},3200)}
+async function keepAwake(){try{if('wakeLock' in navigator&&!document.hidden)await navigator.wakeLock.request('screen')}catch(e){}}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)keepAwake()});
 new ResizeObserver(()=>{sizeUp();if(!V)V=fitView(W,H,40);draw()}).observe(stage);
 sizeUp();if(!V)V=fitView(W,H,40);title();draw();keepAwake();
