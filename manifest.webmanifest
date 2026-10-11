@@ -1,0 +1,16 @@
+{
+  "name": "Khảo sát tuyến",
+  "short_name": "Khảo sát",
+  "description": "Vẽ sơ đồ tuyến hạ thế khi đi khảo sát, xuất Excel và AutoCAD",
+  "lang": "vi",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#F4F6F5",
+  "theme_color": "#12443B",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ]
+}
