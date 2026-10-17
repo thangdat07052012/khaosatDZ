@@ -61,6 +61,8 @@ button{font:inherit;color:inherit;cursor:pointer}
 .noiA{fill:var(--hi)}
 .lb{fill:var(--fg);paint-order:stroke;stroke:var(--paper);stroke-width:3.5px;stroke-linejoin:round}
 .lb.so{font:700 13.5px var(--f)}
+.lb.so.q{fill:var(--warn)}
+.ld{stroke:var(--muted);stroke-width:1;fill:none}
 .lb.dt{font:500 11px var(--f);fill:var(--muted)}
 .lb.kc{font:700 11px var(--mono);fill:var(--k-kc)}
 .lb.mc{font:700 12px var(--f);fill:var(--moc)}
@@ -406,6 +408,67 @@ function symSvg(p,x,y,R,cls,r){
   if(p.shape==='tba'){const a=R*1.5;return `<rect class="${cls}" x="${x-a}" y="${y-a}" width="${2*a}" height="${2*a}"/><path class="fillk" d="M${x-a} ${y+a}L${x+a} ${y-a}L${x+a} ${y+a}Z"/>`}
   return isDoi(p,r)?one(x-R*0.95)+one(x+R*0.95):one(x);
 }
+/* ---------- đặt nhãn tránh đè nhau ----------
+   Tính trong hệ toạ độ chưa dịch (x*s, y*s); khi vẽ cộng thêm tx, ty. Kéo bản đồ không phải tính lại.
+   Mỗi nhãn thử lần lượt: phải, trái, trên, dưới cột; hết chỗ thì đặt xa hơn và kẻ đường dẫn về cột. */
+let LCACHE=null;
+function layout(v,w,h,o,pr,JN){
+  const k=o.k||1,s=v.s,X=x=>x*s,Y=y=>y*s;
+  const sig=o.print?null:[s,k,D.id,D.poles.map(p=>p.id+','+p.x.toFixed(2)+','+p.y.toFixed(2)+','+p.shape+(p.doi?1:0)+','+p.code).join('|'),
+    D.edges.map(e=>e.join()).join(),JN.map(j=>j.x.toFixed(1)+','+j.y.toFixed(1)).join(),D.mocs.map(m=>m.x.toFixed(1)+m.y.toFixed(1)+m.ten).join(),
+    D.roads.map(r=>(r.ten||'')+r.w+':'+r.pts.join()).join()].join('#');
+  if(sig&&LCACHE&&LCACHE.sig===sig)return LCACHE.L;
+  const R=7*k,sz1=o.print?20:13.5,sz2=o.print?15:11,szk=o.print?15:11,szj=o.print?14:10.5,szm=o.print?17:12,szr=o.print?16:12,lh=12.5*k,CW=.58;
+  const obs=[],add=(x0,y0,x1,y1,wt)=>obs.push({x0,y0,x1,y1,wt});
+  const ov=(a,b)=>Math.max(0,Math.min(a.x1,b.x1)-Math.max(a.x0,b.x0))*Math.max(0,Math.min(a.y1,b.y1)-Math.max(a.y0,b.y0));
+  /* ảnh xuất: chừa dải tiêu đề ở trên và chú giải ở dưới */
+  const area=o.print?{x0:12-v.tx,y0:70-v.ty,x1:w-12-v.tx,y1:h-80-v.ty}:null;
+  const cost=b=>{let c=0;for(const q of obs){const a=ov(b,q);if(a)c+=a*q.wt}if(area)c+=((b.x1-b.x0)*(b.y1-b.y0)-ov(b,area))*6;return c};
+  const pick=(cs,bw,bh)=>{let best=null;
+    /* vị trí sát cột được ưu tiên: chạm nhẹ mép đường vẫn hơn phải kẻ đường dẫn ra xa */
+    const pen=(c,i)=>i*3+(c[2]?bw*bh*.08+60:0);
+    for(let i=0;i<cs.length;i++){const c=cs[i],b={x0:c[0],y0:c[1],x1:c[0]+bw,y1:c[1]+bh},cc=cost(b),sc=cc+pen(c,i);
+      if(!best||sc<best.sc)best={b,c:cc,sc,i,far:!!c[2]};if(cc===0)break}
+    return best};
+  const P=sorted().map(p=>{const r=pr[p.id],doi=isDoi(p,r)&&p.shape!=='tba',t=p.shape==='tba';
+    return {p,r,x:X(p.x),y:Y(p.y),Rw:R*(t?1.5:doi?2:1),Rh:R*(t?1.5:1)}});
+  /* chỗ đã bị chiếm: ký hiệu cột, nút đường, mốc, tên đường, số khoảng cột, dây */
+  for(const q of P)add(q.x-q.Rw-3,q.y-q.Rh-3,q.x+q.Rw+3,q.y+q.Rh+3,4);
+  for(const j of JN){const x=X(j.x),y=Y(j.y);add(x-6*k,y-6*k,x+6*k,y+6*k,3)}
+  for(const m of D.mocs){const x=X(m.x),y=Y(m.y);add(x-3*k,y-17*k,x+12*k,y+3*k,3);add(x+13*k,y-6*k-szm,x+13*k+m.ten.length*szm*CW,y-6*k+3,1)}
+  for(const r of D.roads)if(r.ten){const m=roadMid(r),x=X(m[0]),y=Y(m[1])+4,hw=r.ten.length*szr*CW/2;add(x-hw,y-szr,x+hw,y+3,1)}
+  const KC=[];
+  for(const q of P){const p=q.p,f=p.from&&byId(p.from),kc=q.r.kc;
+    if(f&&kc&&hasEdge(p.id,f.id)){const t=String(kc).replace('.',','),x=(q.x+X(f.x))/2,y=(q.y+Y(f.y))/2-5*k,hw=t.length*szk*.62/2;
+      KC.push({x,y,t});add(x-hw,y-szk*.85,x+hw,y+2,1.5)}}
+  for(const [a,b] of D.edges){const A=byId(a),B=byId(b);if(!A||!B)continue;
+    const x1=X(A.x),y1=Y(A.y),x2=X(B.x),y2=Y(B.y),n=Math.min(Math.ceil(Math.hypot(x2-x1,y2-y1)/8),80);
+    for(let i=1;i<n;i++){const px=x1+(x2-x1)*i/n,py=y1+(y2-y1)*i/n;add(px-2.5,py-2.5,px+2.5,py+2.5,1)}}
+  for(const r of D.roads){const hw=Math.max(r.w*s,6)/2;for(let i=0;i<r.pts.length-1;i++){
+    const x1=X(r.pts[i][0]),y1=Y(r.pts[i][1]),x2=X(r.pts[i+1][0]),y2=Y(r.pts[i+1][1]),n=Math.min(Math.ceil(Math.hypot(x2-x1,y2-y1)/(hw*2+4)),60);
+    for(let j=0;j<=n;j++){const px=x1+(x2-x1)*j/n,py=y1+(y2-y1)*j/n;add(px-hw,py-hw,px+hw,py+hw,.35)}}}
+  /* nhãn cột, theo thứ tự đi tuyến */
+  const PL=[],g5=5*k;
+  for(const q of P){const {p,r}=q,so=r.so||(p.shape==='tba'?'TBA':'?');
+    const lines=[];for(const l of labelLines(p,r))lines.push(...wrap(l,o.print?34:28));
+    const bw=Math.max(so.length*sz1*.62,...lines.map(l=>l.length*sz2*CW))+4,bh=sz1+2*k+lines.length*lh+3;
+    const ty0=q.y-3*k-.85*sz1;
+    const cs=[[q.x+q.Rw+g5,ty0],[q.x-q.Rw-g5-bw,ty0],[q.x+q.Rw*.4,q.y-q.Rh-g5-bh],[q.x+q.Rw*.4,q.y+q.Rh+g5],
+      [q.x-q.Rw*.4-bw,q.y-q.Rh-g5-bh],[q.x-q.Rw*.4-bw,q.y+q.Rh+g5]];
+    for(const d of [26,50,80,120,170])for(const a of [0,180,-25,25,155,205,-50,50,130,230,-90,90]){
+      const t=a*Math.PI/180,c=Math.cos(t),si=Math.sin(t),px=q.x+c*(q.Rw+d*k),py=q.y+si*(q.Rh+d*k);
+      cs.push([c>.3?px:c<-.3?px-bw:px-bw/2,si>.6?py:si<-.6?py-bh:py-bh/2,1])}
+    const b=pick(cs,bw,bh);add(b.b.x0,b.b.y0,b.b.x1,b.b.y1,2);
+    PL.push({so,chuaSo:!r.so&&p.shape!=='tba',lines,x:b.b.x0,y:b.b.y0,bw,bh,far:b.far,px:q.x,py:q.y,Rw:q.Rw,Rh:q.Rh})}
+  /* chữ "Ngã ba / Ngã tư": chỉ ghi khi còn chỗ trống */
+  const JL=[],mocNear=(x,y)=>D.mocs.some(m=>Math.hypot(m.x-x,m.y-y)<8);
+  for(const j of JN){if(mocNear(j.x,j.y))continue;const x=X(j.x),y=Y(j.y),t='Ngã '+(j.n===4?'tư':'ba'),bw=t.length*szj*CW+2,bh=szj+2;
+    const b=pick([[x+8*k,y+3*k],[x-8*k-bw,y+3*k],[x+8*k,y-3*k-bh],[x-8*k-bw,y-3*k-bh]],bw,bh);
+    if(b.c<bw*bh*.2){add(b.b.x0,b.b.y0,b.b.x1,b.b.y1,1);JL.push({x:b.b.x0,y:b.b.y0+.85*szj,t})}}
+  const L={PL,JL,KC,sz1,lh};
+  if(sig)LCACHE={sig,L};
+  return L;
+}
 function svgInner(v,w,h,o={}){
   const X=x=>+(x*v.s+v.tx).toFixed(1), Y=y=>+(y*v.s+v.ty).toFixed(1), k=o.k||1;
   let g='';
@@ -421,14 +484,12 @@ function svgInner(v,w,h,o={}){
     sr.pts.forEach((q,i)=>{g+=`<circle class="hd" cx="${X(q[0])}" cy="${Y(q[1])}" r="${i===0||i===sr.pts.length-1?9:7}"/>`})}
   if(tmpRoad)g+=`<path class="tmp" d="M${tmpRoad.map(q=>X(q[0])+' '+Y(q[1])).join('L')}"/>`;
   if(roadStart&&!o.print)g+=`<circle class="noiA" cx="${X(roadStart[0])}" cy="${Y(roadStart[1])}" r="7"/>`;
-  const mocNear=(x,y)=>D.mocs.some(m=>Math.hypot(m.x-x,m.y-y)<8);
-  for(const j of junctions()){const x=X(j.x),y=Y(j.y),a=5*k;
-    g+=`<path class="jn" d="M${x} ${y-a}L${x+a} ${y}L${x} ${y+a}L${x-a} ${y}Z"/>`;
-    if(!mocNear(j.x,j.y))g+=`<text class="lb jt" x="${x+8*k}" y="${y+12*k}">Ngã ${j.n===4?'tư':'ba'}</text>`}
+  const JN=junctions();
+  for(const j of JN){const x=X(j.x),y=Y(j.y),a=5*k;g+=`<path class="jn" d="M${x} ${y-a}L${x+a} ${y}L${x} ${y+a}L${x-a} ${y}Z"/>`}
   for(const [a,b] of D.edges){const A=byId(a),B=byId(b);if(A&&B)g+=`<line class="ed" x1="${X(A.x)}" y1="${Y(A.y)}" x2="${X(B.x)}" y2="${Y(B.y)}"/>`}
   const pr={};for(const p of D.poles)pr[p.id]=parse(p.code);
-  for(const p of D.poles){const q=p.from&&byId(p.from);const kc=pr[p.id].kc;
-    if(q&&kc&&hasEdge(p.id,q.id))g+=`<text class="lb kc" x="${((p.x+q.x)/2*v.s+v.tx).toFixed(1)}" y="${((p.y+q.y)/2*v.s+v.ty-5*k).toFixed(1)}" text-anchor="middle">${esc(String(kc).replace('.',','))}</text>`}
+  const LB=layout(v,w,h,o,pr,JN),tx=v.tx,ty=v.ty,f1=n=>+n.toFixed(1);
+  for(const t of LB.KC)g+=`<text class="lb kc" x="${f1(t.x+tx)}" y="${f1(t.y+ty)}" text-anchor="middle">${esc(t.t)}</text>`;
   for(const m of D.mocs){const x=X(m.x),y=Y(m.y);
     g+=`<path class="moc" d="M${x} ${y}L${x} ${y-16*k}L${x+11*k} ${y-12*k}L${x} ${y-8*k}Z"/><circle class="moc" cx="${x}" cy="${y}" r="${2.5*k}"/>`;
     g+=`<text class="lb mc" x="${x+13*k}" y="${y-6*k}">${esc(m.ten)}</text>`}
@@ -438,11 +499,16 @@ function svgInner(v,w,h,o={}){
     if(p.id===editId&&!o.print)g+=`<circle class="ring" cx="${x}" cy="${y}" r="${R*(doi?2:1)+7}"/>`;
     if(p.id===noiA)g+=`<circle class="noiA" cx="${x}" cy="${y}" r="${R*(doi?2:1)+6}"/>`;
     g+=symSvg(p,x,y,R,c,r);
-    const lx=x+R*(p.shape==='tba'?1.5:doi?2:1)+5;
-    g+=`<text class="lb so" x="${lx}" y="${y-3*k}">${esc(r.so||(p.shape==='tba'?'TBA':'?'))}</text>`;
-    const lines=[];for(const l of labelLines(p,r))lines.push(...wrap(l,o.print?40:30));
-    if(lines.length)g+=`<text class="lb dt" x="${lx}" y="${y+11*k}">${lines.map((l,i)=>`<tspan x="${lx}" dy="${i?12.5*k:0}">${esc(l)}</tspan>`).join('')}</text>`;
   }
+  /* nhãn đặt xa cột thì có đường dẫn nối về cột */
+  for(const l of LB.PL)if(l.far){const px=l.px+tx,py=l.py+ty,bx0=l.x+tx,by0=l.y+ty;
+    const nx=Math.max(bx0,Math.min(px,bx0+l.bw)),ny=Math.max(by0,Math.min(py,by0+l.bh)),dx=nx-px,dy=ny-py,d=Math.hypot(dx,dy)||1;
+    g+=`<line class="ld" x1="${f1(px+dx/d*(l.Rw+2))}" y1="${f1(py+dy/d*(l.Rh+2))}" x2="${f1(nx)}" y2="${f1(ny)}"/>`}
+  for(const l of LB.PL){const trai=l.x+l.bw<=l.px,lx=f1(trai?l.x+l.bw+tx-2:l.x+tx+2),an=trai?' text-anchor="end"':'',y0=l.y+ty;
+    g+=`<text class="lb so${l.chuaSo?' q':''}" x="${lx}" y="${f1(y0+.85*LB.sz1)}"${an}>${esc(l.so)}</text>`;
+    if(l.lines.length)g+=`<text class="lb dt" x="${lx}" y="${f1(y0+LB.sz1+2*k+.8*LB.lh)}"${an}>${l.lines.map((s,i)=>`<tspan x="${lx}" dy="${i?f1(LB.lh):0}">${esc(s)}</tspan>`).join('')}</text>`;
+  }
+  for(const t of LB.JL)g+=`<text class="lb jt" x="${f1(t.x+tx)}" y="${f1(t.y+ty)}">${esc(t.t)}</text>`;
   if(fix&&D.geo&&!o.print){const m=geoToXY(fix.lat,fix.lon,false);const mx=X(m.x),my=Y(m.y);
     g+=`<circle class="meacc" cx="${mx}" cy="${my}" r="${Math.min(fix.acc*v.s,200).toFixed(1)}"/><circle class="me" cx="${mx}" cy="${my}" r="7"/>`}
   return g;
@@ -895,12 +961,32 @@ const PNGCSS=`.ed{stroke:#2F5FA8;stroke-width:3}.pole{fill:#fff;stroke:#15201C;s
 .lb{fill:#15201C;paint-order:stroke;stroke:#fff;stroke-width:5px;stroke-linejoin:round;font-family:Arial,sans-serif}
 .lb.so{font-weight:700;font-size:20px}.lb.dt{font-size:15px;fill:#42504B}.lb.kc{font-size:15px;font-weight:700;fill:#1F7A4D}
 .lb.mc{font-size:17px;font-weight:700;fill:#B4361F}.lb.jt{font-size:14px;fill:#5A6964}
-.tt{font:700 26px Arial,sans-serif;fill:#15201C}`;
-async function guiAnh(){
-  const w=1800,h=1300,v=fitView(w,h,90);
+.tt{font:700 26px Arial,sans-serif;fill:#15201C}.lb.so.q{fill:#B4361F}.lb.rn{font-style:italic;font-size:16px;fill:#5A6964}
+.ld{stroke:#7A8883;stroke-width:1.5;fill:none}.lg{font:15px Arial,sans-serif;fill:#42504B}.sb{stroke:#15201C;stroke-width:3;fill:none}
+.sbt{font:700 15px Arial,sans-serif;fill:#15201C}.na{fill:#15201C}`;
+/* tiêu đề ảnh: không lặp ngày khi tên tuyến đã chứa ngày */
+function tieuDe(){const n=D.ngay||'';return [D.ten,n&&!String(D.ten).includes(n)?n:'',D.poles.length+' cột'].filter(Boolean).join(' · ')}
+function pngSvg(){
+  /* tuyến dọc thì xuất ảnh đứng, tuyến ngang thì ảnh ngang — sơ đồ không bị dồn vào một dải hẹp */
+  const pts=allPts();let bw=1,bh=1;
+  if(pts.length){const xs=pts.map(q=>q[0]),ys=pts.map(q=>q[1]);bw=Math.max(...xs)-Math.min(...xs)||1;bh=Math.max(...ys)-Math.min(...ys)||1}
+  const dung=bh>bw*1.15,w=dung?1400:1800,h=dung?1900:1300,v=fitView(w,h,95);
+  let ex='';
+  if(D.geo){
+    /* thước tỷ lệ và hướng Bắc: chỉ khi bản vẽ có GPS (1 đơn vị = 1 m, trục y hướng Bắc) */
+    const b=Math.pow(10,Math.floor(Math.log10(240/v.s)));let m=b;for(const f of [5,2,1])if(f*b*v.s<=240){m=f*b;break}
+    const L=m*v.s,x0=w-40-L,y0=h-48;
+    ex+=`<path class="sb" d="M${x0} ${y0-8}V${y0}H${x0+L}V${y0-8}"/><text class="sbt" x="${x0+L/2}" y="${y0-14}" text-anchor="middle">${m} m</text>`;
+    ex+=`<path class="na" d="M${w-60} 84L${w-72} 120L${w-60} 112L${w-48} 120Z"/><text class="sbt" x="${w-60}" y="76" text-anchor="middle">B</text>`;
+  }
+  ex+=`<text class="lg" x="30" y="${h-24}">H1, H2, H4: số hòm công tơ theo loại · 3P: công tơ 3 pha · số màu xanh lá: khoảng cột (m) · <tspan style="fill:#B4361F;font-weight:700">?</tspan>: cột chưa đánh số</text>`;
   const s=`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><style>${PNGCSS}</style>
-    <rect width="100%" height="100%" fill="#fff"/><text class="tt" x="30" y="46">${esc(D.ten)} · ${esc(D.ngay||'')} · ${D.poles.length} cột</text>
-    ${svgInner(v,w,h,{noGrid:true,print:true,k:1.5})}</svg>`;
+    <rect width="100%" height="100%" fill="#fff"/><text class="tt" x="30" y="46">${esc(tieuDe())}</text>
+    ${svgInner(v,w,h,{noGrid:true,print:true,k:1.5})}${ex}</svg>`;
+  return {s,w,h};
+}
+async function guiAnh(){
+  const {s,w,h}=pngSvg();
   const img=new Image();img.src=URL.createObjectURL(new Blob([s],{type:'image/svg+xml'}));
   try{await img.decode()}catch(e){toast('Không tạo được ảnh');return}
   const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0);URL.revokeObjectURL(img.src);
