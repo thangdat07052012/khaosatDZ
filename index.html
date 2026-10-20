@@ -99,8 +99,8 @@ button{font:inherit;color:inherit;cursor:pointer}
 .sheet.mini .grip em{display:block}
 .shh{display:flex;align-items:center;gap:4px;flex:0 0 auto}
 .grow{flex:1}
-.btn{height:42px;border-radius:10px;border:1.5px solid var(--line);background:var(--paper);padding:0 13px;font-weight:700;font-size:14.5px;white-space:nowrap}
-.btn.sm{height:38px;padding:0 10px;font-size:13.5px}
+.btn{height:38px;border-radius:9px;border:1.5px solid var(--line);background:var(--paper);padding:0 10px;font-weight:700;font-size:13.5px;white-space:nowrap}
+.btn.sm{height:34px;padding:0 8px;font-size:12.5px}
 .btn.pri{background:var(--ink);color:var(--ink-fg);border-color:var(--ink)}
 .btn.danger{color:var(--warn);border-color:currentColor;background:transparent}
 .btn.armed{background:var(--warn);color:#fff;border-color:var(--warn)}
@@ -108,32 +108,33 @@ button{font:inherit;color:inherit;cursor:pointer}
 .sact .btn{flex:1;padding:0 6px}
 .slots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;flex:0 0 auto}
 #slots{grid-template-columns:repeat(3,minmax(0,1fr))}
-.sl{position:relative;min-height:36px;border:1.5px solid var(--line);border-radius:9px;background:var(--paper);padding:2px 24px 3px 7px;
+.sl{position:relative;min-height:32px;border:1.5px solid var(--line);border-radius:7px;background:var(--paper);padding:1px 20px 1px 5px;
   display:flex;flex-direction:column;justify-content:center;min-width:0;cursor:pointer}
-.sl .k{font-size:10.5px;font-weight:600;color:var(--muted);line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sl .k.e{font-size:12px;font-weight:600;color:var(--muted)}
-.sl.e{padding-right:6px}
-.sl .v{font:700 13.5px var(--f);line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sl .k{font-size:9.5px;font-weight:600;color:var(--muted);line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sl .k.e{font-size:11px;font-weight:600;color:var(--muted)}
+.sl.e{padding-right:5px}
+.sl .v{font:700 12.5px var(--f);line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sl.mono .v{font-family:var(--mono)}
 .sl.on{border:2px solid var(--hi);background:var(--hi-soft)}
 .sl.on .k.e{color:var(--fg)}
 .sl.wide{grid-column:1/-1}
-.sl .x{position:absolute;right:0;top:50%;transform:translateY(-50%);width:26px;height:34px;border:0;background:transparent;color:var(--muted);font-size:17px;padding:0}
+.sl .x{position:absolute;right:0;top:50%;transform:translateY(-50%);width:22px;height:30px;border:0;background:transparent;color:var(--muted);font-size:15px;padding:0}
 .rin{border:0;background:transparent;color:var(--fg);font:700 15px var(--f);padding:0;min-width:0;width:100%}
 .opts{display:flex;flex-direction:column;gap:4px;border-top:1px solid var(--line);padding:4px 0 6px;flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
-.ot{font-size:11px;line-height:1.2;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;flex:0 0 auto}
-.og{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:4px}
-.o{min-height:42px;border-radius:10px;border:1.5px solid var(--line);background:var(--paper);font:600 14px var(--mono);padding:2px 4px}
+.ot{font-size:10px;line-height:1.2;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;flex:0 0 auto}
+.og{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:4px}
+.og.wv{grid-template-columns:repeat(auto-fill,minmax(112px,1fr))}
+.o{min-height:34px;border-radius:7px;border:1.5px solid var(--line);background:var(--paper);font:600 13px var(--mono);padding:1px 3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .o.t{font-family:var(--f)}
 .o.on{background:var(--hi);border-color:var(--hi);color:var(--hi-fg)}
-.typ{display:flex;gap:6px}
-.typ .inp{flex:1;min-width:0;height:42px;border-radius:10px;border:1.5px solid var(--line);background:var(--paper);color:var(--fg);font:600 16px var(--mono);padding:0 10px}
+.typ{display:flex;gap:4px}
+.typ .inp{flex:1;min-width:0;height:34px;border-radius:7px;border:1.5px solid var(--line);background:var(--paper);color:var(--fg);font:600 15px var(--mono);padding:0 8px}
 .cnt{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
-.cn{display:flex;align-items:center;border:1.5px solid var(--line);border-radius:10px;background:var(--paper);min-width:0}
+.cn{display:flex;align-items:center;border:1.5px solid var(--line);border-radius:7px;background:var(--paper);min-width:0}
 .cn.has{border-color:var(--hi);background:var(--hi-soft)}
-.cn span{flex:1;padding-left:10px;font-weight:600;font-size:13.5px;min-width:0}
-.cn b{min-width:24px;text-align:center;font:700 16px var(--mono)}
-.cn button{flex:0 0 42px;height:42px;border:0;background:transparent;font-size:21px;font-weight:700}
+.cn span{flex:1;padding-left:7px;font-weight:600;font-size:12.5px;min-width:0}
+.cn b{min-width:20px;text-align:center;font:700 14.5px var(--mono)}
+.cn button{flex:0 0 36px;height:34px;border:0;background:transparent;font-size:19px;font-weight:700}
 .hint{font-size:12.5px;color:var(--muted);line-height:1.5;margin:0 0 10px}
 .tblw{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--paper)}
 .tbl{border-collapse:collapse;width:max-content;min-width:100%;font-size:13.5px}
@@ -292,10 +293,10 @@ function labelLines(p,r){
     r.dd.concat(r.gc).join('; ')].filter(Boolean);
 }
 function wrap(s,n){const out=[];let cur='';for(const w of s.split(' ')){if(cur&&(cur+' '+w).length>n){out.push(cur);cur=w}else cur=cur?cur+' '+w:w}if(cur)out.push(cur);return out}
-function parseSo(s){const m=String(s||'').trim().split(/\s+/)[0].match(/^(.*?)(\d+)$/);return m?{pre:m[1],num:+m[2]}:null}
+function parseSo(s){const m=String(s||'').trim().split(/\s+/)[0].match(/^(.*?)(\d+)$/);return m?{pre:m[1],num:+m[2],w:m[2].length}:null}
 function soTiep(a,b){const pa=parseSo(a);if(!pa)return '';let step=1;
   if(b){const pb=parseSo(b);if(pb&&pb.pre===pa.pre&&pb.num-pa.num===1)step=-1}
-  const v=pa.num+step;return v<0?'':pa.pre+v}
+  const v=pa.num+step;return v<0?'':pa.pre+String(v).padStart(pa.w,'0')}   /* giữ số 0 đứng đầu: C01 → C02 */
 
 /* ================= hình học đường ================= */
 function nearestOn(pts,x,y){
@@ -686,6 +687,7 @@ const SLOTS=[['so','Số cột'],['ky','Ký hiệu'],['cot','Loại cột'],['ct
 const MONO={so:1,cot:1,cotTT:1,day:1,dayTT:1,sau:1,kc:1};   /* ô ghi mã dùng phông mono; Ký hiệu, Công tơ, Ghi chú dùng phông thường */
 const LIST={cot:'cotHT',cotTT:'cotTT',day:'dayHT',dayTT:'dayTT',sau:'sau'};
 const MULTI={day:1,dayTT:1,sau:1};
+const SO_MAU=[['1.1','2.1','(1.2).1'],['01/471E9.1','01-TBA/471E9.1']];
 const CNT=[['h1','Hòm H1'],['h2','Hòm H2'],['h4','Hòm H4'],['p3','Công tơ 3 pha'],['tuMoi','Tủ mới'],['tuCu','Tủ cũ']];
 let F=null,slot='cot',sheetSnap=false;
 const curP=()=>editId&&byId(editId);
@@ -712,7 +714,12 @@ function typRow(id,ph,val,btn){return `<div class="typ"><input id="${id}" class=
 function renderOpts(){
   const p=curP();if(!p)return;const lab=SLOTS.find(s=>s[0]===slot)[1];let h=`<div class="ot">${lab}</div>`;
   const o=(v,on,txt,cls='')=>`<button type="button" class="o${on?' on':''}${cls}" data-o="${esc(v)}">${esc(txt??v)}</button>`;
-  if(slot==='so')h+=`<div class="typ"><button type="button" class="btn sm" data-act="so-">−</button><input id="o-so" class="inp" value="${esc(F.so)}" autocomplete="off" spellcheck="false"><button type="button" class="btn sm" data-act="so+">+</button></div>`;
+  if(slot==='so'){const cur=String(F.so||'').trim();
+    /* mẫu số cột: 2 hàng có sẵn + mẫu tự thêm (DB.soMau); chạm mẫu = đặt số cột, rồi −/+ chỉnh số cuối */
+    h+=SO_MAU.map(r=>`<div class="og" style="grid-template-columns:repeat(${r.length},minmax(0,1fr))">${r.map(v=>o(v,cur===v)).join('')}</div>`).join('')+
+      ((DB.soMau||[]).length?`<div class="og wv">${DB.soMau.map(v=>o(v,cur===v)).join('')}</div>`:'')+
+      `<div class="typ"><button type="button" class="btn sm" data-act="so-">−</button><input id="o-so" class="inp" value="${esc(F.so)}" autocomplete="off" spellcheck="false"><button type="button" class="btn sm" data-act="so+">+</button></div>`+
+      `<div class="typ"><input id="o-somau" class="inp" placeholder="Thêm mẫu số cột" autocomplete="off" autocapitalize="none" spellcheck="false" enterkeyhint="done"><button type="button" class="btn sm pri" data-act="somau">Thêm</button></div>`}
   else if(slot==='kc')h+=`<div class="og">${BASE.kc.map(v=>o(v,String(F.kc)===v,v+' m')).join('')}</div>`+typRow('o-kc','Gõ số mét',F.kc===''?'':String(F.kc).replace('.',','),'');
   else if(slot==='ky')h+=`<div class="og">${['tron','vuong','cs','tba'].map(v=>o(v,(p.shape||'tron')===v,SHAPE_NAME[v],' t')).join('')}${o('doi',!!p.doi,'Cột đôi',' t')}</div>`;
   else if(slot==='ct')h+=`<div class="cnt">${CNT.map(([k,l])=>`<div class="cn${F[k]?' has':''}"><span>${l}</span><button type="button" data-cn="${k}" data-d="-1" aria-label="Bớt ${l}">−</button><b>${F[k]||0}</b><button type="button" data-cn="${k}" data-d="1" aria-label="Thêm ${l}">+</button></div>`).join('')}</div>`;
@@ -742,13 +749,17 @@ $('#opts').addEventListener('click',e=>{
   const a=e.target.closest('[data-act]');
   if(a){const act=a.dataset.act;
     if(act==='so-'||act==='so+'){const q=parseSo(F.so);if(!q)return;const v=Math.max(0,q.num+(act==='so+'?1:-1));
-      F.so=q.pre+v+String(F.so).trim().slice(String(F.so).trim().split(/\s+/)[0].length);commit();return}
+      F.so=q.pre+String(v).padStart(q.w,'0')+String(F.so).trim().slice(String(F.so).trim().split(/\s+/)[0].length);commit();return}
+    if(act==='somau'){const i=$('#o-somau');const v=(i&&i.value||'').replace(/;/g,'').trim();if(!v)return;
+      const L=(DB.soMau||[]).filter(x=>x!==v);if(!SO_MAU.flat().includes(v))L.unshift(v);DB.soMau=L.slice(0,9);
+      F.so=v;commit();return}
     if(act==='add'){const i=$('#o-add');const v=(i&&i.value||'').replace(/;/g,',').trim();if(!v)return;
       if(slot==='gc'){if(!F.gc.includes(v))F.gc.push(v)}
       else{const L=F[LIST[slot]],h=hoa(v);if(MULTI[slot]){if(!L.some(x=>norm(x)===norm(h)))L.push(h)}else F[LIST[slot]]=[h]}
       commit();return}
   }
   const b=e.target.closest('[data-o]');if(!b)return;const v=b.dataset.o;
+  if(slot==='so'){F.so=v;commit();return}
   if(slot==='kc'){F.kc=String(F.kc)===v?'':+v;commit();if(F.kc!=='')goSlot(F.cotHT.length?'ct':'cot');return}
   if(slot==='ky'){if(!sheetSnap){snap();sheetSnap=true}
     if(v==='doi')p.doi=!p.doi;else{p.shape=v;if(v==='tba')p.doi=false}p.auto=false;save();renderSlots();renderOpts();draw();return}
@@ -763,7 +774,7 @@ $('#opts').addEventListener('input',e=>{
   else if(e.target.id==='o-kc'){const v=e.target.value.trim().replace(',','.');F.kc=v===''||isNaN(+v)?'':+v;commit(false)}
 });
 $('#opts').addEventListener('keydown',e=>{if(e.key!=='Enter')return;e.preventDefault();
-  if(e.target.id==='o-add')$('#opts [data-act=add]').click();else e.target.blur()});
+  if(e.target.id==='o-add')$('#opts [data-act=add]').click();else if(e.target.id==='o-somau')$('#opts [data-act=somau]').click();else e.target.blur()});
 function setMini(m){DB.mini=m;saveNow();renderSlots();draw()}
 {let gy=null;const g=$('#sh-grip');
   g.addEventListener('pointerdown',e=>{gy=e.clientY;g.setPointerCapture(e.pointerId)});
