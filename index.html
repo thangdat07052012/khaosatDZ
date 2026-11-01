@@ -480,7 +480,7 @@ function layout(v,w,h,o,pr,JN){
   const KC=[];
   for(const q of P){const p=q.p,f=p.from&&byId(p.from),kc=q.r.kc;
     if(f&&kc&&hasEdge(p.id,f.id)){const t=String(kc).replace('.',',')+(p.kcThat?' ✓':''),x=(q.x+X(f.x))/2,y=(q.y+Y(f.y))/2-5*k,hw=t.length*szk*.62/2;
-      KC.push({x,y,t,id:p.id});add(x-hw,y-szk*.85,x+hw,y+2,1.5)}}
+      KC.push({x,y,t,id:p.id,hw,h:szk*.85});add(x-hw,y-szk*.85,x+hw,y+2,1.5)}}
   for(const [a,b] of D.edges){const A=byId(a),B=byId(b);if(!A||!B)continue;
     const x1=X(A.x),y1=Y(A.y),x2=X(B.x),y2=Y(B.y),n=Math.min(Math.ceil(Math.hypot(x2-x1,y2-y1)/8),80);
     for(let i=1;i<n;i++){const px=x1+(x2-x1)*i/n,py=y1+(y2-y1)*i/n;add(px-2.5,py-2.5,px+2.5,py+2.5,1)}}
@@ -1254,17 +1254,17 @@ function nanApDung(c){
   save();draw();
 }
 function nanBo(){snap();let n=0;for(const p of D.poles)if(p.nan){p.x-=p.nan.dY;p.y+=p.nan.dX;delete p.nan;n++}save();draw();return n}
-/* khoảng đo thật: chạm số khoảng cột (hoặc giữa đoạn dây) trên bản vẽ */
+/* khoảng đo thật: chạm ĐÚNG số khoảng cột (vùng chữ) trên bản vẽ; khoảng chưa có số thì nhập ở ô cột → “Khoảng đo thật”.
+   Chạm chỗ khác trên đoạn dây (kể cả gần giữa khoảng) giữ hành vi cũ: đặt cột / chọn (rà 01/11). */
 let lastKC=[];
+const KC_DEM=6;   /* px nới quanh vùng chữ cho ngón tay */
 /* h = cột chạm trúng (nếu có): số khoảng chỉ thắng khi ngón tay gần số hơn gần cột (thu nhỏ hết cỡ cột nằm sát số) */
 function hitSpan(pt,h){
-  let best=null,bd=20;
-  for(const t of lastKC){const d=Math.hypot(t.x+V.tx-pt.x,t.y+V.ty-4-pt.y);if(d<bd){bd=d;best=t.id}}
+  let best=null,bd=Infinity;
+  for(const t of lastKC){const cx=t.x+V.tx,cy=t.y+V.ty,hw=(t.hw||8)+KC_DEM;
+    if(pt.x<cx-hw||pt.x>cx+hw||pt.y<cy-(t.h||10)-KC_DEM||pt.y>cy+2+KC_DEM)continue;
+    const d=Math.hypot(cx-pt.x,cy-4-pt.y);if(d<bd){bd=d;best=t.id}}
   if(best&&h&&h.x!==undefined&&Math.hypot(h.x*V.s+V.tx-pt.x,h.y*V.s+V.ty-pt.y)<=bd)return null;
-  if(best||h)return best;
-  for(const p of D.poles){const f=p.from&&byId(p.from);if(!f||!hasEdge(p.id,f.id))continue;
-    const d=Math.hypot((p.x+f.x)/2*V.s+V.tx-pt.x,(p.y+f.y)/2*V.s+V.ty-pt.y);
-    if(d<bd&&Math.hypot(p.x-f.x,p.y-f.y)*V.s>70){bd=d;best=p.id}}
   return best;
 }
 function nhapKcThat(id){
