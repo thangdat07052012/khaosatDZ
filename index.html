@@ -118,6 +118,8 @@ button{font:inherit;color:inherit;cursor:pointer}
 .sl.on{border:2px solid var(--hi);background:var(--hi-soft)}
 .sl.on .k.e{color:var(--fg)}
 .sl.wide{grid-column:1/-1}
+.sl.vn{display:flex;flex-direction:column;gap:2px;padding:8px 12px;border-radius:14px;min-height:0}
+.sl.vn .k{font-size:12.5px}.sl.vn select{font:700 15.5px var(--f);border:0;background:transparent;color:var(--fg);padding:4px 0;width:100%}
 .sl .x{position:absolute;right:0;top:50%;transform:translateY(-50%);width:22px;height:30px;border:0;background:transparent;color:var(--muted);font-size:15px;padding:0}
 .rin{border:0;background:transparent;color:var(--fg);font:700 15px var(--f);padding:0;min-width:0;width:100%}
 .opts{display:flex;flex-direction:column;gap:4px;border-top:1px solid var(--line);padding:4px 0 6px;flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
@@ -909,6 +911,47 @@ function geoToXY(lat,lon,setOrigin=true){
   const g=D.geo,kx=111320*Math.cos(g.lat0*Math.PI/180);
   return {x:g.x0+(lon-g.lon0)*kx,y:g.y0-(lat-g.lat0)*110574};
 }
+/* ================= VN-2000 =================
+   Chép đúng từ LispcadZP/tools/vn2000/vn2000.py: ellipsoid WGS-84; Helmert 7 tham số QĐ 05/2007/QĐ-BTNMT
+   (chiều VN-2000 → WGS-84, xoay quy ước coordinate frame, WGS → VN giải hệ 3x3 chính xác); TM múi 3°, k0 0,9999, +500 000 m.
+   Kết quả x_bac = Bắc (N), y_dong = Đông (E); trong AutoCAD X = y_dong, Y = x_bac. */
+const VN=(()=>{
+  const A=6378137.0,F=1/298.257223563,E2=F*(2-F),K0=0.9999,FE=500000.0,FN=0.0;
+  const HP={dX:-191.90441429,dY:-39.30318279,dZ:-111.45032835,rX:-0.00928836,rY:+0.01975479,rZ:-0.00427372,k_ppm:+0.252906278};
+  const rad=d=>d*Math.PI/180,deg=r=>r*180/Math.PI;
+  function xyz(lat,lon,h){const p=rad(lat),l=rad(lon),n=A/Math.sqrt(1-E2*Math.sin(p)**2);
+    return [(n+h)*Math.cos(p)*Math.cos(l),(n+h)*Math.cos(p)*Math.sin(l),(n*(1-E2)+h)*Math.sin(p)]}
+  function geo(x,y,z){const lon=Math.atan2(y,x),p=Math.hypot(x,y);let lat=Math.atan2(z,p*(1-E2)),n,h;
+    for(let i=0;i<10;i++){n=A/Math.sqrt(1-E2*Math.sin(lat)**2);h=p/Math.cos(lat)-n;const ln=Math.atan2(z,p*(1-E2*n/(n+h)));
+      if(Math.abs(ln-lat)<1e-14){lat=ln;break}lat=ln}
+    n=A/Math.sqrt(1-E2*Math.sin(lat)**2);h=p/Math.cos(lat)-n;return [deg(lat),deg(lon),h]}
+  function rot(){const s=Math.PI/(180*3600),rx=HP.rX*s,ry=HP.rY*s,rz=HP.rZ*s;return [[1,rz,-ry],[-rz,1,rx],[ry,-rx,1]]}
+  const det3=m=>m[0][0]*(m[1][1]*m[2][2]-m[1][2]*m[2][1])-m[0][1]*(m[1][0]*m[2][2]-m[1][2]*m[2][0])+m[0][2]*(m[1][0]*m[2][1]-m[1][1]*m[2][0]);
+  function w2v(w){const a=rot(),m=1+HP.k_ppm*1e-6,b=[(w[0]-HP.dX)/m,(w[1]-HP.dY)/m,(w[2]-HP.dZ)/m],d=det3(a);
+    return [0,1,2].map(i=>{const mm=a.map(r=>r.slice());for(let k=0;k<3;k++)mm[k][i]=b[k];return det3(mm)/d})}
+  const n=F/(2-F),A1=A/(1+n)*(1+n**2/4+n**4/64+n**6/256),E=Math.sqrt(E2);
+  const AL=[n/2-2*n**2/3+5*n**3/16+41*n**4/180-127*n**5/288+7891*n**6/37800,
+    13*n**2/48-3*n**3/5+557*n**4/1440+281*n**5/630-1983433*n**6/1935360,
+    61*n**3/240-103*n**4/140+15061*n**5/26880+167603*n**6/181440,
+    49561*n**4/161280-179*n**5/168+6601661*n**6/7257600,
+    34729*n**5/80640-3418889*n**6/1995840,
+    212378941*n**6/319334400];
+  function tm(lat,lon,kt){const phi=rad(lat),lam=rad(lon-kt),tau=Math.tan(phi);
+    const sg=Math.sinh(E*Math.atanh(E*tau/Math.sqrt(1+tau*tau))),tp=tau*Math.sqrt(1+sg*sg)-sg*Math.sqrt(1+tau*tau);
+    const xp=Math.atan2(tp,Math.cos(lam)),ep=Math.asinh(Math.sin(lam)/Math.sqrt(tp*tp+Math.cos(lam)**2));let xi=xp,eta=ep;
+    AL.forEach((a,i)=>{const j=i+1;xi+=a*Math.sin(2*j*xp)*Math.cosh(2*j*ep);eta+=a*Math.cos(2*j*xp)*Math.sinh(2*j*ep)});
+    return [FN+K0*A1*xi,FE+K0*A1*eta]}
+  /* WGS-84 (độ) → [x_bac, y_dong] VN-2000 (m); h = cao trắc địa WGS-84, để 0 sai khác mặt bằng < 1 mm */
+  function tu84(lat,lon,kt=105,h=0){const v=w2v(xyz(lat,lon,h)),g=geo(v[0],v[1],v[2]);return tm(g[0],g[1],kt)}
+  /* kinh tuyến trục theo tỉnh (TT 973/2001/TT-TCĐC, tỉnh cũ trước sáp nhập 2025) — cùng bảng với vn2000.py */
+  const TINH=[['Thanh Hoá',105],['Nghệ An',104.75],['Ninh Bình',105],['Hà Nội',105],['Hà Nam',105],['Hà Tĩnh',105.5],
+    ['Nam Định',105.5],['Hoà Bình',106],['Sơn La',104]];
+  return {tu84,TINH};
+})();
+/* kinh tuyến trục đang dùng (cài đặt chung của máy, mặc định Thanh Hoá 105°00′) */
+function ktt(){return DB.ktt!=null&&isFinite(DB.ktt)?+DB.ktt:105}
+function kttTen(v){const d=Math.floor(v+1e-9),m=Math.round((v-d)*60);return `${d}°${String(m).padStart(2,'0')}′`}
+function vnOf(p){if(p.lat==null||p.lon==null)return null;const r=VN.tu84(+p.lat,+p.lon,ktt());return {x:+r[0].toFixed(3),y:+r[1].toFixed(3)}}
 function gpsLab(){$('#gps-lab').textContent=fix?`±${Math.round(fix.acc)} m`:'GPS'}
 function placeGps(){dropAuto();closeSheet();const xy=geoToXY(fix.lat,fix.lon);addPole(xy.x,xy.y,null,fix);
   if(fix.acc>15)toast(`GPS sai số ±${Math.round(fix.acc)} m — đứng chỗ thoáng cho chuẩn hơn`)}
@@ -952,21 +995,27 @@ function xuatXlsx(){
   const ws=XLSX.utils.aoa_to_sheet(aoa),M=(a,b,c,d)=>({s:{r:a,c:b},e:{r:c,c:d}});
   ws['!merges']=[M(0,0,0,14),M(1,0,1,14),M(2,0,3,0),M(2,1,3,1),M(2,2,3,2),M(2,3,3,3),M(2,4,2,5),M(2,6,2,7),M(2,8,2,11),M(2,12,3,12),M(2,13,3,13),M(2,14,3,14)];
   ws['!cols']=[5,10,14,9,12,12,22,22,5,5,5,6,12,20,22].map(w=>({wch:w}));
-  const ws2=XLSX.utils.aoa_to_sheet([['STT','Số cột','Mã nhập','Ký hiệu','X (m)','Y (m)','Vĩ độ','Kinh độ','Sai số GPS (m)'],
-    ...sorted().map((p,i)=>[i+1,parse(p.code).so,p.code,SHAPE_NAME[p.shape||'tron']+(isDoi(p)&&p.shape!=='tba'?' đôi':''),+p.x.toFixed(2),+(-p.y).toFixed(2),p.lat??'',p.lon??'',p.acc??'']),
-    ...D.mocs.map(m=>['','Mốc',m.ten,'Mốc',+m.x.toFixed(2),+(-m.y).toFixed(2),'','',''])]);
-  ws2['!cols']=[5,10,40,12,10,10,12,12,10].map(w=>({wch:w}));
+  const ws2=XLSX.utils.aoa_to_sheet([['STT','Số cột','Mã nhập','Ký hiệu','X (m)','Y (m)','Vĩ độ','Kinh độ','Sai số GPS (m)','X_VN2000 (Bắc)','Y_VN2000 (Đông)'],
+    ...sorted().map((p,i)=>{const v=vnOf(p);return [i+1,parse(p.code).so,p.code,SHAPE_NAME[p.shape||'tron']+(isDoi(p)&&p.shape!=='tba'?' đôi':''),+p.x.toFixed(2),+(-p.y).toFixed(2),p.lat??'',p.lon??'',p.acc??'',v?v.x:'',v?v.y:'']}),
+    ...D.mocs.map(m=>['','Mốc',m.ten,'Mốc',+m.x.toFixed(2),+(-m.y).toFixed(2),'','','','','']),
+    [],['','Ghi chú',`X, Y (m): sơ đồ phác. X_VN2000 = Bắc, Y_VN2000 = Đông: VN-2000 múi 3°, kinh tuyến trục ${kttTen(ktt())}, k0 0,9999, 7 tham số QĐ 05/2007 — chỉ cột có GPS`]]);
+  ws2['!cols']=[5,10,40,12,10,10,12,12,10,14,14].map(w=>({wch:w}));
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Bang ke');XLSX.utils.book_append_sheet(wb,ws2,'Toa do');
   giao(new Blob([XLSX.write(wb,{bookType:'xlsx',type:'array'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),fname('.xlsx'));
 }
 function dxfTxt(s){return String(s).replace(/[^\x20-\x7e]/g,c=>'\\U+'+c.codePointAt(0).toString(16).toUpperCase().padStart(4,'0'))}
-function buildDxf(){
+/* sơ đồ phác → lat/lon gần đúng (ngược geoToXY): dùng cho cột vẽ tay, đường, mốc khi xuất DXF toạ độ thật */
+function xyToGeo(x,y){const g=D.geo,kx=111320*Math.cos(g.lat0*Math.PI/180);return {lat:g.lat0-(y-g.y0)/110574,lon:g.lon0+(x-g.x0)/kx}}
+/* that = true: toạ độ thật VN-2000 (X DXF = Đông, Y DXF = Bắc); cột không GPS giữ vị trí phác (quy về VN-2000 qua mốc GPS của bản vẽ) */
+function buildDxf(that){
   const L=[],a=(...x)=>{for(let i=0;i<x.length;i+=2)L.push(String(x[i]),String(x[i+1]))};
+  const P=that?(x,y)=>{const g=xyToGeo(x,y),r=VN.tu84(g.lat,g.lon,ktt());return [r[1],r[0]]}:(x,y)=>[x,-y];
+  const PP=p=>{if(that&&p.lat!=null&&p.lon!=null){const r=VN.tu84(+p.lat,+p.lon,ktt());return [r[1],r[0]]}return P(p.x,p.y)};
   const f=v=>(+v).toFixed(3),R=0.8;
   a(0,'SECTION',2,'HEADER',9,'$ACADVER',1,'AC1009',0,'ENDSEC');
   a(0,'SECTION',2,'TABLES');
   a(0,'TABLE',2,'LTYPE',70,1,0,'LTYPE',2,'CONTINUOUS',70,0,3,'Solid line',72,65,73,0,40,'0.0',0,'ENDTAB');
-  const LY=[['KS_COT',1],['KS_DAY',5],['KS_CHU',7],['KS_KHOANG',3],['KS_DUONG',8],['KS_MOC',6]];
+  const LY=[['KS_COT',1],['KS_DAY',5],['KS_CHU',7],['KS_KHOANG',3],['KS_DUONG',8],['KS_MOC',6]].concat(that?[['KS_COT_KHONG_GPS',30]]:[]);
   a(0,'TABLE',2,'LAYER',70,LY.length);for(const [n,c] of LY)a(0,'LAYER',2,n,70,0,62,c,6,'CONTINUOUS');a(0,'ENDTAB');
   a(0,'TABLE',2,'STYLE',70,1,0,'STYLE',2,'KS',70,0,40,'0.0',41,'1.0',50,'0.0',71,0,42,'1.0',3,'arial.ttf',4,'',0,'ENDTAB');
   a(0,'ENDSEC',0,'SECTION',2,'ENTITIES');
@@ -975,28 +1024,39 @@ function buildDxf(){
   const circ=(x,y,r,ly)=>a(0,'CIRCLE',8,ly,10,f(x),20,f(y),30,'0.0',40,r);
   const sq=(x,y,r,ly)=>{const c=[[x-r,y-r],[x+r,y-r],[x+r,y+r],[x-r,y+r]];for(let k=0;k<4;k++)line(c[k][0],c[k][1],c[(k+1)%4][0],c[(k+1)%4][1],ly)};
   for(const r of D.roads){
-    for(const o of [r.w/2,-r.w/2]){const e=offsetPts(r.pts,o);for(let i=0;i<e.length-1;i++)line(e[i][0],-e[i][1],e[i+1][0],-e[i+1][1],'KS_DUONG')}}
-  for(const r of D.roads)if(r.ten){const m=roadMid(r);txt(m[0],-m[1]-0.6,'1.5',r.ten,'KS_DUONG')}
-  for(const j of junctions())txt(j.x+1,-j.y-2,'1.2','Ngã '+(j.n===4?'tư':'ba'),'KS_MOC');
-  for(const m of D.mocs){circ(m.x,-m.y,0.5,'KS_MOC');txt(m.x+1,-m.y+1,'1.5',m.ten,'KS_MOC')}
+    for(const o of [r.w/2,-r.w/2]){const e=offsetPts(r.pts,o).map(q=>P(q[0],q[1]));for(let i=0;i<e.length-1;i++)line(e[i][0],e[i][1],e[i+1][0],e[i+1][1],'KS_DUONG')}}
+  for(const r of D.roads)if(r.ten){const m=roadMid(r),q=P(m[0],m[1]);txt(q[0],q[1]-0.6,'1.5',r.ten,'KS_DUONG')}
+  for(const j of junctions()){const q=P(j.x,j.y);txt(q[0]+1,q[1]-2,'1.2','Ngã '+(j.n===4?'tư':'ba'),'KS_MOC')}
+  for(const m of D.mocs){const q=P(m.x,m.y);circ(q[0],q[1],0.5,'KS_MOC');txt(q[0]+1,q[1]+1,'1.5',m.ten,'KS_MOC')}
+  const XY={};for(const p of D.poles)XY[p.id]=PP(p);
   for(const [i,j] of D.edges){const A=byId(i),B=byId(j);if(!A||!B)continue;
-    const ax=A.x,ay=-A.y,bx=B.x,by=-B.y,dx=bx-ax,dy=by-ay,l=Math.hypot(dx,dy);if(l<=2*R)continue;const ux=dx/l,uy=dy/l;
+    const [ax,ay]=XY[A.id],[bx,by]=XY[B.id],dx=bx-ax,dy=by-ay,l=Math.hypot(dx,dy);if(l<=2*R)continue;const ux=dx/l,uy=dy/l;
     line(ax+ux*R,ay+uy*R,bx-ux*R,by-uy*R,'KS_DAY');
     const kc=parse(B.from===A.id?B.code:A.from===B.id?A.code:'').kc;
     if(kc)txt((ax+bx)/2,(ay+by)/2+0.4,'1.0',String(kc).replace('.',','),'KS_KHOANG');}
-  for(const p of D.poles){const x=p.x,y=-p.y,r=parse(p.code),doi=isDoi(p,r)&&p.shape!=='tba';
-    const one=cx=>{if(p.shape==='vuong')sq(cx,y,R,'KS_COT');else{circ(cx,y,R,'KS_COT');if(p.shape==='cs'){const d=R*0.7;line(cx-d,y-d,cx+d,y+d,'KS_COT');line(cx-d,y+d,cx+d,y-d,'KS_COT')}}};
+  for(const p of D.poles){const [x,y]=XY[p.id],r=parse(p.code),doi=isDoi(p,r)&&p.shape!=='tba';
+    const LC=that&&p.lat==null?'KS_COT_KHONG_GPS':'KS_COT';   /* cột vẽ tay không GPS: layer riêng màu cam để kiểm lại */
+    const one=cx=>{if(p.shape==='vuong')sq(cx,y,R,LC);else{circ(cx,y,R,LC);if(p.shape==='cs'){const d=R*0.7;line(cx-d,y-d,cx+d,y+d,LC);line(cx-d,y+d,cx+d,y-d,LC)}}};
     let w=R;
-    if(p.shape==='tba'){const s=R*1.5;sq(x,y,s,'KS_COT');a(0,'SOLID',8,'KS_COT',10,f(x-s),20,f(y-s),30,'0.0',11,f(x+s),21,f(y-s),31,'0.0',12,f(x+s),22,f(y+s),32,'0.0',13,f(x+s),23,f(y+s),33,'0.0');w=s}
+    if(p.shape==='tba'){const s=R*1.5;sq(x,y,s,LC);a(0,'SOLID',8,LC,10,f(x-s),20,f(y-s),30,'0.0',11,f(x+s),21,f(y-s),31,'0.0',12,f(x+s),22,f(y+s),32,'0.0',13,f(x+s),23,f(y+s),33,'0.0');w=s}
     else if(doi){one(x-R*0.95);one(x+R*0.95);w=R*2}else one(x);
     txt(x+w+0.4,y+0.9,'1.5',r.so||(p.shape==='tba'?'TBA':'?'),'KS_CHU');
+    if(LC!=='KS_COT')txt(x+w+0.4,y+2.6,'1.0','(cột không có GPS - vị trí phác)',LC);
     let yy=y-1.1;for(const l of labelLines(p,r)){txt(x+w+0.4,yy,'1.0',l,'KS_CHU');yy-=1.4}}
   a(0,'ENDSEC',0,'EOF');
   return L.join('\r\n')+'\r\n';
 }
-function xuatDxf(){giao(new Blob([buildDxf()],{type:'application/dxf'}),fname('.dxf'))}
+function xuatDxf(that){
+  if(that){const n=D.poles.filter(p=>p.lat!=null).length,k=D.poles.length-n;
+    if(!n||!D.geo){toast('Chưa có cột nào lấy GPS — không xuất được toạ độ thật VN-2000');return}
+    giao(new Blob([buildDxf(true)],{type:'application/dxf'}),fname('_VN2000.dxf'));
+    if(k)setTimeout(()=>toast(`${k} cột không có GPS — giữ vị trí phác, layer KS_COT_KHONG_GPS, cần kiểm lại`),3300);return}
+  giao(new Blob([buildDxf()],{type:'application/dxf'}),fname('.dxf'))}
 function xuatJson(){
-  const out={app:'khao-sat-tuyen',ver:2,ten:D.ten,ngay:D.ngay,geo:D.geo,poles:D.poles,edges:D.edges,roads:D.roads,mocs:D.mocs};
+  const poles=D.poles.map(p=>{const v=vnOf(p);return v?{...p,X_VN2000:v.x,Y_VN2000:v.y}:p});
+  const out={app:'khao-sat-tuyen',ver:2,ten:D.ten,ngay:D.ngay,geo:D.geo,
+    vn2000:{kinhTuyenTruc:ktt(),mui:3,k0:0.9999,ghiChu:'X_VN2000 = Bắc, Y_VN2000 = Đông; 7 tham số QĐ 05/2007/QĐ-BTNMT; chỉ cột có GPS'},
+    poles,edges:D.edges,roads:D.roads,mocs:D.mocs};
   giao(new Blob([JSON.stringify(out,null,1)],{type:'application/json'}),fname('.json'));
 }
 const PNGCSS=`.ed{stroke:#2F5FA8;stroke-width:3}.pole{fill:#fff;stroke:#15201C;stroke-width:3}.fillk{fill:#15201C}
@@ -1089,8 +1149,12 @@ function showExport(){
     <div class="row" style="align-items:center"><h2 style="flex:1 1 auto">Xuất · ${esc(D.ten)}</h2><button class="btn" data-a="close" style="flex:0 0 auto">Đóng</button></div>
     <button class="big pri" data-a="png"><b>Gửi ảnh sơ đồ</b><span>Mở Zalo / Messenger gửi ngay ảnh sơ đồ có ghi chú.</span></button>
     <button class="big" data-a="xlsx"><b>Bảng kê Excel (.xlsx)</b><span>Đúng mẫu tờ "Bảng tổng kê khối lượng hiện trạng và thay thế", kèm sheet tọa độ.</span></button>
-    <button class="big" data-a="dxf"><b>Bản vẽ AutoCAD (.dxf)</b><span>Cột, TBA, dây nối, đường, mốc, số cột và ghi chú. 1 đơn vị = 1 m.</span></button>
+    <button class="big" data-a="dxf"><b>Bản vẽ AutoCAD (.dxf) — sơ đồ phác</b><span>Cột, TBA, dây nối, đường, mốc, số cột và ghi chú. 1 đơn vị = 1 m.</span></button>
+    <button class="big" data-a="dxfvn"><b>Bản vẽ AutoCAD (.dxf) — toạ độ thật VN-2000</b><span>Cột có GPS đặt đúng toạ độ VN-2000 (X = Đông, Y = Bắc). Cột vẽ tay không có GPS giữ vị trí phác, để riêng layer KS_COT_KHONG_GPS.</span></button>
+    <label class="sl vn"><span class="k">Tỉnh / kinh tuyến trục VN-2000</span><select id="ex-ktt">${VN.TINH.map(([t,v])=>`<option value="${v}"${Math.abs(v-ktt())<1e-9&&t===(DB.tinh||'Thanh Hoá')?' selected':''}>${t} — ${kttTen(v)}</option>`).join('')}
+      <option value="khac"${VN.TINH.some(([t,v])=>Math.abs(v-ktt())<1e-9&&t===(DB.tinh||'Thanh Hoá'))?'':' selected'}>Khác — tự nhập (${kttTen(ktt())})</option></select></label>
     <button class="big" data-a="json"><b>File gốc (.json)</b><span>Để mở lại / gộp trên máy khác hoặc gửi Claude chuyển sang CAD.</span></button>
+    <p class="note">Excel và JSON có thêm cột X_VN2000 (Bắc), Y_VN2000 (Đông) cho cột có GPS, theo kinh tuyến trục đang chọn (múi 3°).</p>
     <p class="note">Excel, DXF, JSON lưu vào thư mục <b>Tải xuống (Download)</b>. Gửi qua Zalo: Gửi file → Download.</p>
   </div>`;
   panel.hidden=false;
@@ -1109,9 +1173,14 @@ panel.addEventListener('click',e=>{
     clearTimeout(delListT[id]);delete delListT[id];delete DB.ds[id];
     if(id===D.id){const rest=Object.values(DB.ds).sort((x,y)=>y.capNhat-x.capNhat);switchTo(rest[0]||newD())}
     saveNow();showList()}
-  else if(a==='xlsx')xuatXlsx();else if(a==='dxf')xuatDxf();else if(a==='json')xuatJson();else if(a==='png')guiAnh();
+  else if(a==='xlsx')xuatXlsx();else if(a==='dxf')xuatDxf();else if(a==='dxfvn')xuatDxf(true);else if(a==='json')xuatJson();else if(a==='png')guiAnh();
 });
 panel.addEventListener('change',async e=>{
+  if(e.target.id==='ex-ktt'){const o=e.target.selectedOptions[0];
+    if(e.target.value==='khac'){const t=prompt('Kinh tuyến trục (độ thập phân, vd 105 hoặc 104.75)',String(ktt()));const v=parseFloat(String(t||'').replace(',','.'));
+      if(t!==null&&isFinite(v)&&v>=100&&v<=112){DB.ktt=v;DB.tinh=''}else if(t!==null)toast('Kinh tuyến trục phải trong khoảng 100–112°')}
+    else{DB.ktt=+e.target.value;DB.tinh=o.textContent.split(' — ')[0]}
+    saveNow();showExport();toast(`VN-2000: kinh tuyến trục ${kttTen(ktt())}`);return}
   const fl=e.target.files;if(!fl||!fl.length)return;
   if(e.target.id==='gop'){
     snap();const kq=[];
