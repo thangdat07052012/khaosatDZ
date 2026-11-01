@@ -16,6 +16,7 @@
   --ink:#12443B; --ink-fg:#FFFFFF; --hi:#F2B01E; --hi-fg:#241A00; --hi-soft:#FBEFCB;
   --wire:#2F5FA8; --warn:#B4361F; --road:rgba(120,130,126,.22); --road-c:rgba(120,130,126,.55); --moc:#B4361F;
   --k-cot:#12443B; --k-day:#2F5FA8; --k-ct:#8A4B00; --k-sau:#6B3FA0; --k-kc:#1F7A4D; --k-gc:#56655F;
+  --q-xanh:#1E9E50; --q-vang:#E0A100; --q-do:#D93025;
   --f:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   --mono:ui-monospace,"Cascadia Mono",Consolas,"Roboto Mono",monospace;
   color-scheme:light;
@@ -25,6 +26,7 @@
   --ink:#17594C; --ink-fg:#FFFFFF; --hi:#F5BD3A; --hi-fg:#241A00; --hi-soft:#3A2F10;
   --wire:#7FA8EC; --warn:#F08A6E; --road:rgba(170,185,178,.16); --road-c:rgba(170,185,178,.4); --moc:#F08A6E;
   --k-cot:#6FD0B6; --k-day:#8FB4F0; --k-ct:#F0B060; --k-sau:#C3A0F0; --k-kc:#7AD6A0; --k-gc:#9AABA4;
+  --q-xanh:#4CC77F; --q-vang:#F5C542; --q-do:#FF6B5E;
   color-scheme:dark }}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -74,6 +76,19 @@ button{font:inherit;color:inherit;cursor:pointer}
 .tmp{stroke:var(--hi);stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round}
 .me{fill:#2F7DF6;stroke:#fff;stroke-width:2.5}
 .meacc{fill:rgba(47,125,246,.14);stroke:rgba(47,125,246,.4)}
+/* chất lượng GPS: chấm màu cạnh cột (xanh < 3 m, vàng 3–6 m, đỏ > 6 m); viền đậm = đã hiệu chỉnh theo mốc; khung vuông = đã nắn theo khoảng đo */
+.qd{stroke:var(--paper);stroke-width:1.2}.qd.hc{stroke:var(--fg);stroke-width:1.8}
+.q-xanh{fill:var(--q-xanh)}.q-vang{fill:var(--q-vang)}.q-do{fill:var(--q-do)}
+.nanmk{fill:none;stroke:var(--k-kc);stroke-width:1.8}
+.mdo{fill:var(--paper);stroke:var(--moc);stroke-width:2.2}
+.qdot{display:inline-block;width:11px;height:11px;border-radius:50%;flex:0 0 auto;vertical-align:-1px;background:var(--muted)}
+.qdot.q-xanh{background:var(--q-xanh)}.qdot.q-vang{background:var(--q-vang)}.qdot.q-do{background:var(--q-do)}
+#status .pill.nhac{background:var(--q-do);color:#fff}
+.seg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.seg .btn{height:44px}
+.kq{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;font-size:14px;line-height:1.5}
+.kq b.mono,.mono{font-family:var(--mono)}
+.h3{margin:6px 0 0;font-size:16px}
 
 .tools{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:3px;padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));
   background:var(--bg);border-top:1px solid var(--line)}
@@ -172,6 +187,7 @@ label.btn{display:flex;align-items:center;justify-content:center}
   <button id="b-title" class="ttl" aria-label="Đổi tên tuyến">Tuyến</button>
   <button id="b-undo" class="ib" aria-label="Hoàn tác">↶</button>
   <button id="b-fit" class="ib" aria-label="Xem toàn bộ">⤢</button>
+  <button id="b-gpsp" class="ib" aria-label="GPS chính xác: chế độ đo, mốc hiệu chỉnh, nắn tuyến">◎</button>
   <button id="b-table" class="ib" aria-label="Bảng cột">▤</button>
   <button id="b-export" class="ib pri">Xuất</button>
 </header>
@@ -234,16 +250,16 @@ function doiVX(code){
     return x.replace(/(^|[>→:]\s*)(\s*\d*)VX(?=\s*\d)/gi,(m,a,b)=>a+b+'ABC')}).join(';');
 }
 /* nạp danh sách cột (localStorage, file mở / gộp): đổi VX → ABC, bỏ cột toạ độ VN-2000 do lần xuất trước ghi kèm */
-function napPoles(ps){let n=0;for(const p of ps||[]){const c=doiVX(p.code);if(c!==p.code){p.code=c;n++}delete p.X_VN2000;delete p.Y_VN2000}return n}
+function napPoles(ps){let n=0;for(const p of ps||[]){const c=doiVX(p.code);if(c!==p.code){p.code=c;n++}for(const k of ['X_VN2000','Y_VN2000','X_VN2000_goc','Y_VN2000_goc','hieuChinhTheoMoc','chatLuongGPS'])delete p[k]}return n}
 let saveT=null;
 function saveNow(){clearTimeout(saveT);saveT=null;try{localStorage.setItem(LSK,JSON.stringify(DB))}catch(e){toast('Bộ nhớ đầy — xuất file rồi xoá bớt bản vẽ cũ')}}
 function save(){if(D)D.capNhat=Date.now();clearTimeout(saveT);saveT=setTimeout(saveNow,400)}
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&saveT)saveNow()});
 window.addEventListener('pagehide',()=>{if(saveT)saveNow()});
-function newD(ten){const d={id:uid(),ten:ten||('Tuyến '+today()),ngay:today(),poles:[],edges:[],roads:[],mocs:[],geo:null,active:null,view:null,capNhat:Date.now()};
+function newD(ten){const d={id:uid(),ten:ten||('Tuyến '+today()),ngay:today(),poles:[],edges:[],roads:[],mocs:[],mocDo:[],geo:null,active:null,view:null,capNhat:Date.now()};
   DB.ds[d.id]=d;DB.cur=d.id;saveNow();return d}
 let D=DB.ds[DB.cur]||Object.values(DB.ds).sort((a,b)=>b.capNhat-a.capNhat)[0]||newD();
-DB.cur=D.id;
+DB.cur=D.id;D.mocDo=D.mocDo||[];
 
 /* ================= đọc mã cột ================= */
 const norm=t=>String(t).toUpperCase().replace(/\s+/g,'');
@@ -362,9 +378,7 @@ const byId=id=>D.poles.find(p=>p.id===id);
 const activeP=()=>D.active?byId(D.active):null;
 const hasEdge=(a,b)=>D.edges.some(([x,y])=>(x===a&&y===b)||(x===b&&y===a));
 let undoSt=[];
-function snap(){undoSt.push(JSON.stringify({poles:D.poles,edges:D.edges,roads:D.roads,mocs:D.mocs,geo:D.geo,active:D.active}));if(undoSt.length>60)undoSt.shift()}
-function haversine(a,b){const R=6371000,r=Math.PI/180,dLa=(b.lat-a.lat)*r,dLo=(b.lon-a.lon)*r;
-  const h=Math.sin(dLa/2)**2+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dLo/2)**2;return 2*R*Math.asin(Math.sqrt(h))}
+function snap(){undoSt.push(JSON.stringify({poles:D.poles,edges:D.edges,roads:D.roads,mocs:D.mocs,mocDo:D.mocDo||[],hcTat:!!D.hcTat,geo:D.geo,active:D.active}));if(undoSt.length>60)undoSt.shift()}
 function nextCode(prev,gpsKc){
   if(!prev)return D.poles.length?'':'1';   /* bản vẽ trống: cột đầu gợi ý số 1 */
   const pp=prev.from?byId(prev.from):null;
@@ -386,7 +400,7 @@ function addPole(x,y,shape,gps,auto){
   if(prev){prev.code=chuanHoa(prev.code);prev.auto=false}
   let kc='';if(gps&&prev&&prev.lat!=null)kc=Math.round(haversine(prev,gps));
   const p={id:uid(),x,y,shape:shape||inheritShape(prev),doi:!!(prev&&prev.doi&&prev.shape!=='tba'),code:nextCode(prev,kc),from:prev?prev.id:null,t:Date.now()};
-  if(gps){p.lat=+gps.lat.toFixed(7);p.lon=+gps.lon.toFixed(7);p.acc=Math.round(gps.acc)}
+  if(gps){p.lat=+gps.lat.toFixed(8);p.lon=+gps.lon.toFixed(8);p.acc=+gps.acc.toFixed(1);p.gt=gps.t||Date.now();if(gps.n)p.gn=gps.n}
   if(auto){p.auto=true;p.autoCode=p.code}
   D.poles.push(p);if(prev)D.edges.push([prev.id,p.id]);
   D.active=p.id;save();draw();openSheet(p);
@@ -437,7 +451,7 @@ function symSvg(p,x,y,R,cls,r){
 let LCACHE=null;
 function layout(v,w,h,o,pr,JN){
   const k=o.k||1,s=v.s,X=x=>x*s,Y=y=>y*s;
-  const sig=o.print?null:[s,k,D.id,editId||'',D.poles.map(p=>p.id+','+p.x.toFixed(2)+','+p.y.toFixed(2)+','+p.shape+(p.doi?1:0)+','+p.code).join('|'),
+  const sig=o.print?null:[s,k,D.id,editId||'',D.poles.map(p=>p.id+','+p.x.toFixed(2)+','+p.y.toFixed(2)+','+p.shape+(p.doi?1:0)+(p.kcThat?'!':'')+','+p.code).join('|'),
     D.edges.map(e=>e.join()).join(),JN.map(j=>j.x.toFixed(1)+','+j.y.toFixed(1)).join(),D.mocs.map(m=>m.x.toFixed(1)+m.y.toFixed(1)+m.ten).join(),
     D.roads.map(r=>(r.ten||'')+r.w+':'+r.pts.join()).join()].join('#');
   if(sig&&LCACHE&&LCACHE.sig===sig)return LCACHE.L;
@@ -457,14 +471,15 @@ function layout(v,w,h,o,pr,JN){
     return {p,r,x:X(p.x),y:Y(p.y),Rw:R*(t?1.5:doi?2:1),Rh:R*(t?1.5:1),ed:!o.print&&p.id===editId}});
   /* chỗ đã bị chiếm: ký hiệu cột, nút đường, mốc, tên đường, số khoảng cột, dây.
      Cột đang sửa có vòng chọn vàng (R+7) nên vùng tránh lấy R+9 để số cột không đè lên vòng. */
-  for(const q of P){const m=q.ed?9:3;add(q.x-q.Rw-m,q.y-q.Rh-m,q.x+q.Rw+m,q.y+q.Rh+m,4)}
+  for(const q of P){const m=q.ed?9:3;add(q.x-q.Rw-m,q.y-q.Rh-m,q.x+q.Rw+m,q.y+q.Rh+m,4);
+    if(!o.print&&(q.p.lat!=null||q.p.nan))add(q.x-q.Rw-9,q.y+q.Rh-3,q.x-q.Rw+3,q.y+q.Rh+9,3)}   /* chấm chất lượng GPS dưới-trái cột */
   for(const j of JN){const x=X(j.x),y=Y(j.y);add(x-6*k,y-6*k,x+6*k,y+6*k,3)}
   for(const m of D.mocs){const x=X(m.x),y=Y(m.y);add(x-3*k,y-17*k,x+12*k,y+3*k,3);add(x+13*k,y-6*k-szm,x+13*k+m.ten.length*szm*CW,y-6*k+3,1)}
   for(const r of D.roads)if(r.ten){const m=roadMid(r),x=X(m[0]),y=Y(m[1])+4,hw=r.ten.length*szr*CW/2;add(x-hw,y-szr,x+hw,y+3,1)}
   const KC=[];
   for(const q of P){const p=q.p,f=p.from&&byId(p.from),kc=q.r.kc;
-    if(f&&kc&&hasEdge(p.id,f.id)){const t=String(kc).replace('.',','),x=(q.x+X(f.x))/2,y=(q.y+Y(f.y))/2-5*k,hw=t.length*szk*.62/2;
-      KC.push({x,y,t});add(x-hw,y-szk*.85,x+hw,y+2,1.5)}}
+    if(f&&kc&&hasEdge(p.id,f.id)){const t=String(kc).replace('.',',')+(p.kcThat?' ✓':''),x=(q.x+X(f.x))/2,y=(q.y+Y(f.y))/2-5*k,hw=t.length*szk*.62/2;
+      KC.push({x,y,t,id:p.id});add(x-hw,y-szk*.85,x+hw,y+2,1.5)}}
   for(const [a,b] of D.edges){const A=byId(a),B=byId(b);if(!A||!B)continue;
     const x1=X(A.x),y1=Y(A.y),x2=X(B.x),y2=Y(B.y),n=Math.min(Math.ceil(Math.hypot(x2-x1,y2-y1)/8),80);
     for(let i=1;i<n;i++){const px=x1+(x2-x1)*i/n,py=y1+(y2-y1)*i/n;add(px-2.5,py-2.5,px+2.5,py+2.5,1)}}
@@ -513,6 +528,7 @@ function svgInner(v,w,h,o={}){
   for(const [a,b] of D.edges){const A=byId(a),B=byId(b);if(A&&B)g+=`<line class="ed" x1="${X(A.x)}" y1="${Y(A.y)}" x2="${X(B.x)}" y2="${Y(B.y)}"/>`}
   const pr={};for(const p of D.poles)pr[p.id]=parse(p.code);
   const LB=layout(v,w,h,o,pr,JN),tx=v.tx,ty=v.ty,f1=n=>+n.toFixed(1);
+  if(!o.print)lastKC=LB.KC;
   for(const t of LB.KC)g+=`<text class="lb kc" x="${f1(t.x+tx)}" y="${f1(t.y+ty)}" text-anchor="middle">${esc(t.t)}</text>`;
   for(const m of D.mocs){const x=X(m.x),y=Y(m.y);
     g+=`<path class="moc" d="M${x} ${y}L${x} ${y-16*k}L${x+11*k} ${y-12*k}L${x} ${y-8*k}Z"/><circle class="moc" cx="${x}" cy="${y}" r="${2.5*k}"/>`;
@@ -523,7 +539,13 @@ function svgInner(v,w,h,o={}){
     if(p.id===editId&&!o.print)g+=`<circle class="ring" cx="${x}" cy="${y}" r="${R*(doi?2:1)+7}"/>`;
     if(p.id===noiA)g+=`<circle class="noiA" cx="${x}" cy="${y}" r="${R*(doi?2:1)+6}"/>`;
     g+=symSvg(p,x,y,R,c,r);
+    if(!o.print){const t=p.shape==='tba',rw=R*(t?1.5:doi?2:1),rh=R*(t?1.5:1),cx=f1(x-rw-3),cy=f1(y+rh+3),m=p.lat!=null?gpsMau(p.acc):'';
+      if(p.nan)g+=`<rect class="nanmk" x="${f1(cx-5.5)}" y="${f1(cy-5.5)}" width="11" height="11" rx="2"/>`;
+      if(m)g+=`<circle class="qd q-${m}${hcCot(p)?' hc':''}" cx="${cx}" cy="${cy}" r="3.6"/>`}
   }
+  /* mốc hiệu chỉnh (điểm biết toạ độ): tam giác tại vị trí GPS đo được */
+  if(D.geo)for(const m of D.mocDo||[]){const q=geoToXY(m.lat,m.lon,false),x=X(q.x),y=Y(q.y),a=7*k;
+    g+=`<path class="mdo" d="M${x} ${f1(y-a)}L${f1(x+a*.87)} ${f1(y+a/2)}L${f1(x-a*.87)} ${f1(y+a/2)}Z"/><text class="lb mc" x="${f1(x+a+2)}" y="${f1(y+4)}">${esc(m.ten)}</text>`}
   /* nhãn đặt xa cột thì có đường dẫn nối về cột */
   for(const l of LB.PL)if(l.far){const px=l.px+tx,py=l.py+ty,bx0=l.x+tx,by0=l.y+ty;
     const nx=Math.max(bx0,Math.min(px,bx0+l.bw)),ny=Math.max(by0,Math.min(py,by0+l.bh)),dx=nx-px,dy=ny-py,d=Math.hypot(dx,dy)||1;
@@ -551,7 +573,8 @@ function status(){
   else if(ed&&ed.auto)h=`<span class="pill solo">Cột tự đặt thẳng tuyến — chạm chỗ khác để dời tới đó</span>`;
   else if(a){const so=parse(a.code).so;h=`<span class="pill solo">${so?'Vẽ tiếp từ '+esc(so):'Vẽ tiếp từ cột chưa đánh số'}</span>`}
   else h=`<span class="pill solo">${D.poles.length?'Đoạn mới — cột sau không nối':'Chạm lên bảng để đặt cột đầu tiên'}</span>`;
-  if(gpsM)h+=`<span class="pill">${esc(gpsTxt())}<button data-st="gstop">${gpsM.ds.length?'Dừng sớm':'Huỷ'}</button></span>`;
+  if(gpsM){const g=gpsTxt();h+=`<span class="pill" id="gps-pill">${g.m?`<span class="qdot q-${g.m}"></span>`:''}${esc(g.h)}<button data-st="gstop">${gpsM.ds.length?'Dừng sớm':'Huỷ'}</button></span>`;
+    if(g.m==='do')h+=`<span class="pill solo nhac">${GPS_NHAC}</span>`}
   $('#status').innerHTML=h;
 }
 function persistView(){D.view={s:V.s,tx:V.tx,ty:V.ty};save()}
@@ -643,6 +666,7 @@ function onTap(pt,h){
     const [x,y]=toW(pt);const t=prompt('Tên mốc (vd: Ngã tư chợ, Cổng UBND)','');if(t===null)return;
     snap();D.mocs.push({id:uid(),x,y,ten:t.trim()||'Mốc'});save();draw();return;
   }
+  if((!h||h.ten===undefined)&&(tool==='cot'||tool==='chon')){const sp=hitSpan(pt,h);if(sp){nhapKcThat(sp);return}}
   if(h&&h.ten===undefined){if(h.id!==editId)dropAuto();D.active=h.id;save();openSheet(byId(h.id)||h);return}
   if(tool==='chon'){finishSheet();return}
   const [wx,wy]=toW(pt),q=snapToRoad(wx,wy),ed=editId&&byId(editId);
@@ -732,7 +756,8 @@ function renderOpts(){
       ((DB.soMau||[]).length?`<div class="og wv">${DB.soMau.map(v=>o(v,cur===v)).join('')}</div>`:'')+
       `<div class="typ"><button type="button" class="btn sm" data-act="so-">−</button><input id="o-so" class="inp" value="${esc(F.so)}" autocomplete="off" spellcheck="false"><button type="button" class="btn sm" data-act="so+">+</button></div>`+
       `<div class="typ"><input id="o-somau" class="inp" placeholder="Thêm mẫu số cột" autocomplete="off" autocapitalize="none" spellcheck="false" enterkeyhint="done"><button type="button" class="btn sm pri" data-act="somau">Thêm</button></div>`}
-  else if(slot==='kc')h+=`<div class="og">${BASE.kc.map(v=>o(v,String(F.kc)===v,v+' m')).join('')}</div>`+typRow('o-kc','Gõ số mét',F.kc===''?'':String(F.kc).replace('.',','),'');
+  else if(slot==='kc')h+=`<div class="og">${BASE.kc.map(v=>o(v,String(F.kc)===v,v+' m')).join('')}</div>`+typRow('o-kc','Gõ số mét',F.kc===''?'':String(F.kc).replace('.',','),'')+
+    `<button type="button" class="o t${p.kcThat?' on':''}" data-act="kcthat">${p.kcThat?'✓ Khoảng đo thật (thước / laser) — dùng để nắn tuyến':'Đánh dấu: khoảng đo thật bằng thước / laser'}</button>`;
   else if(slot==='ky')h+=`<div class="og">${['tron','vuong','cs','tba'].map(v=>o(v,(p.shape||'tron')===v,SHAPE_NAME[v],' t')).join('')}${o('doi',!!p.doi,'Cột đôi',' t')}</div>`;
   else if(slot==='ct')h+=`<div class="cnt">${CNT.map(([k,l])=>`<div class="cn${F[k]?' has':''}"><span>${l}</span><button type="button" data-cn="${k}" data-d="-1" aria-label="Bớt ${l}">−</button><b>${F[k]||0}</b><button type="button" data-cn="${k}" data-d="1" aria-label="Thêm ${l}">+</button></div>`).join('')}</div>`;
   else if(slot==='gc')h+=`<div class="og">${BASE.dd.map(v=>o(v,F.dd.includes(v),null,' t')).join('')}${learned('gc').map(v=>o(v,F.gc.includes(v),null,' t')).join('')}</div>`+typRow('o-add','Ghi chú khác','','Thêm');
@@ -742,7 +767,7 @@ function renderOpts(){
 function commit(reOpts=true){
   const p=curP();if(!p)return;
   if(!sheetSnap){snap();sheetSnap=true}
-  p.code=codeOf(F);if(p.auto&&p.code!==p.autoCode)p.auto=false;
+  p.code=codeOf(F);if(p.auto&&p.code!==p.autoCode)p.auto=false;if(F.kc===''&&p.kcThat)delete p.kcThat;
   save();renderSlots();if(reOpts)renderOpts();draw();
 }
 /* chạm ô nào thì bảng lựa chọn của ô đó hiện ngay từ đầu (vùng #opts tự cuộn, không cuộn cả ô nhập) */
@@ -762,6 +787,8 @@ $('#opts').addEventListener('click',e=>{
   if(a){const act=a.dataset.act;
     if(act==='so-'||act==='so+'){const q=parseSo(F.so);if(!q)return;const v=Math.max(0,q.num+(act==='so+'?1:-1));
       F.so=q.pre+String(v).padStart(q.w,'0')+String(F.so).trim().slice(String(F.so).trim().split(/\s+/)[0].length);commit();return}
+    if(act==='kcthat'){if(F.kc===''){toast('Nhập số mét trước');return}if(!sheetSnap){snap();sheetSnap=true}
+      p.kcThat=!p.kcThat;if(!p.kcThat)delete p.kcThat;p.auto=false;nanCho=null;save();renderOpts();draw();return}
     if(act==='somau'){const i=$('#o-somau');const v=(i&&i.value||'').replace(/;/g,'').trim();if(!v)return;
       const L=(DB.soMau||[]).filter(x=>x!==v);if(!SO_MAU.flat().includes(v))L.unshift(v);DB.soMau=L.slice(0,9);
       F.so=v;commit();return}
@@ -874,15 +901,17 @@ function hitHandle(pt){
 }
 
 /* ================= bảng cột ================= */
+function gpsTd(p){const a=[];if(p.lat!=null){const h=hcCot(p);a.push(`${qdot(p.acc)} ±${vn1(p.acc)} m`,h?'HC '+esc(h.ten):'chưa HC')}else a.push('vẽ tay');
+  if(p.nan)a.push('đã nắn');if(p.kcThat)a.push('khoảng ✓');return a.join(' · ')}
 function showTable(){
   finishSheet();closeRoad();
   const rows=sorted().map((p,i)=>{const r=parse(p.code);
     return `<tr data-id="${p.id}"><td>${i+1}</td><td class="m">${esc(r.so||'?')}</td><td>${esc(SHAPE_NAME[p.shape||'tron']+(isDoi(p,r)&&p.shape!=='tba'?' đôi':''))}</td>`+
       `<td class="m">${r.kc===''?'':esc(String(r.kc).replace('.',','))}</td><td class="m">${esc(pair(r.cotHT,r.cotTT))}</td><td class="m">${esc(pair(r.dayHT,r.dayTT))}</td>`+
-      `<td class="m">${esc([ctText(r),tuText(r)].filter(Boolean).join(' · '))}</td><td class="m">${esc(J(r.sau))}</td><td>${esc(r.dd.concat(r.gc).join(', '))}</td></tr>`}).join('');
+      `<td class="m">${esc([ctText(r),tuText(r)].filter(Boolean).join(' · '))}</td><td class="m">${esc(J(r.sau))}</td><td>${esc(r.dd.concat(r.gc).join(', '))}</td><td>${gpsTd(p)}</td></tr>`}).join('');
   panel.innerHTML=`<div class="pin">
     <div class="row" style="align-items:center"><h2 style="flex:1 1 auto">Bảng cột · ${esc(D.ten)}</h2><button class="btn" data-a="close" style="flex:0 0 auto">Đóng</button></div>
-    ${rows?`<div class="tblw"><table class="tbl"><thead><tr><th>STT</th><th>Số cột</th><th>Ký hiệu</th><th>Khoảng</th><th>Loại cột</th><th>Dây dẫn</th><th>Công tơ · tủ</th><th>Sau CT</th><th>Ghi chú</th></tr></thead><tbody>${rows}</tbody></table></div>
+    ${rows?`<div class="tblw"><table class="tbl"><thead><tr><th>STT</th><th>Số cột</th><th>Ký hiệu</th><th>Khoảng</th><th>Loại cột</th><th>Dây dẫn</th><th>Công tơ · tủ</th><th>Sau CT</th><th>Ghi chú</th><th>GPS</th></tr></thead><tbody>${rows}</tbody></table></div>
       <p class="note">Chạm một dòng để mở cột đó trên bản vẽ và sửa. Kéo ngang để xem hết các cột.</p>`
       :`<p class="note">Chưa có cột nào. Đóng bảng rồi chạm lên bản vẽ để đặt cột đầu tiên.</p>`}
   </div>`;
@@ -947,57 +976,306 @@ const VN=(()=>{
   /* kinh tuyến trục theo tỉnh (TT 973/2001/TT-TCĐC, tỉnh cũ trước sáp nhập 2025) — cùng bảng với vn2000.py */
   const TINH=[['Thanh Hoá',105],['Nghệ An',104.75],['Ninh Bình',105],['Hà Nội',105],['Hà Nam',105],['Hà Tĩnh',105.5],
     ['Nam Định',105.5],['Hoà Bình',106],['Sơn La',104]];
-  return {tu84,TINH};
+  /* hệ số tỉ lệ chiều dài của phép chiếu TM tại điểm có toạ độ Đông y_dong (gần đúng, đủ cho khoảng cột): khoảng lưới = khoảng mặt đất × k */
+  function kTL(yd){const e=(yd-FE)/6381000;return K0*(1+e*e/2)}
+  return {tu84,TINH,kTL};
 })();
+/* ================= GPS chính xác — HÀM THUẦN =================
+   Không đụng DOM / DB / D: test/gps_test.js chép nguyên đoạn từ "const VN=" tới dấu HẾT HÀM THUẦN ra chạy bằng node. */
+function haversine(a,b){const R=6371000,r=Math.PI/180,dLa=(b.lat-a.lat)*r,dLo=(b.lon-a.lon)*r;
+  const h=Math.sin(dLa/2)**2+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dLo/2)**2;return 2*R*Math.asin(Math.sqrt(h))}
+/* chế độ đo: Chuẩn 10 s mặc định (Truong: mỗi lần đo không quá ~10 s); Kỹ 20 s chỉ khi chọn */
+const GPS_CHE_DO={nhanh:{ms:5000,ten:'Nhanh 5 s'},chuan:{ms:10000,ten:'Chuẩn 10 s'},ky:{ms:20000,ten:'Kỹ 20 s'}};
+const GPS_ACC=10,GPS_XANH=3,GPS_VANG=6,GPS_SOM_MS=4000,GPS_SOM_N=4,GPS_SOM_PT=2;
+const GPS_NHAC='Đứng yên, ra chỗ thoáng, tránh sát nhà / dưới cây';
+const MAU_TEN={xanh:'tốt',vang:'tạm',do:'kém'};
+function gpsMau(acc){if(acc==null||acc===''||!isFinite(+acc))return '';return +acc<GPS_XANH?'xanh':+acc<=GPS_VANG?'vang':'do'}
+function trungVi(a){const b=a.slice().sort((x,y)=>x-y),n=b.length;return n?(n%2?b[(n-1)/2]:(b[n/2-1]+b[n/2])/2):NaN}
+/* gộp các lần đo trong một phiên. ds: [{lat,lon,acc,ts}] — ts = ms tính từ lúc bấm đo.
+   1) bỏ khởi động: lần đầu (thường là vị trí cũ máy nhớ) và các lần trong 2 s đầu mà sai số còn giảm mạnh (> 20 % so với lần sau);
+   2) bỏ lần sai số máy báo > 10 m; 3) bỏ ngoại lai: cách điểm trung vị > 2,5 × trung vị các khoảng cách (sàn 0,3 m);
+   4) trung bình có trọng số 1/acc². acc kết quả = max(độ phân tán, sai số máy báo / √k), k = số lần "độc lập" ≤ 4
+      (GPS điện thoại sai lệch kéo dài vài giây nên trung bình 10 s chỉ đỡ được khoảng 2 lần, không phải √n). */
+function gpsLoc(ds){
+  if(!ds||!ds.length)return null;
+  let st=ds.length>2?1:0;
+  while(st<ds.length-2&&ds[st].ts<2000&&ds[st].acc>1.2*ds[st+1].acc)st++;
+  const a=ds.slice(st);
+  let tot=a.filter(q=>q.acc<=GPS_ACC),canh=false;
+  if(!tot.length){canh=true;const b=a.slice().sort((x,y)=>x.acc-y.acc);tot=b.filter(q=>q.acc<=b[0].acc*1.5)}
+  const la0=trungVi(tot.map(q=>q.lat)),lo0=trungVi(tot.map(q=>q.lon)),kx=111320*Math.cos(la0*Math.PI/180),ky=110574;
+  const d=tot.map(q=>Math.hypot((q.lon-lo0)*kx,(q.lat-la0)*ky)),lim=2.5*Math.max(trungVi(d),0.3);
+  const ok=tot.filter((q,i)=>d[i]<=lim);
+  let sw=0,sla=0,slo=0;for(const q of ok){const w=1/Math.max(q.acc,0.5)**2;sw+=w;sla+=w*q.lat;slo+=w*q.lon}
+  const lat=sla/sw,lon=slo/sw;
+  let s2=0;for(const q of ok){const w=1/Math.max(q.acc,0.5)**2;s2+=w*(((q.lon-lon)*kx)**2+((q.lat-lat)*ky)**2)}
+  const pt=Math.sqrt(s2/sw),accW=Math.sqrt(ok.length/sw);
+  const dur=ok[ok.length-1].ts-ok[0].ts+1000,k=Math.max(1,Math.min(ok.length,dur/2500,4));
+  return {lat,lon,acc:Math.max(pt,accW/Math.sqrt(k)),pt,accW,n:ok.length,nTot:ok.filter(q=>q.acc<=GPS_VANG).length,tong:ds.length,boDau:st,boAcc:canh?0:a.length-tot.length,boNgoai:tot.length-ok.length,canh};
+}
+/* xong sớm khi tốt: sau ≥ 4 s, ≥ 4 lần tốt (đã lọc, sai số máy báo ≤ 6 m), độ phân tán < 2 m và kết quả không đỏ */
+function gpsXongSom(ds,ms){if(ms<GPS_SOM_MS)return false;const r=gpsLoc(ds);return !!r&&!r.canh&&r.nTot>=GPS_SOM_N&&r.pt<GPS_SOM_PT&&r.acc<=GPS_VANG}
+
+/* hiệu chỉnh theo mốc: mốc trong 1 km VÀ trong 60 phút quanh giờ đo cột.
+   Nhiều mốc → NỘI SUY nghịch đảo bình phương "khoảng cách gộp" g = √(d² + (Δt · 1000 m / 60 phút)²), g ≥ 10 m
+   (1 km tương đương 60 phút; mốc gần cả chỗ lẫn giờ nặng ký nhất). Không có mốc phù hợp → null (chưa hiệu chỉnh). */
+const HC_KC=1000,HC_PHUT=60;
+function hcTinh(mocs,lat,lon,t){
+  let sw=0,sx=0,sy=0;const ds=[];
+  for(const m of mocs||[]){if(m.lat==null||!isFinite(m.dX)||!isFinite(m.dY))continue;
+    const d=haversine({lat,lon},m),dt=Math.abs((t||0)-(m.t||0))/60000;if(d>HC_KC||dt>HC_PHUT)continue;
+    const g=Math.max(Math.hypot(d,dt*HC_KC/HC_PHUT),10),w=1/(g*g);sw+=w;sx+=w*m.dX;sy+=w*m.dY;ds.push({m,g,d,dt})}
+  if(!sw)return null;ds.sort((a,b)=>a.g-b.g);
+  return {dX:sx/sw,dY:sy/sw,ten:ds.map(x=>x.m.ten).join(' + '),n:ds.length,d:ds[0].d,dt:ds[0].dt};
+}
+/* đọc số gõ tay: "2 195 123,45" / "2.195.123,45" / "2195123.45" */
+function docSo(s){let u=String(s??'').trim().replace(/[\s ']/g,'');if(!u)return NaN;
+  if(u.includes(',')&&u.includes('.')){u=u.lastIndexOf(',')>u.lastIndexOf('.')?u.replace(/\./g,'').replace(',','.'):u.replace(/,/g,'')}
+  else if(u.includes(','))u=(u.match(/,/g).length>1)?u.replace(/,/g,''):u.replace(',','.');
+  if((u.match(/\./g)||[]).length>1)u=u.replace(/\./g,'');
+  return /^[-+]?(\d+\.?\d*|\.\d+)$/.test(u)?+u:NaN}
+/* toạ độ thật của mốc: X (Bắc), Y (Đông) VN-2000; hai số nhỏ (≤ 90, ≤ 180) thì hiểu là vĩ độ, kinh độ WGS-84.
+   Ở Việt Nam X (Bắc, ~1–2,6 triệu m) luôn lớn hơn Y (Đông, ~0,3–0,7 triệu m): gõ ngược thì tự đổi chỗ. */
+function mocNhap(a,b,kt){
+  const p=docSo(a),q=docSo(b);if(!isFinite(p)||!isFinite(q))return {loi:'Nhập đủ hai số X (Bắc), Y (Đông)'};
+  if(Math.abs(p)<=90&&Math.abs(q)<=180){const r=VN.tu84(p,q,kt);return {X:r[0],Y:r[1],kieu:'latlon'}}
+  if(p<q)return {X:q,Y:p,kieu:'xy',doi:true};
+  return {X:p,Y:q,kieu:'xy'};
+}
+/* NẮN TUYẾN theo khoảng đo thật — bình sai bình phương nhỏ nhất, Gauss–Newton trên mặt phẳng VN-2000:
+   min Σ (vị trí − vị trí GPS)² / σ_cột²  +  Σ (khoảng tính − khoảng đo)² / σ_khoảng².
+   nodes: [{id, X, Y, s = σ vị trí (m)}] — xếp theo thứ tự đi tuyến (ma trận băng hẹp, giải nhanh);
+   spans: [{a, b, L = khoảng trên lưới (m), s = σ khoảng (m)}]. Mỗi chuỗi liên thông giải riêng.
+   Trả {pos: {id: [X, Y]}, vong: số vòng lặp lớn nhất}. Cột không thuộc khoảng đo nào không có trong pos. */
+function nanTuyen(nodes,spans,vongMax=40){
+  const ix=new Map(nodes.map((q,i)=>[q.id,i]));
+  const par=nodes.map((_,i)=>i),f=i=>{while(par[i]!==i)i=par[i]=par[par[i]];return i};
+  const sp=spans.filter(s=>ix.has(s.a)&&ix.has(s.b)&&s.a!==s.b&&s.L>0);
+  for(const s of sp)par[f(ix.get(s.a))]=f(ix.get(s.b));
+  const G=new Map();
+  for(const s of sp){const r=f(ix.get(s.a));if(!G.has(r))G.set(r,{n:new Set(),s:[]});const g=G.get(r);g.s.push(s);g.n.add(ix.get(s.a));g.n.add(ix.get(s.b))}
+  const pos={};let vong=0;
+  for(const g of G.values()){
+    const idx=[...g.n].sort((x,y)=>x-y),m=idx.length,N=2*m,loc=new Map(idx.map((v,k)=>[v,k]));
+    let cx=0,cy=0;for(const i of idx){cx+=nodes[i].X;cy+=nodes[i].Y}cx/=m;cy/=m;   /* trừ trọng tâm: số nhỏ, đỡ sai số làm tròn */
+    const u=new Float64Array(N),o=new Float64Array(N),w=new Float64Array(m);
+    idx.forEach((i,k)=>{u[2*k]=o[2*k]=nodes[i].X-cx;u[2*k+1]=o[2*k+1]=nodes[i].Y-cy;w[k]=1/Math.max(nodes[i].s||5,1e-3)**2});
+    const ss=g.s.map(s=>({i:loc.get(ix.get(s.a)),j:loc.get(ix.get(s.b)),L:s.L,w:1/Math.max(s.s||0.01,1e-4)**2}));
+    /* hàng đầu tiên khác 0 của mỗi dòng (ma trận băng / skyline) */
+    const fr=new Int32Array(N);for(let k=0;k<N;k++)fr[k]=k&~1;
+    for(const s of ss){const lo=2*Math.min(s.i,s.j),hi=2*Math.max(s.i,s.j);fr[hi]=Math.min(fr[hi],lo);fr[hi+1]=Math.min(fr[hi+1],lo)}
+    const A=new Float64Array(N*N),b=new Float64Array(N),u2=new Float64Array(N);let it=0;
+    /* hàm mục tiêu — để chặn bước Gauss–Newton quá đà (trọng số khoảng rất lớn so với vị trí) */
+    const fx=v=>{let t=0;for(let k=0;k<m;k++)t+=w[k]*((v[2*k]-o[2*k])**2+(v[2*k+1]-o[2*k+1])**2);
+      for(const s of ss)t+=s.w*(s.L-Math.hypot(v[2*s.i]-v[2*s.j],v[2*s.i+1]-v[2*s.j+1]))**2;return t};
+    let f0=fx(u);
+    for(;it<vongMax;){it++;A.fill(0);b.fill(0);
+      for(let k=0;k<m;k++){A[2*k*N+2*k]+=w[k];A[(2*k+1)*N+2*k+1]+=w[k];b[2*k]+=w[k]*(o[2*k]-u[2*k]);b[2*k+1]+=w[k]*(o[2*k+1]-u[2*k+1])}
+      const A2=new Float64Array(A);   /* phần Gauss–Newton dự phòng */
+      for(const s of ss){const dx=u[2*s.i]-u[2*s.j],dy=u[2*s.i+1]-u[2*s.j+1],d=Math.hypot(dx,dy)||1e-9,ex=dx/d,ey=dy/d,r=s.L-d;
+        const J=[[2*s.i,ex],[2*s.i+1,ey],[2*s.j,-ex],[2*s.j+1,-ey]];
+        /* Newton đủ: thêm số hạng bậc hai −w·r·(I − e·eᵀ)/d (lực căng của khoảng) — GN thiếu số hạng này nên hội tụ chậm */
+        const c=-s.w*r/d,P=[[1-ex*ex,-ex*ey],[-ex*ey,1-ey*ey]],ix2=[2*s.i,2*s.j];
+        for(const [p,jp] of J){b[p]+=s.w*jp*r;for(const [q,jq] of J){A[p*N+q]+=s.w*jp*jq;A2[p*N+q]+=s.w*jp*jq}}
+        for(let aa=0;aa<2;aa++)for(let bb=0;bb<2;bb++){const sg=aa===bb?1:-1;for(let r1=0;r1<2;r1++)for(let c1=0;c1<2;c1++)A[(ix2[aa]+r1)*N+ix2[bb]+c1]+=sg*c*P[r1][c1]}}
+      const dl=giaiBang(A,b,N,fr)||giaiBang(A2,b,N,fr);if(!dl)break;
+      let mx=0,lam=1,f1=Infinity;for(let k=0;k<N;k++)mx=Math.max(mx,Math.abs(dl[k]));
+      for(let h=0;h<12;h++){for(let k=0;k<N;k++)u2[k]=u[k]+lam*dl[k];f1=fx(u2);if(f1<=f0)break;lam/=2}   /* bước lùi: chỉ nhận bước làm giảm mục tiêu */
+      if(f1>f0)break;
+      u.set(u2);f0=f1;if(mx*lam<1e-5)break}
+    vong=Math.max(vong,it);
+    idx.forEach((i,k)=>{pos[nodes[i].id]=[u[2*k]+cx,u[2*k+1]+cy]});
+  }
+  return {pos,vong};
+}
+/* Cholesky cho ma trận đối xứng xác định dương dạng skyline (fr[i] = cột đầu khác 0 ở dòng i) */
+function giaiBang(A,b,n,fr){
+  const L=new Float64Array(n*n);
+  for(let i=0;i<n;i++)for(let j=fr[i];j<=i;j++){let s=A[i*n+j];const k0=Math.max(fr[i],fr[j]);for(let k=k0;k<j;k++)s-=L[i*n+k]*L[j*n+k];
+    if(i===j){if(!(s>0))return null;L[i*n+i]=Math.sqrt(s)}else L[i*n+j]=s/L[j*n+j]}
+  const y=new Float64Array(n);for(let i=0;i<n;i++){let s=b[i];for(let k=fr[i];k<i;k++)s-=L[i*n+k]*y[k];y[i]=s/L[i*n+i]}
+  const x=new Float64Array(n);for(let i=n-1;i>=0;i--){let s=y[i];for(let k=i+1;k<n;k++)if(fr[k]<=i)s-=L[k*n+i]*x[k];x[i]=s/L[i*n+i]}
+  return x;
+}
+/* === HẾT HÀM THUẦN === */
 /* kinh tuyến trục đang dùng (cài đặt chung của máy, mặc định Thanh Hoá 105°00′) */
 function ktt(){return DB.ktt!=null&&isFinite(DB.ktt)?+DB.ktt:105}
 function kttTen(v){const d=Math.floor(v+1e-9),m=Math.round((v-d)*60);return `${d}°${String(m).padStart(2,'0')}′`}
-function vnOf(p){if(p.lat==null||p.lon==null)return null;const r=VN.tu84(+p.lat,+p.lon,ktt());return {x:+r[0].toFixed(3),y:+r[1].toFixed(3)}}
-function gpsLab(){$('#gps-lab').textContent=fix?`±${Math.round(fix.acc)} m`:'GPS'}
-function placeGps(){dropAuto();closeSheet();const xy=geoToXY(fix.lat,fix.lon);addPole(xy.x,xy.y,null,fix);
-  if(fix.acc>15)toast(`GPS sai số ±${Math.round(fix.acc)} m — đứng chỗ thoáng cho chuẩn hơn`)}
-/* GPS lấy TRUNG BÌNH: đo liên tục tối đa 15 s (đủ 10 s và ≥ 5 lần tốt thì xong sớm), bỏ lần đo sai số > 10 m,
-   trung bình lat/lon; acc = lớn hơn trong hai số: trung bình sai số máy báo, độ phân tán quanh điểm trung bình */
-const GPS_TOI_DA=15000,GPS_DU=10000,GPS_ACC=10;
-let gpsM=null;   /* phiên đang đo: {t0, ds:[{lat,lon,acc}], tm} */
-function gpsTot(ds){return ds.filter(q=>q.acc<=GPS_ACC)}
-function gpsTB(ds){
-  let tot=gpsTot(ds),canh=false;
-  if(!tot.length){canh=true;const b=ds.slice().sort((x,y)=>x.acc-y.acc),m=b[0].acc;tot=b.filter(q=>q.acc<=m*1.5).slice(0,Math.max(3,Math.ceil(b.length/3)))}
-  const lat=tot.reduce((s,q)=>s+q.lat,0)/tot.length,lon=tot.reduce((s,q)=>s+q.lon,0)/tot.length;
-  const kx=111320*Math.cos(lat*Math.PI/180),acc0=tot.reduce((s,q)=>s+q.acc,0)/tot.length;
-  const pt=Math.sqrt(tot.reduce((s,q)=>s+((q.lon-lon)*kx)**2+((q.lat-lat)*110574)**2,0)/tot.length);
-  return {lat,lon,acc:Math.max(acc0,pt),n:tot.length,tong:ds.length,canh,t:Date.now()};
+const vn1=v=>(Math.round(v*10)/10).toLocaleString('vi-VN',{maximumFractionDigits:1});
+const vn2=v=>(+v).toLocaleString('vi-VN',{minimumFractionDigits:2,maximumFractionDigits:2});
+const vn3=v=>(+v).toLocaleString('vi-VN',{minimumFractionDigits:3,maximumFractionDigits:3});
+const gioPhut=t=>{const d=new Date(t);return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`};
+const qdot=acc=>`<span class="qdot q-${gpsMau(acc)}"></span>`;
+/* ---- toạ độ VN-2000 của cột: GPS gốc → + hiệu chỉnh mốc → + nắn theo khoảng đo ---- */
+function hcCot(p){if(D.hcTat||p.lat==null||p.lon==null||!(D.mocDo||[]).length)return null;return hcTinh(D.mocDo,+p.lat,+p.lon,p.gt||p.t)}
+function vnGoc(p){if(p.lat==null||p.lon==null)return null;const r=VN.tu84(+p.lat,+p.lon,ktt());return {x:r[0],y:r[1]}}
+/* hiệu chỉnh trung bình của các cột GPS đã hiệu chỉnh — dùng cho điểm vẽ tay (cột không GPS, đường, mốc phác) để đi cùng cột GPS */
+function hcTB(){let n=0,x=0,y=0;for(const p of D.poles){const h=hcCot(p);if(h){n++;x+=h.dX;y+=h.dY}}return n?{dX:x/n,dY:y/n}:null}
+function vnPhac(x,y,tb){const g=xyToGeo(x,y),r=VN.tu84(g.lat,g.lon,ktt());return {x:r[0]+(tb?tb.dX:0),y:r[1]+(tb?tb.dY:0)}}
+/* toạ độ dùng khi xuất. Cột GPS: gốc + hiệu chỉnh + nắn. Cột vẽ tay đã nắn: vị trí phác (đã dời khi nắn) quy về VN-2000. */
+function vnCot(p,tb){
+  const g=vnGoc(p);
+  if(g){const h=hcCot(p);let x=g.x+(h?h.dX:0),y=g.y+(h?h.dY:0);if(p.nan){x+=p.nan.dX;y+=p.nan.dY}return {x,y,h,goc:g}}
+  if(p.nan&&D.geo){const v=vnPhac(p.x,p.y,tb===undefined?hcTB():tb);return {x:v.x,y:v.y,h:null,goc:null,phac:true}}
+  return null;
 }
+function vnOf(p,tb){const v=vnCot(p,tb);return v&&{x:+v.x.toFixed(3),y:+v.y.toFixed(3),h:v.h,goc:v.goc,phac:v.phac}}
+function gpsLab(){$('#gps-lab').textContent=fix?`±${vn1(fix.acc)} m`:'GPS'}
+function placeGps(){dropAuto();closeSheet();const xy=geoToXY(fix.lat,fix.lon);addPole(xy.x,xy.y,null,fix)}
+function gpsCheDo(){return GPS_CHE_DO[DB.gpsCheDo]?DB.gpsCheDo:'chuan'}
+let gpsM=null;   /* phiên đang đo: {t0, ms, muc:'cot'|'moc', ds:[{lat,lon,acc,ts}], kq, tm} */
 function gpsDung(){if(watchId!==null)navigator.geolocation.clearWatch(watchId);watchId=null;if(gpsM)clearInterval(gpsM.tm);gpsM=null;draw()}
 function gpsXong(){
-  const ds=gpsM?gpsM.ds:[];gpsDung();
+  const M=gpsM;if(!M)return;const ds=M.ds,t=Date.now()-M.t0;gpsDung();
   if(!ds.length){toast('Chưa bắt được GPS, ra chỗ thoáng rồi bấm lại');return}
-  fix=gpsTB(ds);gpsLab();placeGps();
-  if(fix.canh)setTimeout(()=>toast(`Không có lần đo nào sai số ≤ ${GPS_ACC} m — lấy ${fix.n} lần tốt nhất, ±${Math.round(fix.acc)} m, nên đo lại chỗ thoáng`),300);
-  else if(fix.acc<=15)toast(`Đã lấy trung bình ${fix.n}/${fix.tong} lần đo · ±${Math.round(fix.acc)} m`);
+  const r=gpsLoc(ds);fix={lat:r.lat,lon:r.lon,acc:r.acc,t:Date.now(),n:r.n,tong:r.tong,ms:t,canh:r.canh};gpsLab();
+  window.__gpsKQ={...fix,muc:M.muc};   /* để kiểm tự động đọc kết quả */
+  if(M.muc==='moc'){showMocForm(fix);return}
+  placeGps();
+  const m=gpsMau(r.acc);
+  setTimeout(()=>toast(`Đo ${vn1(t/1000)} s · ${r.n}/${r.tong} lần · ±${vn1(r.acc)} m — ${MAU_TEN[m]}${m==='do'?'. '+GPS_NHAC+', rồi đo lại':''}`),60);
 }
 function gpsTien(){
-  if(!gpsM)return;const t=Date.now()-gpsM.t0,tot=gpsTot(gpsM.ds).length;
-  if(t>=GPS_TOI_DA&&gpsM.ds.length||t>=GPS_DU&&tot>=5)return gpsXong();
-  if(t>=GPS_TOI_DA*3){gpsDung();toast('Chưa bắt được GPS, ra chỗ thoáng rồi bấm lại');return}
+  if(!gpsM)return;const t=Date.now()-gpsM.t0;
+  if(gpsM.ds.length&&(t>=gpsM.ms||gpsXongSom(gpsM.ds,t)))return gpsXong();
+  if(t>=30000){gpsDung();toast('Chưa bắt được GPS, ra chỗ thoáng rồi bấm lại');return}
   draw();
 }
-function gpsTxt(){const t=Math.min(Math.floor((Date.now()-gpsM.t0)/1000),GPS_TOI_DA/1000),ds=gpsM.ds;
-  if(!ds.length)return `Đang bắt GPS… ${t} s`;const r=gpsTB(ds);
-  return `Đang đo… ${t}/${GPS_TOI_DA/1000} s · ${gpsTot(ds).length}/${ds.length} lần · sai số ~${Math.round(r.acc)} m`}
-$('#b-gps').addEventListener('click',()=>{
+function gpsTxt(){
+  const t=(Date.now()-gpsM.t0)/1000,T=gpsM.ms/1000,ds=gpsM.ds,ten=gpsM.muc==='moc'?'Đo mốc':'Đang đo';
+  if(!ds.length)return {h:`Đang bắt GPS… ${Math.floor(t)} s`,m:''};
+  const r=gpsM.kq||gpsLoc(ds);
+  return {h:`${ten} ${Math.min(Math.floor(t),T)}/${T} s · ${r.n} lần tốt · ±${vn1(r.acc)} m`,m:gpsMau(r.acc)};
+}
+function gpsBatDau(muc){
   if(!('geolocation' in navigator)){toast('Máy này không có định vị');return}
   if(gpsM)return;   /* đang đo: dừng bằng nút Dừng sớm */
   if(watchId!==null)navigator.geolocation.clearWatch(watchId);
-  gpsM={t0:Date.now(),ds:[],tm:setInterval(gpsTien,500)};
+  gpsM={t0:Date.now(),ms:GPS_CHE_DO[gpsCheDo()].ms,muc:muc||'cot',ds:[],kq:null,tm:setInterval(gpsTien,250)};
   watchId=navigator.geolocation.watchPosition(pos=>{if(!gpsM)return;
-      const q={lat:pos.coords.latitude,lon:pos.coords.longitude,acc:pos.coords.accuracy};gpsM.ds.push(q);
-      fix={...q,t:Date.now()};gpsLab();draw()},
-    err=>{if(err.code===1){gpsDung();toast('Chưa cho phép định vị — bật quyền Vị trí cho trình duyệt')}},   /* lỗi hết giờ: vẫn chờ tới khi hết phiên đo */
+      const q={lat:pos.coords.latitude,lon:pos.coords.longitude,acc:pos.coords.accuracy,ts:Date.now()-gpsM.t0};gpsM.ds.push(q);
+      gpsM.kq=gpsLoc(gpsM.ds);fix={...q,acc:gpsM.kq.acc,t:Date.now()};gpsLab();
+      if(gpsXongSom(gpsM.ds,q.ts))gpsXong();else draw()},
+    err=>{if(err.code===1){gpsDung();toast('Chưa cho phép định vị — bật quyền Vị trí cho trình duyệt')}},   /* lỗi hết giờ: vẫn chờ tới hết phiên đo */
     {enableHighAccuracy:true,maximumAge:0,timeout:20000});
   draw();
-});
+}
+$('#b-gps').addEventListener('click',()=>gpsBatDau('cot'));
+
+/* ---- màn GPS chính xác: chế độ đo · mốc hiệu chỉnh · nắn tuyến ---- */
+let mocCho=null,nanCho=null;
+function kcDoCount(){let n=0;for(const p of D.poles)if(p.kcThat&&p.from&&byId(p.from)&&hasEdge(p.id,p.from)&&+parse(p.code).kc>0)n++;return n}
+function showGps(){
+  finishSheet();closeRoad();
+  const cd=gpsCheDo(),mocs=D.mocDo||[],gp=D.poles.filter(p=>p.lat!=null),dem={xanh:0,vang:0,do:0};
+  for(const p of gp){const m=gpsMau(p.acc);if(m)dem[m]++}
+  const nhc=gp.filter(p=>hcCot(p)).length,nkc=kcDoCount(),nnan=D.poles.filter(p=>p.nan).length;
+  const nc=nanCho;
+  panel.innerHTML=`<div class="pin">
+    <div class="row" style="align-items:center"><h2 style="flex:1 1 auto">GPS chính xác</h2><button class="btn" data-a="close" style="flex:0 0 auto">Đóng</button></div>
+    <h3 class="h3">Chế độ đo</h3>
+    <div class="seg">${Object.entries(GPS_CHE_DO).map(([k,v])=>`<button class="btn${k===cd?' pri':''}" data-a="gmode" data-m="${k}">${v.ten}</button>`).join('')}</div>
+    <p class="note">Chuẩn 10 s dùng hằng ngày; tín hiệu tốt thì xong sớm (từ 4 s). Kỹ 20 s cho cột quan trọng. Màu: <span class="qdot q-xanh"></span> &lt; 3 m · <span class="qdot q-vang"></span> 3–6 m · <span class="qdot q-do"></span> &gt; 6 m (đỏ: ${GPS_NHAC.toLowerCase()}).</p>
+    ${gp.length?`<p class="note">Cột có GPS: ${gp.length} — <span class="qdot q-xanh"></span> ${dem.xanh} · <span class="qdot q-vang"></span> ${dem.vang} · <span class="qdot q-do"></span> ${dem.do}</p>`:''}
+    <h3 class="h3">Mốc hiệu chỉnh</h3>
+    <button class="big pri" data-a="domoc"><b>⌖ Đo mốc</b><span>Đứng tại điểm biết toạ độ (mốc địa chính, cọc lưới, điểm đã đo máy) → đo GPS → nhập X, Y VN-2000 thật. App tính độ lệch và sửa cho các cột đo trong 1 km, 60 phút quanh giờ đo mốc.</span></button>
+    ${mocs.map(m=>`<div class="card"><div class="tx" style="flex:1;min-width:0"><b>${qdot(m.acc)} ${esc(m.ten)} · ${gioPhut(m.t)}</b>
+      <span>lệch X ${m.dX>=0?'+':''}${vn2(m.dX)} · Y ${m.dY>=0?'+':''}${vn2(m.dY)} m (${vn2(Math.hypot(m.dX,m.dY))} m) · GPS ±${vn1(m.acc)} m</span></div>
+      <button class="btn danger" data-a="mocdel" data-id="${m.id}">Xoá</button></div>`).join('')}
+    ${mocs.length?`<button class="btn${D.hcTat?'':' pri'}" data-a="hc">${D.hcTat?'Áp hiệu chỉnh: TẮT — chạm để bật':'Áp hiệu chỉnh: BẬT — chạm để tắt'}</button>
+      <p class="note">${D.hcTat?'Đang tắt: xuất theo GPS gốc.':`${nhc}/${gp.length} cột GPS đã hiệu chỉnh${gp.length-nhc?`, ${gp.length-nhc} cột không có mốc trong 1 km / 60 phút → chưa hiệu chỉnh`:''}. Nhiều mốc: nội suy theo khoảng cách và giờ (1 km ≈ 60 phút).`}</p>`:''}
+    <h3 class="h3">Nắn tuyến theo khoảng đo</h3>
+    <p class="note">Khoảng đo thật (thước / laser): ${nkc} khoảng. Nhập: chạm số khoảng cột (giữa hai cột) trên bản vẽ, hoặc ô Khoảng cột → “Khoảng đo thật”. Số có dấu ✓ là khoảng đo thật.</p>
+    ${nc&&nc.loi?`<div class="kq" id="nan-kq" style="color:var(--warn)">${esc(nc.loi)}</div>`:''}
+    ${nc&&!nc.loi?(`<div class="kq" id="nan-kq"><b>Xem trước — chưa áp dụng</b>
+      <span>${nc.nodes.length} cột, ${nc.spans.length} khoảng đo · ${nc.vong} vòng lặp · ${Math.round(nc.ms)} ms</span>
+      <span>Sai khoảng: trước <b class="mono">${vn2(nc.saiTruoc)} m</b> → sau <b class="mono">${vn3(nc.saiSau)} m</b></span>
+      <span>Dịch cột: lớn nhất <b class="mono">${vn2(nc.dmax)} m</b> (cột ${esc(nc.top[0].so||'?')}), trung bình ${vn2(nc.dtb)} m</span>
+      <span class="note">${nc.top.slice(0,6).map(x=>`${esc(x.so||'?')}: ${vn2(x.d)} m`).join(' · ')}</span>
+      ${nc.dmax>15?`<span style="color:var(--warn);font-weight:700">Dịch lớn bất thường — kiểm lại khoảng đo (gõ nhầm? đo nhầm cột?)</span>`:''}
+      <div class="row"><button class="btn" data-a="nanhuy">Huỷ</button><button class="btn pri" data-a="nanok">Áp dụng</button></div></div>`)
+      :`<button class="big" data-a="nan"><b>Nắn tuyến theo khoảng đo</b><span>Giữ hướng tuyến theo GPS (cột đã hiệu chỉnh mốc làm neo), ép khoảng giữa các cột bằng khoảng đo thật. Xem trước rồi mới áp dụng.</span></button>`}
+    ${nnan&&!(nc&&!nc.loi)?`<button class="btn danger" data-a="nanbo">Bỏ nắn (${nnan} cột đã nắn)</button>`:''}
+    <p class="note">Trên bản vẽ: chấm màu dưới-trái cột = chất lượng GPS; chấm viền đậm = đã hiệu chỉnh mốc; khung vuông xanh = đã nắn. Excel / JSON / DXF VN-2000 dùng toạ độ đã hiệu chỉnh + nắn, kèm toạ độ gốc.</p>
+  </div>`;
+  panel.hidden=false;
+}
+function showMocForm(fx){
+  mocCho=fx;const v=VN.tu84(fx.lat,fx.lon,ktt()),m=gpsMau(fx.acc),n=(D.mocDo||[]).length+1;
+  panel.innerHTML=`<div class="pin">
+    <div class="row" style="align-items:center"><h2 style="flex:1 1 auto">Lưu mốc hiệu chỉnh</h2><button class="btn" data-a="mf-huy" style="flex:0 0 auto">Bỏ</button></div>
+    <div class="kq"><span>${qdot(fx.acc)} GPS tại mốc: <b>±${vn1(fx.acc)} m</b> (${MAU_TEN[m]}) · ${fx.n}/${fx.tong} lần · ${vn1(fx.ms/1000)} s</span>
+      <span class="mono">GPS → VN-2000: X ${vn3(v[0])} · Y ${vn3(v[1])} (KTT ${kttTen(ktt())})</span>
+      ${m==='do'?`<span style="color:var(--warn);font-weight:700">${GPS_NHAC} — nên đo lại.</span>`:''}</div>
+    <label class="sl vn"><span class="k">Tên mốc</span><input id="mf-ten" class="rin" value="M${n}" autocomplete="off"></label>
+    <label class="sl vn"><span class="k">X thật (Bắc), vd 2 195 123,456 — hoặc vĩ độ</span><input id="mf-x" class="rin" inputmode="decimal" autocomplete="off" placeholder="X (Bắc)"></label>
+    <label class="sl vn"><span class="k">Y thật (Đông), vd 585 432,100 — hoặc kinh độ</span><input id="mf-y" class="rin" inputmode="decimal" autocomplete="off" placeholder="Y (Đông)"></label>
+    <div class="row"><button class="btn" data-a="mf-lai">Đo lại</button><button class="btn pri" data-a="mf-luu">Lưu mốc</button></div>
+    <p class="note">Toạ độ thật theo cùng kinh tuyến trục đang chọn (${kttTen(ktt())}, đổi ở màn Xuất). Độ lệch = toạ độ thật − toạ độ GPS, cộng vào các cột đo gần đó.</p>
+  </div>`;
+  panel.hidden=false;setTimeout(()=>{const i=$('#mf-x');if(i)i.focus()},50);
+}
+function luuMoc(){
+  const fx=mocCho;if(!fx)return;
+  const r=mocNhap($('#mf-x').value,$('#mf-y').value,ktt());if(r.loi){toast(r.loi);return}
+  const v=VN.tu84(fx.lat,fx.lon,ktt()),dX=r.X-v[0],dY=r.Y-v[1],L=Math.hypot(dX,dY);
+  if(L>100&&!confirm(`Độ lệch ${vn1(L)} m lớn bất thường (GPS thường lệch dưới 10 m). Kiểm lại số${r.doi?' (đã đổi chỗ X/Y)':''} — vẫn lưu?`))return;
+  snap();D.mocDo=D.mocDo||[];
+  const ten=($('#mf-ten').value||'').trim()||'M'+(D.mocDo.length+1);
+  D.mocDo.push({id:uid(),ten,t:fx.t,lat:+fx.lat.toFixed(8),lon:+fx.lon.toFixed(8),acc:+fx.acc.toFixed(2),n:fx.n,
+    Xd:+v[0].toFixed(3),Yd:+v[1].toFixed(3),X:+r.X.toFixed(3),Y:+r.Y.toFixed(3),dX:+dX.toFixed(3),dY:+dY.toFixed(3),kt:ktt(),kieu:r.kieu});
+  mocCho=null;nanCho=null;save();draw();showGps();
+  toast(`Đã lưu mốc ${ten}: lệch ${vn2(L)} m${r.doi?' (đã đổi chỗ X/Y)':''}`);
+}
+/* nắn: dựng bài toán từ các khoảng đo thật (khoảng cột lưu ở cột con, nối dây với cột trước) */
+function nanTinh(){
+  if(!D.geo)return {loi:'Chưa có cột nào lấy GPS — cần GPS để nắn trên mặt phẳng VN-2000.'};
+  const tb=hcTB(),spans=[],ids=new Set();
+  for(const p of D.poles){if(!p.kcThat||!p.from)continue;const f=byId(p.from),kc=+parse(p.code).kc;
+    if(!f||!hasEdge(p.id,f.id)||!(kc>0))continue;spans.push({a:f.id,b:p.id,Ld:kc});ids.add(f.id);ids.add(p.id)}
+  if(!spans.length)return {loi:'Chưa có khoảng đo thật nào. Chạm số khoảng cột giữa hai cột trên bản vẽ để nhập khoảng đo bằng thước / laser.'};
+  const nodes=[],cu={};
+  for(const p of sorted()){if(!ids.has(p.id))continue;const v=vnCot(p,tb)||vnPhac(p.x,p.y,tb);
+    /* σ vị trí: cột GPS = sai số đo (≥ 1,5 m); đã hiệu chỉnh mốc = neo, nặng ký gấp 9; cột vẽ tay = 30 m (chỉ giữ dáng) */
+    const a=Math.max(+p.acc||5,1.5),s=p.lat!=null?(v.h?a/3:a):30;
+    nodes.push({id:p.id,X:v.x,Y:v.y,s,so:parse(p.code).so});cu[p.id]=[v.x,v.y]}
+  for(const s of spans){s.k=VN.kTL(cu[s.b][1]);s.L=s.Ld*s.k;s.s=0.01}   /* khoảng đo trên mặt đất → trên lưới chiếu (× hệ số tỉ lệ) */
+  const t0=performance.now(),r=nanTuyen(nodes,spans),ms=performance.now()-t0;
+  const sai=P=>Math.max(...spans.map(s=>Math.abs(Math.hypot(P[s.a][0]-P[s.b][0],P[s.a][1]-P[s.b][1])/s.k-s.Ld)));
+  const top=nodes.map(n=>({id:n.id,so:n.so,d:Math.hypot(r.pos[n.id][0]-n.X,r.pos[n.id][1]-n.Y)})).sort((a,b)=>b.d-a.d);
+  return {spans,nodes,pos:r.pos,vong:r.vong,ms,saiTruoc:sai(cu),saiSau:sai(r.pos),dmax:top[0].d,dtb:top.reduce((s,x)=>s+x.d,0)/top.length,top};
+}
+function nanApDung(c){
+  snap();
+  for(const n of c.nodes){const p=byId(n.id);if(!p)continue;const dX=c.pos[n.id][0]-n.X,dY=c.pos[n.id][1]-n.Y;
+    p.nan={dX:+((p.nan?p.nan.dX:0)+dX).toFixed(4),dY:+((p.nan?p.nan.dY:0)+dY).toFixed(4),t:Date.now()};
+    p.x+=dY;p.y-=dX}   /* sơ đồ dời theo: X VN = Bắc = −y sơ đồ, Y VN = Đông = x */
+  save();draw();
+}
+function nanBo(){snap();let n=0;for(const p of D.poles)if(p.nan){p.x-=p.nan.dY;p.y+=p.nan.dX;delete p.nan;n++}save();draw();return n}
+/* khoảng đo thật: chạm số khoảng cột (hoặc giữa đoạn dây) trên bản vẽ */
+let lastKC=[];
+/* h = cột chạm trúng (nếu có): số khoảng chỉ thắng khi ngón tay gần số hơn gần cột (thu nhỏ hết cỡ cột nằm sát số) */
+function hitSpan(pt,h){
+  let best=null,bd=20;
+  for(const t of lastKC){const d=Math.hypot(t.x+V.tx-pt.x,t.y+V.ty-4-pt.y);if(d<bd){bd=d;best=t.id}}
+  if(best&&h&&h.x!==undefined&&Math.hypot(h.x*V.s+V.tx-pt.x,h.y*V.s+V.ty-pt.y)<=bd)return null;
+  if(best||h)return best;
+  for(const p of D.poles){const f=p.from&&byId(p.from);if(!f||!hasEdge(p.id,f.id))continue;
+    const d=Math.hypot((p.x+f.x)/2*V.s+V.tx-pt.x,(p.y+f.y)/2*V.s+V.ty-pt.y);
+    if(d<bd&&Math.hypot(p.x-f.x,p.y-f.y)*V.s>70){bd=d;best=p.id}}
+  return best;
+}
+function nhapKcThat(id){
+  const p=byId(id),f=p&&byId(p.from);if(!p||!f)return;const r=parse(p.code);
+  const t=prompt(`Khoảng đo thật ${parse(f.code).so||'?'} → ${r.so||'?'} (m), đo bằng thước / laser.\nXoá hết chữ để bỏ đánh dấu đo thật.`,r.kc===''?'':String(r.kc).replace('.',','));
+  if(t===null)return;
+  if(!t.trim()){if(p.kcThat){snap();delete p.kcThat;save();draw();toast('Đã bỏ đánh dấu khoảng đo thật')}return}
+  const v=docSo(t);if(!(v>0&&v<2000)){toast('Khoảng đo không hợp lệ');return}
+  snap();r.kc=Math.round(v*100)/100;p.code=codeOf(r);p.kcThat=true;p.auto=false;
+  if(editId===p.id){F=parse(p.code);renderSlots();renderOpts()}
+  nanCho=null;save();draw();toast(`Khoảng đo thật ${String(r.kc).replace('.',',')} m ✓`);
+}
 
 /* ================= xuất file ================= */
 /* thứ tự đi tuyến: đầu mỗi đoạn theo thời gian, rồi lần lượt cột nối tiếp (cả đoạn gộp từ máy khác) */
@@ -1028,12 +1306,20 @@ function xuatXlsx(){
   const ws=XLSX.utils.aoa_to_sheet(aoa),M=(a,b,c,d)=>({s:{r:a,c:b},e:{r:c,c:d}});
   ws['!merges']=[M(0,0,0,14),M(1,0,1,14),M(2,0,3,0),M(2,1,3,1),M(2,2,3,2),M(2,3,3,3),M(2,4,2,5),M(2,6,2,7),M(2,8,2,11),M(2,12,3,12),M(2,13,3,13),M(2,14,3,14)];
   ws['!cols']=[5,10,14,9,12,12,22,22,5,5,5,6,12,20,22].map(w=>({wch:w}));
-  const ws2=XLSX.utils.aoa_to_sheet([['STT','Số cột','Mã nhập','Ký hiệu','X (m)','Y (m)','Vĩ độ','Kinh độ','Sai số GPS (m)','X_VN2000 (Bắc)','Y_VN2000 (Đông)'],
-    ...sorted().map((p,i)=>{const v=vnOf(p);return [i+1,parse(p.code).so,p.code,SHAPE_NAME[p.shape||'tron']+(isDoi(p)&&p.shape!=='tba'?' đôi':''),+p.x.toFixed(2),+(-p.y).toFixed(2),p.lat??'',p.lon??'',p.acc??'',v?v.x:'',v?v.y:'']}),
-    ...D.mocs.map(m=>['','Mốc',m.ten,'Mốc',+m.x.toFixed(2),+(-m.y).toFixed(2),'','','','','']),
-    [],['','Ghi chú',`X, Y (m): sơ đồ phác. X_VN2000 = Bắc, Y_VN2000 = Đông: VN-2000 múi 3°, kinh tuyến trục ${kttTen(ktt())}, k0 0,9999, 7 tham số QĐ 05/2007 — chỉ cột có GPS`]]);
-  ws2['!cols']=[5,10,40,12,10,10,12,12,10,14,14].map(w=>({wch:w}));
-  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Bang ke');XLSX.utils.book_append_sheet(wb,ws2,'Toa do');
+  const tb=hcTB(),MT={xanh:'Xanh (< 3 m)',vang:'Vàng (3–6 m)',do:'Đỏ (> 6 m)'};
+  const ws2=XLSX.utils.aoa_to_sheet([['STT','Số cột','Mã nhập','Ký hiệu','X (m)','Y (m)','Vĩ độ','Kinh độ','Sai số GPS (m)','Chất lượng GPS',
+      'X_VN2000 (Bắc)','Y_VN2000 (Đông)','Hiệu chỉnh theo mốc','Nắn theo khoảng đo','X_VN2000 gốc GPS','Y_VN2000 gốc GPS','Khoảng đo thật (m)'],
+    ...sorted().map((p,i)=>{const v=vnOf(p,tb),r=parse(p.code);return [i+1,r.so,p.code,SHAPE_NAME[p.shape||'tron']+(isDoi(p)&&p.shape!=='tba'?' đôi':''),+p.x.toFixed(2),+(-p.y).toFixed(2),
+      p.lat??'',p.lon??'',p.acc??'',p.lat!=null?MT[gpsMau(p.acc)]||'':'',v?v.x:'',v?v.y:'',p.lat!=null?(v&&v.h?v.h.ten:'không'):'',
+      p.nan?(p.lat!=null?'có':'có (cột vẽ tay)'):'',v&&v.goc?+v.goc.x.toFixed(3):'',v&&v.goc?+v.goc.y.toFixed(3):'',p.kcThat&&r.kc!==''?r.kc:'']}),
+    ...D.mocs.map(m=>['','Mốc',m.ten,'Mốc',+m.x.toFixed(2),+(-m.y).toFixed(2),'','','','','','','','','','','']),
+    [],['','Ghi chú',`X, Y (m): sơ đồ phác. X_VN2000 = Bắc, Y_VN2000 = Đông: VN-2000 múi 3°, kinh tuyến trục ${kttTen(ktt())}, k0 0,9999, 7 tham số QĐ 05/2007 — đã cộng hiệu chỉnh theo mốc${D.hcTat?' (đang TẮT)':''} và nắn theo khoảng đo (nếu có); cột "gốc GPS" là toạ độ chưa sửa. Cột vẽ tay chỉ có toạ độ khi đã nắn.`]]);
+  ws2['!cols']=[5,10,40,12,10,10,12,12,10,13,14,14,16,14,14,14,10].map(w=>({wch:w}));
+  const ws3=XLSX.utils.aoa_to_sheet([['Tên mốc','Giờ đo','Vĩ độ đo','Kinh độ đo','Sai số GPS (m)','X GPS (Bắc)','Y GPS (Đông)','X thật (Bắc)','Y thật (Đông)','dX (m)','dY (m)','Lệch (m)','KTT'],
+    ...(D.mocDo||[]).map(m=>[m.ten,new Date(m.t).toLocaleString('vi-VN'),m.lat,m.lon,m.acc,m.Xd,m.Yd,m.X,m.Y,m.dX,m.dY,+Math.hypot(m.dX,m.dY).toFixed(3),kttTen(m.kt||105)]),
+    [],['Ghi chú: dX = X thật − X GPS, dY = Y thật − Y GPS. Cột GPS dùng mốc trong 1 km và 60 phút quanh giờ đo; nhiều mốc thì nội suy nghịch đảo bình phương khoảng cách gộp (1 km ≈ 60 phút).']]);
+  ws3['!cols']=[10,18,12,12,10,14,14,14,14,9,9,9,8].map(w=>({wch:w}));
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Bang ke');XLSX.utils.book_append_sheet(wb,ws2,'Toa do');if((D.mocDo||[]).length)XLSX.utils.book_append_sheet(wb,ws3,'Moc hieu chinh');
   giao(new Blob([XLSX.write(wb,{bookType:'xlsx',type:'array'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),fname('.xlsx'));
 }
 function dxfTxt(s){return String(s).replace(/[^\x20-\x7e]/g,c=>'\\U+'+c.codePointAt(0).toString(16).toUpperCase().padStart(4,'0'))}
@@ -1042,13 +1328,14 @@ function xyToGeo(x,y){const g=D.geo,kx=111320*Math.cos(g.lat0*Math.PI/180);retur
 /* that = true: toạ độ thật VN-2000 (X DXF = Đông, Y DXF = Bắc); cột không GPS giữ vị trí phác (quy về VN-2000 qua mốc GPS của bản vẽ) */
 function buildDxf(that){
   const L=[],a=(...x)=>{for(let i=0;i<x.length;i+=2)L.push(String(x[i]),String(x[i+1]))};
-  const P=that?(x,y)=>{const g=xyToGeo(x,y),r=VN.tu84(g.lat,g.lon,ktt());return [r[1],r[0]]}:(x,y)=>[x,-y];
-  const PP=p=>{if(that&&p.lat!=null&&p.lon!=null){const r=VN.tu84(+p.lat,+p.lon,ktt());return [r[1],r[0]]}return P(p.x,p.y)};
+  const tb=that?hcTB():null;   /* điểm vẽ tay (đường, mốc phác, cột không GPS) đi cùng hiệu chỉnh trung bình của cột GPS */
+  const P=that?(x,y)=>{const v=vnPhac(x,y,tb);return [v.y,v.x]}:(x,y)=>[x,-y];
+  const PP=p=>{if(that){const v=vnCot(p,tb);if(v)return [v.y,v.x]}return P(p.x,p.y)};
   const f=v=>(+v).toFixed(3),R=0.8;
   a(0,'SECTION',2,'HEADER',9,'$ACADVER',1,'AC1009',0,'ENDSEC');
   a(0,'SECTION',2,'TABLES');
   a(0,'TABLE',2,'LTYPE',70,1,0,'LTYPE',2,'CONTINUOUS',70,0,3,'Solid line',72,65,73,0,40,'0.0',0,'ENDTAB');
-  const LY=[['KS_COT',1],['KS_DAY',5],['KS_CHU',7],['KS_KHOANG',3],['KS_DUONG',8],['KS_MOC',6]].concat(that?[['KS_COT_KHONG_GPS',30]]:[]);
+  const LY=[['KS_COT',1],['KS_DAY',5],['KS_CHU',7],['KS_KHOANG',3],['KS_DUONG',8],['KS_MOC',6]].concat(that?[['KS_COT_KHONG_GPS',30],['KS_MOC_HIEU_CHINH',6]]:[]);
   a(0,'TABLE',2,'LAYER',70,LY.length);for(const [n,c] of LY)a(0,'LAYER',2,n,70,0,62,c,6,'CONTINUOUS');a(0,'ENDTAB');
   a(0,'TABLE',2,'STYLE',70,1,0,'STYLE',2,'KS',70,0,40,'0.0',41,'1.0',50,'0.0',71,0,42,'1.0',3,'arial.ttf',4,'',0,'ENDTAB');
   a(0,'ENDSEC',0,'SECTION',2,'ENTITIES');
@@ -1061,6 +1348,9 @@ function buildDxf(that){
   for(const r of D.roads)if(r.ten){const m=roadMid(r),q=P(m[0],m[1]);txt(q[0],q[1]-0.6,'1.5',r.ten,'KS_DUONG')}
   for(const j of junctions()){const q=P(j.x,j.y);txt(q[0]+1,q[1]-2,'1.2','Ngã '+(j.n===4?'tư':'ba'),'KS_MOC')}
   for(const m of D.mocs){const q=P(m.x,m.y);circ(q[0],q[1],0.5,'KS_MOC');txt(q[0]+1,q[1]+1,'1.5',m.ten,'KS_MOC')}
+  if(that)for(const m of D.mocDo||[]){const r=VN.tu84(m.lat,m.lon,ktt()),x=r[1]+m.dY,y=r[0]+m.dX,s=1.2;   /* = toạ độ thật đã nhập */
+    line(x,y+s,x+s*.87,y-s/2,'KS_MOC_HIEU_CHINH');line(x+s*.87,y-s/2,x-s*.87,y-s/2,'KS_MOC_HIEU_CHINH');line(x-s*.87,y-s/2,x,y+s,'KS_MOC_HIEU_CHINH');
+    txt(x+1.6,y-0.5,'1.5',m.ten,'KS_MOC_HIEU_CHINH')}
   const XY={};for(const p of D.poles)XY[p.id]=PP(p);
   for(const [i,j] of D.edges){const A=byId(i),B=byId(j);if(!A||!B)continue;
     const [ax,ay]=XY[A.id],[bx,by]=XY[B.id],dx=bx-ax,dy=by-ay,l=Math.hypot(dx,dy);if(l<=2*R)continue;const ux=dx/l,uy=dy/l;
@@ -1068,7 +1358,7 @@ function buildDxf(that){
     const kc=parse(B.from===A.id?B.code:A.from===B.id?A.code:'').kc;
     if(kc)txt((ax+bx)/2,(ay+by)/2+0.4,'1.0',String(kc).replace('.',','),'KS_KHOANG');}
   for(const p of D.poles){const [x,y]=XY[p.id],r=parse(p.code),doi=isDoi(p,r)&&p.shape!=='tba';
-    const LC=that&&p.lat==null?'KS_COT_KHONG_GPS':'KS_COT';   /* cột vẽ tay không GPS: layer riêng màu cam để kiểm lại */
+    const LC=that&&p.lat==null&&!p.nan?'KS_COT_KHONG_GPS':'KS_COT';   /* cột vẽ tay không GPS: layer riêng màu cam để kiểm lại */
     const one=cx=>{if(p.shape==='vuong')sq(cx,y,R,LC);else{circ(cx,y,R,LC);if(p.shape==='cs'){const d=R*0.7;line(cx-d,y-d,cx+d,y+d,LC);line(cx-d,y+d,cx+d,y-d,LC)}}};
     let w=R;
     if(p.shape==='tba'){const s=R*1.5;sq(x,y,s,LC);a(0,'SOLID',8,LC,10,f(x-s),20,f(y-s),30,'0.0',11,f(x+s),21,f(y-s),31,'0.0',12,f(x+s),22,f(y+s),32,'0.0',13,f(x+s),23,f(y+s),33,'0.0');w=s}
@@ -1086,10 +1376,12 @@ function xuatDxf(that){
     if(k)setTimeout(()=>toast(`${k} cột không có GPS — giữ vị trí phác, layer KS_COT_KHONG_GPS, cần kiểm lại`),3300);return}
   giao(new Blob([buildDxf()],{type:'application/dxf'}),fname('.dxf'))}
 function xuatJson(){
-  const poles=D.poles.map(p=>{const v=vnOf(p);return v?{...p,X_VN2000:v.x,Y_VN2000:v.y}:p});
-  const out={app:'khao-sat-tuyen',ver:2,ten:D.ten,ngay:D.ngay,geo:D.geo,
-    vn2000:{kinhTuyenTruc:ktt(),mui:3,k0:0.9999,ghiChu:'X_VN2000 = Bắc, Y_VN2000 = Đông; 7 tham số QĐ 05/2007/QĐ-BTNMT; chỉ cột có GPS'},
-    poles,edges:D.edges,roads:D.roads,mocs:D.mocs};
+  const tb=hcTB(),poles=D.poles.map(p=>{const v=vnOf(p,tb);if(!v)return p;const o={...p,X_VN2000:v.x,Y_VN2000:v.y};
+    if(v.goc){o.X_VN2000_goc=+v.goc.x.toFixed(3);o.Y_VN2000_goc=+v.goc.y.toFixed(3);o.hieuChinhTheoMoc=v.h?v.h.ten:'không';o.chatLuongGPS=gpsMau(p.acc)}return o});
+  const out={app:'khao-sat-tuyen',ver:3,ten:D.ten,ngay:D.ngay,geo:D.geo,
+    vn2000:{kinhTuyenTruc:ktt(),mui:3,k0:0.9999,ghiChu:'X_VN2000 = Bắc, Y_VN2000 = Đông (đã cộng hiệu chỉnh theo mốc và nắn theo khoảng đo); X/Y_VN2000_goc = theo GPS chưa sửa; 7 tham số QĐ 05/2007/QĐ-BTNMT'},
+    hieuChinh:{bat:!D.hcTat,banKinh_m:HC_KC,cuaSo_phut:HC_PHUT,cach:'nội suy nghịch đảo bình phương khoảng cách gộp √(d² + (Δt·1000/60)²)'},
+    poles,edges:D.edges,roads:D.roads,mocs:D.mocs,mocDo:D.mocDo||[],hcTat:!!D.hcTat};
   giao(new Blob([JSON.stringify(out,null,1)],{type:'application/json'}),fname('.json'));
 }
 const PNGCSS=`.ed{stroke:#2F5FA8;stroke-width:3}.pole{fill:#fff;stroke:#15201C;stroke-width:3}.fillk{fill:#15201C}
@@ -1155,6 +1447,7 @@ function gop(o){
   for(const [a,b] of o.edges||[]){const A=idm[a],B=idm[b];if(A&&B&&A!==B&&!hasEdge(A,B))D.edges.push([A,B])}
   for(const r of o.roads||[])D.roads.push({id:uid(),w:r.w||7,ten:r.ten||'',pts:r.pts.map(q=>[q[0]+dx,q[1]+dy])});
   for(const m of o.mocs||[])D.mocs.push({id:uid(),ten:m.ten,x:m.x+dx,y:m.y+dy});
+  D.mocDo=D.mocDo||[];for(const m of o.mocDo||[])if(!D.mocDo.some(x=>x.id===m.id||(x.t===m.t&&x.ten===m.ten)))D.mocDo.push({...m});
   return {them,trung,how};
 }
 const docFile=f=>new Promise((ok,no)=>{const fr=new FileReader();fr.onload=()=>ok(fr.result);fr.onerror=no;fr.readAsText(f)});
@@ -1187,7 +1480,7 @@ function showExport(){
     <label class="sl vn"><span class="k">Tỉnh / kinh tuyến trục VN-2000</span><select id="ex-ktt">${VN.TINH.map(([t,v])=>`<option value="${v}"${Math.abs(v-ktt())<1e-9&&t===(DB.tinh||'Thanh Hoá')?' selected':''}>${t} — ${kttTen(v)}</option>`).join('')}
       <option value="khac"${VN.TINH.some(([t,v])=>Math.abs(v-ktt())<1e-9&&t===(DB.tinh||'Thanh Hoá'))?'':' selected'}>Khác — tự nhập (${kttTen(ktt())})</option></select></label>
     <button class="big" data-a="json"><b>File gốc (.json)</b><span>Để mở lại / gộp trên máy khác hoặc gửi Claude chuyển sang CAD.</span></button>
-    <p class="note">Excel và JSON có thêm cột X_VN2000 (Bắc), Y_VN2000 (Đông) cho cột có GPS, theo kinh tuyến trục đang chọn (múi 3°).</p>
+    <p class="note">Excel và JSON có thêm cột X_VN2000 (Bắc), Y_VN2000 (Đông) cho cột có GPS, theo kinh tuyến trục đang chọn (múi 3°) — đã cộng hiệu chỉnh theo mốc và nắn theo khoảng đo (màn ◎ GPS chính xác), kèm toạ độ gốc GPS và cột “Hiệu chỉnh theo mốc”.</p>
     <p class="note">Excel, DXF, JSON lưu vào thư mục <b>Tải xuống (Download)</b>. Gửi qua Zalo: Gửi file → Download.</p>
   </div>`;
   panel.hidden=false;
@@ -1206,6 +1499,17 @@ panel.addEventListener('click',e=>{
     clearTimeout(delListT[id]);delete delListT[id];delete DB.ds[id];
     if(id===D.id){const rest=Object.values(DB.ds).sort((x,y)=>y.capNhat-x.capNhat);switchTo(rest[0]||newD())}
     saveNow();showList()}
+  else if(a==='gmode'){DB.gpsCheDo=b.dataset.m;saveNow();showGps();toast('Chế độ đo: '+GPS_CHE_DO[b.dataset.m].ten)}
+  else if(a==='domoc'){closePanel();if(gpsM){toast('Đang đo GPS — chờ xong rồi đo mốc');return}gpsBatDau('moc');toast('Đứng yên tại mốc, giữ máy ngang ngực')}
+  else if(a==='mocdel'){const m=(D.mocDo||[]).find(x=>x.id===id);if(m&&confirm(`Xoá mốc ${m.ten}?`)){snap();D.mocDo=D.mocDo.filter(x=>x!==m);nanCho=null;save();draw();showGps()}}
+  else if(a==='hc'){snap();D.hcTat=!D.hcTat;nanCho=null;save();draw();showGps();toast(D.hcTat?'Đã tắt hiệu chỉnh theo mốc':'Đã bật hiệu chỉnh theo mốc')}
+  else if(a==='nan'){nanCho=nanTinh();showGps();const k=$('#nan-kq');if(k)k.scrollIntoView({block:'center'})}
+  else if(a==='nanhuy'){nanCho=null;showGps();toast('Đã huỷ, tuyến giữ nguyên')}
+  else if(a==='nanok'){const c=nanCho;nanCho=null;if(c&&!c.loi){nanApDung(c);toast(`Đã nắn ${c.nodes.length} cột · dịch lớn nhất ${vn2(c.dmax)} m · bấm ↶ để hoàn tác`)}showGps()}
+  else if(a==='nanbo'){if(confirm('Bỏ nắn, đưa các cột về vị trí trước khi nắn?')){const n=nanBo();showGps();toast(`Đã bỏ nắn ${n} cột`)}}
+  else if(a==='mf-huy'){mocCho=null;closePanel();toast('Không lưu mốc')}
+  else if(a==='mf-lai'){mocCho=null;closePanel();gpsBatDau('moc')}
+  else if(a==='mf-luu')luuMoc();
   else if(a==='xlsx')xuatXlsx();else if(a==='dxf')xuatDxf();else if(a==='dxfvn')xuatDxf(true);else if(a==='json')xuatJson();else if(a==='png')guiAnh();
 });
 panel.addEventListener('change',async e=>{
@@ -1223,14 +1527,15 @@ panel.addEventListener('change',async e=>{
   }
   if(e.target.id==='imp'){
     try{const o=JSON.parse(await docFile(fl[0]));if(!Array.isArray(o.poles))throw 0;napPoles(o.poles);
-      const d={id:uid(),ten:o.ten||'Tuyến nhập',ngay:o.ngay||today(),poles:o.poles,edges:o.edges||[],roads:o.roads||[],mocs:o.mocs||[],geo:o.geo||null,active:null,view:null,capNhat:Date.now()};
+      const d={id:uid(),ten:o.ten||'Tuyến nhập',ngay:o.ngay||today(),poles:o.poles,edges:o.edges||[],roads:o.roads||[],mocs:o.mocs||[],mocDo:o.mocDo||[],hcTat:!!o.hcTat,geo:o.geo||null,active:null,view:null,capNhat:Date.now()};
       DB.ds[d.id]=d;saveNow();switchTo(d);closePanel();toast('Đã mở file')}catch(err){toast('File không đúng định dạng của app')}
   }
 });
 $('#b-list').addEventListener('click',showList);
 $('#b-export').addEventListener('click',showExport);
 $('#b-table').addEventListener('click',showTable);
-function switchTo(d){saveNow();D=d;D.roads=D.roads||[];D.mocs=D.mocs||[];DB.cur=d.id;undoSt=[];editId=null;F=null;noiA=null;selRoad=null;sheet.hidden=true;rsheet.hidden=true;V=D.view||fitView(W,H,40);saveNow();title();draw()}
+$('#b-gpsp').addEventListener('click',()=>{nanCho=null;showGps()});
+function switchTo(d){saveNow();D=d;D.roads=D.roads||[];D.mocs=D.mocs||[];D.mocDo=D.mocDo||[];mocCho=null;nanCho=null;DB.cur=d.id;undoSt=[];editId=null;F=null;noiA=null;selRoad=null;sheet.hidden=true;rsheet.hidden=true;V=D.view||fitView(W,H,40);saveNow();title();draw()}
 
 /* ================= toast / khởi động ================= */
 let toastT=null;
