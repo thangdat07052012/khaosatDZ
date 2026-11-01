@@ -225,7 +225,14 @@ let DB=(()=>{try{return JSON.parse(localStorage.getItem(LSK))||{ds:{},cur:null}}
 DB.snap=true;
 /* nâng cấp một lần: đường vẽ mới mặc định rộng 15 m (bản cũ 7 m); người dùng vẫn chỉnh −/+ như cũ, đường đã vẽ giữ nguyên */
 if(DB.roadWv!==2){if(!DB.roadW||DB.roadW<15)DB.roadW=15;DB.roadWv=2}
-for(const d of Object.values(DB.ds)){d.roads=d.roads||[];d.mocs=d.mocs||[];d.edges=d.edges||[]}
+/* dây: bỏ chữ VX (cáp vặn xoắn) — đổi sang ABC; chỉ đổi mã dây (dây dẫn, thay dây, dây sau công tơ), ghi chú để nguyên */
+function doiVX(code){
+  const t=String(code||'').split(';');
+  return t.map((x,i)=>{if(!i||!/vx/i.test(x))return x;const k=kindOf(x);if(k!=='day'&&k!=='sau')return x;
+    return x.replace(/(^|[>→:]\s*)(\s*\d*)VX(?=\s*\d)/gi,(m,a,b)=>a+b+'ABC')}).join(';');
+}
+/* nạp danh sách cột (localStorage, file mở / gộp): đổi VX → ABC, bỏ cột toạ độ VN-2000 do lần xuất trước ghi kèm */
+function napPoles(ps){let n=0;for(const p of ps||[]){const c=doiVX(p.code);if(c!==p.code){p.code=c;n++}delete p.X_VN2000;delete p.Y_VN2000}return n}
 let saveT=null;
 function saveNow(){clearTimeout(saveT);saveT=null;try{localStorage.setItem(LSK,JSON.stringify(DB))}catch(e){toast('Bộ nhớ đầy — xuất file rồi xoá bớt bản vẽ cũ')}}
 function save(){if(D)D.capNhat=Date.now();clearTimeout(saveT);saveT=setTimeout(saveNow,400)}
@@ -250,8 +257,8 @@ function kindOf(tok){
   if(/^(TỦ|TỦMỚI|TM)[:=]?\d+$/.test(u))return 'tu';
   const parts=u.split(/>|→/), base=parts[0]||parts[1]||'';
   if(/^\d*(LT|H|BT|NPC)\d+([.,]\d+)?M?$/.test(base)||/^\d*CỘT(GỖ|THÉP|SẮT)$/.test(base)||base==='NHỔBỎ')return 'cot';
-  if(/^\d*CXV/.test(base)||/^\d*MULLER/.test(base))return 'sau';
-  if(/^\d*(VX|AV|ABC|A|CU|M|AC)\d/.test(base)||base==='THUHỒI')return 'day';
+  if(/^\d*(CXV|DSTA)/.test(base)||/^\d*MULLER/.test(base))return 'sau';   /* cáp ngầm Cu/XLPE/PVC/DSTA đi cùng nhóm CXV */
+  if(/^\d*(ABC|VX|AV|A|CU|M|AC)\d/.test(base)||base==='THUHỒI')return 'day';   /* VX = mã cũ của ABC, vẫn nhận khi đọc dữ liệu cũ */
   if(DD.test(u))return 'dd';
   return 'gc';
 }
@@ -272,7 +279,7 @@ function parse(code){
   }
   return r;
 }
-/* viết hoa chữ ký hiệu (vx4x120 → VX4x120) khi chốt cột; ghi chú để nguyên */
+/* viết hoa chữ ký hiệu (abc4x120 → ABC4x120) khi chốt cột; ghi chú để nguyên */
 function chuanHoa(code){
   const t=splitCode(code);
   return t.map((x,i)=>{
@@ -281,6 +288,8 @@ function chuanHoa(code){
     return x.replace(/[a-zA-ZđĐ]+/g,(m,o,s)=>/^x$/i.test(m)&&/\d/.test(s[o-1]||'')&&/\d/.test(s[o+1]||'')?'x':m.toUpperCase());
   }).join(';')+(t.length>1?';':'');
 }
+/* một lần: dữ liệu đã lưu còn mã VX… → ABC… (DB.vxv đánh dấu đã đổi) */
+if(DB.vxv!==1){let n=0;for(const d of Object.values(DB.ds))n+=napPoles(d.poles||[]);DB.vxv=1;try{localStorage.setItem(LSK,JSON.stringify(DB))}catch(e){}}
 const J=a=>a.join(' + ');
 const pair=(h,t)=>h.length||t.length?(J(h)||'—')+(t.length?' → '+J(t):''):'';
 function ctText(r){return [['H1',r.h1],['H2',r.h2],['H4',r.h4],['3P',r.p3]].filter(x=>x[1]).map(x=>x[0]+':'+x[1]).join(' ')}
@@ -644,17 +653,18 @@ const sheet=$('#sheet'), rsheet=$('#rsheet');
 const BASE={
   cot:['LT8,5','LT10','LT12','H7,5','H8,5','2LT8,5','2H7,5','LT7,5','H6,5','Cột gỗ'],
   cotTT:['LT8,5','LT10','LT12','H7,5','H8,5','2LT8,5','2H7,5','Nhổ bỏ'],
-  day:['VX4x120','VX4x95','VX4x70','VX4x50','VX4x150','VX4x240','VX4x35','VX2x25','AV70','AV95','A50'],
-  dayTT:['VX4x120','VX4x95','VX4x70','VX4x50','VX4x150','VX4x240','Thu hồi'],
-  sau:['CXV4x10','CXV2x10','CXV2x6','CXV4x16','VX4x35','2VX4x35','VX4x25','VX4x50'],
+  day:['ABC4x120','ABC4x95','ABC4x70','ABC4x50','ABC4x150','ABC4x240','ABC4x35','ABC2x25','AV70','AV95','A50'],
+  dayTT:['ABC4x120','ABC4x95','ABC4x70','ABC4x50','ABC4x150','ABC4x240','Thu hồi'],
+  sau:['CXV4x10','CXV2x10','CXV2x6','CXV4x16','CXV4x25','DSTA4x50','DSTA3x10+1x6','ABC4x35','2ABC4x35','ABC4x25','ABC4x50'],
   kc:['20','25','30','35','40','45','50'],
   dd:['Néo','Góc','Cuối','Rẽ nhánh','Đầu nguồn','Nghiêng','Nứt'],
   gc:['Tủ bù','Tủ ĐKCS','Tiếp địa','Hộp đấu dây','Chống sét']
 };
-/* xếp tăng dần theo loại rồi kích cỡ: LT7,5 < LT8,5 < 2LT8,5 < LT10 … ; VX2x25 < VX4x35 < … < VX4x240 */
-const ORD=['LT','H','BT','NPC','VX','AV','ABC','A','AC','CXV','CU','M','MULLER'];
+/* xếp tăng dần theo loại rồi kích cỡ: LT7,5 < LT8,5 < 2LT8,5 < LT10 … ; ABC2x25 < ABC4x35 < … < ABC4x240
+   ('VX' giữ cạnh 'ABC' chỉ để xếp dữ liệu cũ chưa đổi; DSTA3x10+1x6 xếp theo phần 3x10) */
+const ORD=['LT','H','BT','NPC','ABC','VX','AV','A','AC','CXV','DSTA','CU','M','MULLER'];
 function sizeKey(v){
-  const u=norm(v),m=u.match(/^(\d*)([A-ZĐ]+)(\d+(?:[.,]\d+)?)(?:X(\d+(?:[.,]\d+)?))?$/),f=x=>parseFloat(String(x).replace(',','.'));
+  const u=norm(v),m=u.match(/^(\d*)([A-ZĐ]+)(\d+(?:[.,]\d+)?)(?:X(\d+(?:[.,]\d+)?))?(?:\+[\dX.,+]*)?$/),f=x=>parseFloat(String(x).replace(',','.'));
   if(!m)return [99,0,0,0,u];
   const ti=ORD.indexOf(m[2]);return [ti<0?50:ti,f(m[3]),m[4]?f(m[4]):0,+m[1]||1,u];
 }
@@ -668,7 +678,7 @@ function learned(kind){
   const all=base.concat(Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a]).filter(v=>!have.has(norm(v))).slice(0,12));
   return kind==='gc'?all:all.sort((x,y)=>cmpSize(x,y,src==='sau'));   /* dây sau CT: xếp theo tiết diện, không theo loại */
 }
-/* viết hoa ký hiệu gõ tay: vx4x120 → VX4x120 */
+/* viết hoa ký hiệu gõ tay: abc4x120 → ABC4x120 */
 function hoa(v){return /\s/.test(v)?v:v.replace(/[a-zA-ZđĐ]+/g,(m,o,s)=>/^x$/i.test(m)&&/\d/.test(s[o-1]||'')&&/\d/.test(s[o+1]||'')?'x':m.toUpperCase())}
 function codeOf(f){
   const t=[(f.so||'').trim()];
@@ -1105,12 +1115,12 @@ panel.addEventListener('change',async e=>{
   const fl=e.target.files;if(!fl||!fl.length)return;
   if(e.target.id==='gop'){
     snap();const kq=[];
-    for(const f of fl){try{const r=gop(JSON.parse(await docFile(f)));kq.push(`${f.name}: thêm ${r.them} cột${r.trung?`, ${r.trung} cột trùng số`:''} (${r.how})`)}
+    for(const f of fl){try{const o=JSON.parse(await docFile(f));napPoles(o.poles);const r=gop(o);kq.push(`${f.name}: thêm ${r.them} cột${r.trung?`, ${r.trung} cột trùng số`:''} (${r.how})`)}
       catch(err){kq.push(`${f.name}: không đọc được`)}}
     save();closePanel();V=fitView(W,H,40);persistView();draw();toast(kq.join(' · '));return;
   }
   if(e.target.id==='imp'){
-    try{const o=JSON.parse(await docFile(fl[0]));if(!Array.isArray(o.poles))throw 0;
+    try{const o=JSON.parse(await docFile(fl[0]));if(!Array.isArray(o.poles))throw 0;napPoles(o.poles);
       const d={id:uid(),ten:o.ten||'Tuyến nhập',ngay:o.ngay||today(),poles:o.poles,edges:o.edges||[],roads:o.roads||[],mocs:o.mocs||[],geo:o.geo||null,active:null,view:null,capNhat:Date.now()};
       DB.ds[d.id]=d;saveNow();switchTo(d);closePanel();toast('Đã mở file')}catch(err){toast('File không đúng định dạng của app')}
   }
