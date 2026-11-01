@@ -258,6 +258,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&saveT)save
 window.addEventListener('pagehide',()=>{if(saveT)saveNow()});
 function newD(ten){const d={id:uid(),ten:ten||('Tuyến '+today()),ngay:today(),poles:[],edges:[],roads:[],mocs:[],mocDo:[],geo:null,active:null,view:null,capNhat:Date.now()};
   DB.ds[d.id]=d;DB.cur=d.id;saveNow();return d}
+for(const d of Object.values(DB.ds)){d.poles=d.poles||[];d.roads=d.roads||[];d.mocs=d.mocs||[];d.edges=d.edges||[];d.mocDo=d.mocDo||[]}  /* bản vẽ cũ thiếu mảng -> trắng trang (rà 01/11) */
 let D=DB.ds[DB.cur]||Object.values(DB.ds).sort((a,b)=>b.capNhat-a.capNhat)[0]||newD();
 DB.cur=D.id;D.mocDo=D.mocDo||[];
 
@@ -1535,7 +1536,7 @@ $('#b-list').addEventListener('click',showList);
 $('#b-export').addEventListener('click',showExport);
 $('#b-table').addEventListener('click',showTable);
 $('#b-gpsp').addEventListener('click',()=>{nanCho=null;showGps()});
-function switchTo(d){saveNow();D=d;D.roads=D.roads||[];D.mocs=D.mocs||[];D.mocDo=D.mocDo||[];mocCho=null;nanCho=null;DB.cur=d.id;undoSt=[];editId=null;F=null;noiA=null;selRoad=null;sheet.hidden=true;rsheet.hidden=true;V=D.view||fitView(W,H,40);saveNow();title();draw()}
+function switchTo(d){saveNow();D=d;D.poles=D.poles||[];D.roads=D.roads||[];D.mocs=D.mocs||[];D.edges=D.edges||[];D.mocDo=D.mocDo||[];mocCho=null;nanCho=null;DB.cur=d.id;undoSt=[];editId=null;F=null;noiA=null;selRoad=null;sheet.hidden=true;rsheet.hidden=true;V=D.view||fitView(W,H,40);saveNow();title();draw()}
 
 /* ================= toast / khởi động ================= */
 let toastT=null;
