@@ -413,7 +413,7 @@ function nextPos(p){
 
 /* ================= vẽ ================= */
 const cv=$('#cv'), stage=$('#stage');
-let W=0,H=0,V=D.view||null,tool='cot',noiA=null,editId=null,selRoad=null,roadStart=null,fix=null,watchId=null,gpsPending=false,tmpRoad=null;
+let W=0,H=0,V=D.view||null,tool='cot',noiA=null,editId=null,selRoad=null,roadStart=null,fix=null,watchId=null,tmpRoad=null;
 function sizeUp(){const r=stage.getBoundingClientRect();W=r.width;H=r.height;cv.setAttribute('viewBox',`0 0 ${W} ${H}`)}
 function allPts(){const a=D.poles.map(p=>[p.x,p.y]);for(const r of D.roads)a.push(...r.pts);for(const m of D.mocs)a.push([m.x,m.y]);return a}
 function fitView(w,h,pad){
@@ -551,7 +551,7 @@ function status(){
   else if(ed&&ed.auto)h=`<span class="pill solo">Cột tự đặt thẳng tuyến — chạm chỗ khác để dời tới đó</span>`;
   else if(a){const so=parse(a.code).so;h=`<span class="pill solo">${so?'Vẽ tiếp từ '+esc(so):'Vẽ tiếp từ cột chưa đánh số'}</span>`}
   else h=`<span class="pill solo">${D.poles.length?'Đoạn mới — cột sau không nối':'Chạm lên bảng để đặt cột đầu tiên'}</span>`;
-  if(gpsPending)h+=`<span class="pill solo">Đang bắt GPS…</span>`;
+  if(gpsM)h+=`<span class="pill">${esc(gpsTxt())}<button data-st="gstop">${gpsM.ds.length?'Dừng sớm':'Huỷ'}</button></span>`;
   $('#status').innerHTML=h;
 }
 function persistView(){D.view={s:V.s,tx:V.tx,ty:V.ty};save()}
@@ -898,6 +898,7 @@ $('#status').addEventListener('click',e=>{
   const s=e.target.dataset&&e.target.dataset.st;if(!s)return;const r=selRoad&&D.roads.find(x=>x.id===selRoad);
   if(s==='new'){finishSheet();D.active=null;save();draw();toast('Cột tiếp theo bắt đầu đoạn mới')}
   else if(s==='rx'){roadStart=null;draw()}
+  else if(s==='gstop'){if(gpsM&&gpsM.ds.length)gpsXong();else{gpsDung();toast('Đã huỷ đo GPS')}}
 });
 $('#b-undo').addEventListener('click',()=>{const s=undoSt.pop();if(!s){toast('Không còn gì để hoàn tác');return}
   Object.assign(D,JSON.parse(s));editId=null;F=null;sheet.hidden=true;closeRoad();save();draw();toast('Đã hoàn tác')});
@@ -955,15 +956,47 @@ function vnOf(p){if(p.lat==null||p.lon==null)return null;const r=VN.tu84(+p.lat,
 function gpsLab(){$('#gps-lab').textContent=fix?`±${Math.round(fix.acc)} m`:'GPS'}
 function placeGps(){dropAuto();closeSheet();const xy=geoToXY(fix.lat,fix.lon);addPole(xy.x,xy.y,null,fix);
   if(fix.acc>15)toast(`GPS sai số ±${Math.round(fix.acc)} m — đứng chỗ thoáng cho chuẩn hơn`)}
+/* GPS lấy TRUNG BÌNH: đo liên tục tối đa 15 s (đủ 10 s và ≥ 5 lần tốt thì xong sớm), bỏ lần đo sai số > 10 m,
+   trung bình lat/lon; acc = lớn hơn trong hai số: trung bình sai số máy báo, độ phân tán quanh điểm trung bình */
+const GPS_TOI_DA=15000,GPS_DU=10000,GPS_ACC=10;
+let gpsM=null;   /* phiên đang đo: {t0, ds:[{lat,lon,acc}], tm} */
+function gpsTot(ds){return ds.filter(q=>q.acc<=GPS_ACC)}
+function gpsTB(ds){
+  let tot=gpsTot(ds),canh=false;
+  if(!tot.length){canh=true;const b=ds.slice().sort((x,y)=>x.acc-y.acc),m=b[0].acc;tot=b.filter(q=>q.acc<=m*1.5).slice(0,Math.max(3,Math.ceil(b.length/3)))}
+  const lat=tot.reduce((s,q)=>s+q.lat,0)/tot.length,lon=tot.reduce((s,q)=>s+q.lon,0)/tot.length;
+  const kx=111320*Math.cos(lat*Math.PI/180),acc0=tot.reduce((s,q)=>s+q.acc,0)/tot.length;
+  const pt=Math.sqrt(tot.reduce((s,q)=>s+((q.lon-lon)*kx)**2+((q.lat-lat)*110574)**2,0)/tot.length);
+  return {lat,lon,acc:Math.max(acc0,pt),n:tot.length,tong:ds.length,canh,t:Date.now()};
+}
+function gpsDung(){if(watchId!==null)navigator.geolocation.clearWatch(watchId);watchId=null;if(gpsM)clearInterval(gpsM.tm);gpsM=null;draw()}
+function gpsXong(){
+  const ds=gpsM?gpsM.ds:[];gpsDung();
+  if(!ds.length){toast('Chưa bắt được GPS, ra chỗ thoáng rồi bấm lại');return}
+  fix=gpsTB(ds);gpsLab();placeGps();
+  if(fix.canh)setTimeout(()=>toast(`Không có lần đo nào sai số ≤ ${GPS_ACC} m — lấy ${fix.n} lần tốt nhất, ±${Math.round(fix.acc)} m, nên đo lại chỗ thoáng`),300);
+  else if(fix.acc<=15)toast(`Đã lấy trung bình ${fix.n}/${fix.tong} lần đo · ±${Math.round(fix.acc)} m`);
+}
+function gpsTien(){
+  if(!gpsM)return;const t=Date.now()-gpsM.t0,tot=gpsTot(gpsM.ds).length;
+  if(t>=GPS_TOI_DA&&gpsM.ds.length||t>=GPS_DU&&tot>=5)return gpsXong();
+  if(t>=GPS_TOI_DA*3){gpsDung();toast('Chưa bắt được GPS, ra chỗ thoáng rồi bấm lại');return}
+  draw();
+}
+function gpsTxt(){const t=Math.min(Math.floor((Date.now()-gpsM.t0)/1000),GPS_TOI_DA/1000),ds=gpsM.ds;
+  if(!ds.length)return `Đang bắt GPS… ${t} s`;const r=gpsTB(ds);
+  return `Đang đo… ${t}/${GPS_TOI_DA/1000} s · ${gpsTot(ds).length}/${ds.length} lần · sai số ~${Math.round(r.acc)} m`}
 $('#b-gps').addEventListener('click',()=>{
   if(!('geolocation' in navigator)){toast('Máy này không có định vị');return}
-  if(watchId===null)watchId=navigator.geolocation.watchPosition(pos=>{
-      fix={lat:pos.coords.latitude,lon:pos.coords.longitude,acc:pos.coords.accuracy,t:Date.now()};gpsLab();
-      if(gpsPending){gpsPending=false;placeGps()}else draw()},
-    err=>{gpsPending=false;if(watchId!==null)navigator.geolocation.clearWatch(watchId);watchId=null;draw();
-      toast(err.code===1?'Chưa cho phép định vị — bật quyền Vị trí cho trình duyệt':'Chưa bắt được GPS, ra chỗ thoáng rồi bấm lại')},
-    {enableHighAccuracy:true,maximumAge:3000,timeout:60000});
-  if(fix&&Date.now()-fix.t<15000)placeGps();else{gpsPending=true;draw()}
+  if(gpsM)return;   /* đang đo: dừng bằng nút Dừng sớm */
+  if(watchId!==null)navigator.geolocation.clearWatch(watchId);
+  gpsM={t0:Date.now(),ds:[],tm:setInterval(gpsTien,500)};
+  watchId=navigator.geolocation.watchPosition(pos=>{if(!gpsM)return;
+      const q={lat:pos.coords.latitude,lon:pos.coords.longitude,acc:pos.coords.accuracy};gpsM.ds.push(q);
+      fix={...q,t:Date.now()};gpsLab();draw()},
+    err=>{if(err.code===1){gpsDung();toast('Chưa cho phép định vị — bật quyền Vị trí cho trình duyệt')}},   /* lỗi hết giờ: vẫn chờ tới khi hết phiên đo */
+    {enableHighAccuracy:true,maximumAge:0,timeout:20000});
+  draw();
 });
 
 /* ================= xuất file ================= */
