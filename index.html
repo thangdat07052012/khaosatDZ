@@ -846,12 +846,30 @@ const ANH={db:null,
 /* tên file KHÔNG dấu, không cách (trình duyệt đổi tên file có dấu thành "download") */
 const tenFile=t=>String(t||'tuyen').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[đĐ]/g,c=>c==='đ'?'d':'D')
   .replace(/[^A-Za-z0-9._-]+/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'').slice(0,40)||'tuyen';
-async function nenAnh(file,maxW=2560,q=0.85){   /* 03/11: nét hơn (Truong: ảnh nén bị mờ); bản gốc lưu riêng vào máy */
+async function nenAnh(file,nhan,maxW=2560,q=0.85){   /* 03/11: nét hơn (Truong: ảnh nén bị mờ); bản gốc lưu riêng vào máy */
   const bm=await createImageBitmap(file,{imageOrientation:'from-image'}).catch(()=>null);
   const img=bm||await new Promise((ok,loi)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=loi;i.src=URL.createObjectURL(file)});
   const w=img.width,h=img.height,k=Math.min(1,maxW/Math.max(w,h)),c=document.createElement('canvas');
-  c.width=Math.round(w*k);c.height=Math.round(h*k);c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+  c.width=Math.round(w*k);c.height=Math.round(h*k);const g=c.getContext('2d');g.drawImage(img,0,0,c.width,c.height);
+  if(bm&&bm.close)bm.close();
+  if(nhan&&nhan.length)veNhan(g,c.width,c.height,nhan);
   return await new Promise(ok=>c.toBlob(b=>ok(b||file),'image/jpeg',q));
+}
+/* 03/11 (Truong: gửi Zalo không biết ảnh cột nào, nằm đâu): IN CHỮ lên đáy ảnh — số cột + tuyến, ngày giờ, toạ độ.
+   Dải nền đặc: in lại (đổi số cột) thì đè kín nhãn cũ. */
+function veNhan(g,w,h,dong){
+  const fs=Math.max(20,Math.round(Math.min(w,h)*0.045)),lh=Math.round(fs*1.3),pad=Math.round(fs*0.5),bh=dong.length*lh+pad*2;
+  g.fillStyle='#141414';g.fillRect(0,h-bh,w,bh);   /* nền ĐẶC: in lại đè kín nhãn cũ */
+  g.textBaseline='top';g.fillStyle='#fff';
+  dong.forEach((t,i)=>{g.font=`${i?'':'bold '}${i?Math.round(fs*0.8):fs}px system-ui,-apple-system,Roboto,Arial,sans-serif`;g.fillText(t,pad,h-bh+pad+i*lh,w-pad*2)});
+}
+function nhanAnh(p,t,lat,lon){
+  const so=(p&&parse(p.code).so)||'?',d=new Date(t||Date.now()),hai=n=>String(n).padStart(2,'0');
+  const ra=[`CỘT ${so} — ${D.ten||''}`,`${hai(d.getDate())}/${hai(d.getMonth()+1)}/${d.getFullYear()} ${hai(d.getHours())}:${hai(d.getMinutes())}`];
+  const v=p&&vnOf(p);
+  if(v)ra.push(`VN-2000 (${kttTen(ktt())}): X ${v.x.toFixed(1)} · Y ${v.y.toFixed(1)}`);
+  else if(lat!=null&&lon!=null)ra.push(`GPS lúc chụp: ${(+lat).toFixed(6)}, ${(+lon).toFixed(6)}`);
+  return ra;
 }
 let anhUrl=[];
 async function veAnhCot(){
@@ -864,8 +882,9 @@ async function veAnhCot(){
 $('#sh-anh').addEventListener('click',()=>{if(!editId)return;$('#anh-in').value='';$('#anh-in').click()});
 $('#anh-in').addEventListener('change',async e=>{
   const f=e.target.files&&e.target.files[0],id=editId;if(!f||!id||!D)return;
-  try{const blob=await nenAnh(f),p=byId(id),so=(p&&parse(p.code).so)||'x';
-    await ANH.them({id:uid(),ds:D.id,cot:id,t:Date.now(),blob,lat:fix&&fix.lat,lon:fix&&fix.lon});
+  try{const p=byId(id),so=(p&&parse(p.code).so)||'x',t=Date.now(),lat=fix&&fix.lat,lon=fix&&fix.lon;
+    const blob=await nenAnh(f,nhanAnh(p,t,lat,lon));
+    await ANH.them({id:uid(),ds:D.id,cot:id,t,blob,lat,lon,so:(p&&parse(p.code).so)||''});
     const n=(await ANH.cuaCot(id).catch(()=>[])).length;
     /* bản GỐC (đủ nét) tự lưu vào thư mục Tải xuống của máy — Android hiện trong Thư viện ảnh, mục Download */
     const ten=`${tenFile(D.ten)}_Cot${tenFile(so)}_${n}_goc.jpg`;
@@ -887,11 +906,16 @@ $('#sh-anhs').addEventListener('click',async e=>{
 });
 /* xuất: gửi mọi ảnh của bản vẽ (Zalo / Drive) — tên file có số cột */
 async function guiAnhCot(){
-  const ds=(await ANH.cuaDs(D.id).catch(()=>[])).filter(a=>byId(a.cot));
+  const soCot=a=>parse(byId(a.cot).code).so||'';
+  const ds=(await ANH.cuaDs(D.id).catch(()=>[])).filter(a=>byId(a.cot))
+    .sort((a,b)=>{const x=parseFloat(soCot(a)),y=parseFloat(soCot(b));return (isFinite(x)?x:1e9)-(isFinite(y)?y:1e9)||soCot(a).localeCompare(soCot(b))||a.t-b.t});
   if(!ds.length){toast('Bản vẽ này chưa có ảnh cột nào');return}
-  const dem={},ten=tenFile(D.ten);
-  const files=ds.map(a=>{const so=parse(byId(a.cot).code).so||'x';dem[so]=(dem[so]||0)+1;
-    return new File([a.blob],`${ten}_Cot${tenFile(so)}_${dem[so]}.jpg`,{type:'image/jpeg'})});
+  const dem={},ten=tenFile(D.ten),files=[];let i=0;
+  for(const a of ds){i++;const so=soCot(a);
+    if(a.so!==so){toast(`Đang ghi lại số cột lên ảnh ${i}/${ds.length}…`);   /* cột đổi số sau khi chụp (hoặc ảnh chụp bản cũ): in lại, lưu luôn */
+      a.blob=await nenAnh(a.blob,nhanAnh(byId(a.cot),a.t,a.lat,a.lon));a.so=so;await ANH.them(a)}
+    dem[so]=(dem[so]||0)+1;files.push(new File([a.blob],`${ten}_Cot${tenFile(so||'x')}_${dem[so]}.jpg`,{type:'image/jpeg'}))}
+  const sd=await soDoFile();if(sd)files.unshift(new File([sd],`${ten}_0_SoDo.png`,{type:'image/png'}));   /* ảnh ĐẦU = sơ đồ tuyến có số cột — biết cột nằm đâu */
   if(navigator.canShare&&navigator.canShare({files})){try{await navigator.share({files,title:`Ảnh cột · ${D.ten}`});return}catch(e){if(e&&e.name==='AbortError')return}}
   for(const f of files){const u=URL.createObjectURL(f),a=document.createElement('a');a.href=u;a.download=f.name;document.body.appendChild(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(u),4000);await new Promise(r=>setTimeout(r,350))}
@@ -1510,12 +1534,15 @@ function pngSvg(){
     ${svgInner(v,w,h,{noGrid:true,print:true,k:1.5})}${ex}</svg>`;
   return {s,w,h};
 }
-async function guiAnh(){
+async function soDoFile(){
   const {s,w,h}=pngSvg();
   const img=new Image();img.src=URL.createObjectURL(new Blob([s],{type:'image/svg+xml'}));
-  try{await img.decode()}catch(e){toast('Không tạo được ảnh');return}
+  try{await img.decode()}catch(e){return null}
   const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0);URL.revokeObjectURL(img.src);
-  const blob=await new Promise(r=>c.toBlob(r,'image/png'));const file=new File([blob],fname('.png'),{type:'image/png'});
+  const blob=await new Promise(r=>c.toBlob(r,'image/png'));return blob&&new File([blob],fname('.png'),{type:'image/png'});
+}
+async function guiAnh(){
+  const file=await soDoFile();if(!file){toast('Không tạo được ảnh');return}const blob=file;
   if(navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title:D.ten});return}catch(e){if(e.name==='AbortError')return}}
   giao(blob,file.name);
 }
@@ -1575,7 +1602,7 @@ function showExport(){
     <button class="big" data-a="dxfvn"><b>Bản vẽ AutoCAD (.dxf) — toạ độ thật VN-2000</b><span>Cột có GPS đặt đúng toạ độ VN-2000 (X = Đông, Y = Bắc). Cột vẽ tay không có GPS giữ vị trí phác, để riêng layer KS_COT_KHONG_GPS.</span></button>
     <label class="sl vn"><span class="k">Tỉnh / kinh tuyến trục VN-2000</span><select id="ex-ktt">${VN.TINH.map(([t,v])=>`<option value="${v}"${Math.abs(v-ktt())<1e-9&&t===(DB.tinh||'Thanh Hoá')?' selected':''}>${t} — ${kttTen(v)}</option>`).join('')}
       <option value="khac"${VN.TINH.some(([t,v])=>Math.abs(v-ktt())<1e-9&&t===(DB.tinh||'Thanh Hoá'))?'':' selected'}>Khác — tự nhập (${kttTen(ktt())})</option></select></label>
-    <button class="big" data-a="anh"><b>📷 Gửi ảnh cột</b><span>Mọi ảnh chụp ở các cột của bản vẽ này, tên file có số cột (vd ${esc(tenFile(D.ten))}_Cot5_1.jpg). Bản gốc đủ nét đã tự lưu vào Tải xuống lúc chụp. Gửi qua Zalo / Drive, hoặc tải về máy.</span></button>
+    <button class="big" data-a="anh"><b>📷 Gửi ảnh cột</b><span>Mọi ảnh chụp ở các cột của bản vẽ này, ảnh đầu là sơ đồ tuyến có số cột, các ảnh sau xếp theo số cột, mỗi ảnh in sẵn số cột, ngày giờ, toạ độ. Bản gốc đủ nét đã tự lưu vào Tải xuống lúc chụp. Gửi qua Zalo / Drive, hoặc tải về máy.</span></button>
     <button class="big" data-a="json"><b>File gốc (.json)</b><span>Để mở lại / gộp trên máy khác hoặc gửi Claude chuyển sang CAD.</span></button>
     <p class="note">Excel và JSON có thêm cột X_VN2000 (Bắc), Y_VN2000 (Đông) cho cột có GPS, theo kinh tuyến trục đang chọn (múi 3°) — đã cộng hiệu chỉnh theo mốc và nắn theo khoảng đo (màn ◎ GPS chính xác), kèm toạ độ gốc GPS và cột “Hiệu chỉnh theo mốc”.</p>
     <p class="note">Excel, DXF, JSON lưu vào thư mục <b>Tải xuống (Download)</b>. Gửi qua Zalo: Gửi file → Download.</p>
