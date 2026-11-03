@@ -116,6 +116,13 @@ button{font:inherit;color:inherit;cursor:pointer}
 .grow{flex:1}
 .btn{height:38px;border-radius:9px;border:1.5px solid var(--line);background:var(--paper);padding:0 10px;font-weight:700;font-size:13.5px;white-space:nowrap}
 .btn.sm{height:34px;padding:0 8px;font-size:12.5px}
+/* ảnh cột (03/11): dải ảnh nhỏ trong ô nhập + màn xem ảnh */
+.anhs{display:flex;gap:6px;overflow-x:auto;padding:4px 0 2px;flex:0 0 auto}
+.anhs img{width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid #0002;flex:0 0 auto}
+#sh-anh-n:not(:empty){margin-left:3px;font-weight:700}
+.anhxem{position:fixed;inset:0;z-index:60;background:#000e;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:12px}
+.anhxem img{max-width:100%;max-height:78vh;border-radius:6px}
+.anhxem .row{display:flex;gap:10px}
 .btn.pri{background:var(--ink);color:var(--ink-fg);border-color:var(--ink)}
 .btn.danger{color:var(--warn);border-color:currentColor;background:transparent}
 .btn.armed{background:var(--warn);color:#fff;border-color:var(--warn)}
@@ -207,8 +214,11 @@ label.btn{display:flex;align-items:center;justify-content:center}
     <button id="sh-next" class="btn sm" aria-label="Cột sau">▶</button>
     <button id="sh-copy" class="btn sm">⧉ Giống cột trước</button>
     <span class="grow"></span>
+    <button id="sh-anh" class="btn sm" aria-label="Chụp ảnh cột">📷<span id="sh-anh-n"></span></button>
     <button id="sh-del" class="btn sm danger">Xoá</button>
   </div>
+  <input id="anh-in" type="file" accept="image/*" capture="environment" hidden>
+  <div id="sh-anhs" class="anhs" hidden></div>
   <div id="slots" class="slots"></div>
   <div id="opts" class="opts"></div>
   <div class="sact">
@@ -820,11 +830,69 @@ function setMini(m){DB.mini=m;saveNow();renderSlots();draw()}
   g.addEventListener('pointerdown',e=>{gy=e.clientY;g.setPointerCapture(e.pointerId)});
   g.addEventListener('pointerup',e=>{if(gy===null)return;const d=e.clientY-gy;gy=null;
     if(d>30)setMini(true);else if(d<-30)setMini(false);else setMini(!DB.mini)});}
+/* ===== ẢNH CỘT (Truong 03/11: "nút chuyển về camera điện thoại, chụp xong chuyển lại vào app, không hỏi, mặc định lưu") =====
+   Ảnh nén ~1600 px JPEG, lưu IndexedDB 'kstuyen_anh' (không vào localStorage — không làm đầy bộ nhớ bản vẽ). Khoá: id ảnh;
+   kèm ds (bản vẽ), cot (id cột), t, lat/lon lúc chụp. Xoá cột KHÔNG xoá ảnh (hoàn tác xoá cột thì ảnh vẫn còn). */
+const ANH={db:null,
+  mo(){return this.db?Promise.resolve(this.db):new Promise((ok,loi)=>{const r=indexedDB.open('kstuyen_anh',1);
+    r.onupgradeneeded=()=>{const s=r.result.createObjectStore('anh',{keyPath:'id'});s.createIndex('cot','cot');s.createIndex('ds','ds')};
+    r.onsuccess=()=>{this.db=r.result;ok(this.db)};r.onerror=()=>loi(r.error)})},
+  async tx(mode,fn){const db=await this.mo();return new Promise((ok,loi)=>{const t=db.transaction('anh',mode),st=t.objectStore('anh');let kq;
+    Promise.resolve(fn(st)).then(v=>kq=v);t.oncomplete=()=>ok(kq);t.onerror=()=>loi(t.error)})},
+  them(a){return this.tx('readwrite',st=>{st.put(a)})},
+  xoa(id){return this.tx('readwrite',st=>{st.delete(id)})},
+  cuaCot(cot){return this.tx('readonly',st=>new Promise(ok=>{const r=st.index('cot').getAll(cot);r.onsuccess=()=>ok((r.result||[]).sort((a,b)=>a.t-b.t))}))},
+  cuaDs(ds){return this.tx('readonly',st=>new Promise(ok=>{const r=st.index('ds').getAll(ds);r.onsuccess=()=>ok((r.result||[]).sort((a,b)=>a.t-b.t))}))}};
+async function nenAnh(file,maxW=1600,q=0.72){
+  const bm=await createImageBitmap(file,{imageOrientation:'from-image'}).catch(()=>null);
+  const img=bm||await new Promise((ok,loi)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=loi;i.src=URL.createObjectURL(file)});
+  const w=img.width,h=img.height,k=Math.min(1,maxW/Math.max(w,h)),c=document.createElement('canvas');
+  c.width=Math.round(w*k);c.height=Math.round(h*k);c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+  return await new Promise(ok=>c.toBlob(b=>ok(b||file),'image/jpeg',q));
+}
+let anhUrl=[];
+async function veAnhCot(){
+  const box=$('#sh-anhs'),n=$('#sh-anh-n');anhUrl.forEach(u=>URL.revokeObjectURL(u));anhUrl=[];
+  if(!editId||!D){box.hidden=true;n.textContent='';return}
+  const id=editId,ds=await ANH.cuaCot(id).catch(()=>[]);if(id!==editId)return;
+  n.textContent=ds.length||'';box.hidden=!ds.length;
+  box.innerHTML=ds.map(a=>{const u=URL.createObjectURL(a.blob);anhUrl.push(u);return `<img src="${u}" data-anh="${a.id}" alt="Ảnh cột">`}).join('');
+}
+$('#sh-anh').addEventListener('click',()=>{if(!editId)return;$('#anh-in').value='';$('#anh-in').click()});
+$('#anh-in').addEventListener('change',async e=>{
+  const f=e.target.files&&e.target.files[0],id=editId;if(!f||!id||!D)return;
+  try{const blob=await nenAnh(f),p=byId(id);
+    await ANH.them({id:uid(),ds:D.id,cot:id,t:Date.now(),blob,lat:fix&&fix.lat,lon:fix&&fix.lon});
+    await veAnhCot();toast(`Đã lưu ảnh cột ${(p&&parse(p.code).so)||''} (${Math.round(blob.size/1024)} KB)`)}
+  catch(err){toast('Chưa lưu được ảnh: '+(err&&err.message||err))}
+});
+$('#sh-anhs').addEventListener('click',async e=>{
+  const im=e.target.closest('img[data-anh]');if(!im)return;
+  const v=document.createElement('div');v.className='anhxem';
+  v.innerHTML=`<img src="${im.src}" alt="Ảnh cột"><div class="row"><button class="btn danger" data-x="xoa">Xoá ảnh</button><button class="btn pri" data-x="dong">Đóng</button></div>`;
+  v.addEventListener('click',async ev=>{const x=ev.target.dataset.x;
+    if(x==='xoa'){if(ev.target.dataset.arm!=='1'){ev.target.dataset.arm='1';ev.target.textContent='Xoá thật?';return}
+      await ANH.xoa(im.dataset.anh);v.remove();veAnhCot();toast('Đã xoá ảnh')}
+    else if(x==='dong'||ev.target===v)v.remove()});
+  document.body.appendChild(v);
+});
+/* xuất: gửi mọi ảnh của bản vẽ (Zalo / Drive) — tên file có số cột */
+async function guiAnhCot(){
+  const ds=(await ANH.cuaDs(D.id).catch(()=>[])).filter(a=>byId(a.cot));
+  if(!ds.length){toast('Bản vẽ này chưa có ảnh cột nào');return}
+  const dem={},ten=String(D.ten||'tuyen').replace(/[\\/:*?"<>|]+/g,'_').slice(0,40);
+  const files=ds.map(a=>{const so=parse(byId(a.cot).code).so||'x';dem[so]=(dem[so]||0)+1;
+    return new File([a.blob],`${ten}_Cot${so}_${dem[so]}.jpg`,{type:'image/jpeg'})});
+  if(navigator.canShare&&navigator.canShare({files})){try{await navigator.share({files,title:`Ảnh cột · ${D.ten}`});return}catch(e){if(e&&e.name==='AbortError')return}}
+  for(const f of files){const u=URL.createObjectURL(f),a=document.createElement('a');a.href=u;a.download=f.name;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(u),4000);await new Promise(r=>setTimeout(r,350))}
+  toast(`Đã tải ${files.length} ảnh vào thư mục Tải xuống`);
+}
 function openSheet(p){
   rsheet.hidden=true;selRoad=null;
   editId=p.id;F=parse(p.code);sheetSnap=false;
   slot=!F.so?'so':F.cotHT.length?'ct':'cot';
-  sheet.hidden=false;renderSlots();renderOpts();$('#opts').scrollTop=0;
+  sheet.hidden=false;renderSlots();renderOpts();$('#opts').scrollTop=0;veAnhCot();
   const del=$('#sh-del');del.classList.remove('armed');del.textContent='Xoá';
   /* cột đang sửa phải nằm trong phần bản vẽ còn thấy (trên ô nhập), cách mép ≥ 60px; đo ô nhập sau khi đã render xong.
      offsetHeight không bị ảnh hưởng bởi hiệu ứng trượt lên, nên đo được đúng chiều cao ngay khung hình đầu. */
@@ -987,7 +1055,7 @@ function haversine(a,b){const R=6371000,r=Math.PI/180,dLa=(b.lat-a.lat)*r,dLo=(b
   const h=Math.sin(dLa/2)**2+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dLo/2)**2;return 2*R*Math.asin(Math.sqrt(h))}
 /* chế độ đo: Chuẩn 10 s mặc định (Truong: mỗi lần đo không quá ~10 s); Kỹ 20 s chỉ khi chọn */
 const GPS_CHE_DO={nhanh:{ms:5000,ten:'Nhanh 5 s'},chuan:{ms:10000,ten:'Chuẩn 10 s'},ky:{ms:20000,ten:'Kỹ 20 s'}};
-const GPS_ACC=10,GPS_XANH=3,GPS_VANG=6,GPS_SOM_MS=4000,GPS_SOM_N=4,GPS_SOM_PT=2;
+const GPS_ACC=10,GPS_XANH=3,GPS_VANG=6,GPS_SOM_MS=4000,GPS_SOM_N=4,GPS_SOM_PT=2,GPS_V=0.8;   /* GPS_V: > 0,8 m/s = đang đi, bỏ lần đo đó */
 const GPS_NHAC='Đứng yên, ra chỗ thoáng, tránh sát nhà / dưới cây';
 const MAU_TEN={xanh:'tốt',vang:'tạm',do:'kém'};
 function gpsMau(acc){if(acc==null||acc===''||!isFinite(+acc))return '';return +acc<GPS_XANH?'xanh':+acc<=GPS_VANG?'vang':'do'}
@@ -997,11 +1065,18 @@ function trungVi(a){const b=a.slice().sort((x,y)=>x-y),n=b.length;return n?(n%2?
    2) bỏ lần sai số máy báo > 10 m; 3) bỏ ngoại lai: cách điểm trung vị > 2,5 × trung vị các khoảng cách (sàn 0,3 m);
    4) trung bình có trọng số 1/acc². acc kết quả = max(độ phân tán, sai số máy báo / √k), k = số lần "độc lập" ≤ 4
       (GPS điện thoại sai lệch kéo dài vài giây nên trung bình 10 s chỉ đỡ được khoảng 2 lần, không phải √n). */
-function gpsLoc(ds){
-  if(!ds||!ds.length)return null;
+function gpsLoc(ds0){
+  if(!ds0||!ds0.length)return null;
+  /* 03/11: bỏ lần TRÙNG (nhiều máy Android trả lại đúng vị trí cũ nhiều lần — đếm trùng làm ±m nhỏ giả) */
+  const ds=[];let boTrung=0;
+  for(const q of ds0){const l=ds[ds.length-1];
+    if(l&&q.tsd&&(l.tsd===q.tsd||(l.lat===q.lat&&l.lon===q.lon&&l.acc===q.acc))){boTrung++;continue}ds.push(q)}   /* chỉ xét khi có giờ của máy (tsd) */
   let st=ds.length>2?1:0;
   while(st<ds.length-2&&ds[st].ts<2000&&ds[st].acc>1.2*ds[st+1].acc)st++;
-  const a=ds.slice(st);
+  let a=ds.slice(st);
+  /* 03/11: bỏ lần đo lúc ĐANG ĐI (tốc độ máy báo > 0,8 m/s); đi suốt cả phiên thì giữ và báo */
+  const dung=a.filter(q=>!(q.v>GPS_V)),boDiChuyen=a.length-dung.length,diChuyen=!dung.length;
+  if(dung.length)a=dung;
   let tot=a.filter(q=>q.acc<=GPS_ACC),canh=false;
   if(!tot.length){canh=true;const b=a.slice().sort((x,y)=>x.acc-y.acc);tot=b.filter(q=>q.acc<=b[0].acc*1.5)}
   const la0=trungVi(tot.map(q=>q.lat)),lo0=trungVi(tot.map(q=>q.lon)),kx=111320*Math.cos(la0*Math.PI/180),ky=110574;
@@ -1012,7 +1087,7 @@ function gpsLoc(ds){
   let s2=0;for(const q of ok){const w=1/Math.max(q.acc,0.5)**2;s2+=w*(((q.lon-lon)*kx)**2+((q.lat-lat)*ky)**2)}
   const pt=Math.sqrt(s2/sw),accW=Math.sqrt(ok.length/sw);
   const dur=ok[ok.length-1].ts-ok[0].ts+1000,k=Math.max(1,Math.min(ok.length,dur/2500,4));
-  return {lat,lon,acc:Math.max(pt,accW/Math.sqrt(k)),pt,accW,n:ok.length,nTot:ok.filter(q=>q.acc<=GPS_VANG).length,tong:ds.length,boDau:st,boAcc:canh?0:a.length-tot.length,boNgoai:tot.length-ok.length,canh};
+  return {lat,lon,acc:Math.max(pt,accW/Math.sqrt(k)),pt,accW,n:ok.length,nTot:ok.filter(q=>q.acc<=GPS_VANG).length,tong:ds0.length,boDau:st,boAcc:canh?0:a.length-tot.length,boNgoai:tot.length-ok.length,boTrung,boDiChuyen,diChuyen,canh:canh||diChuyen};
 }
 /* xong sớm khi tốt: sau ≥ 4 s, ≥ 4 lần tốt (đã lọc, sai số máy báo ≤ 6 m), độ phân tán < 2 m và kết quả không đỏ */
 function gpsXongSom(ds,ms){if(ms<GPS_SOM_MS)return false;const r=gpsLoc(ds);return !!r&&!r.canh&&r.nTot>=GPS_SOM_N&&r.pt<GPS_SOM_PT&&r.acc<=GPS_VANG}
@@ -1134,7 +1209,7 @@ function gpsXong(){
   if(M.muc==='moc'){showMocForm(fix);return}
   placeGps();
   const m=gpsMau(r.acc);
-  setTimeout(()=>toast(`Đo ${vn1(t/1000)} s · ${r.n}/${r.tong} lần · ±${vn1(r.acc)} m — ${MAU_TEN[m]}${m==='do'?'. '+GPS_NHAC+', rồi đo lại':''}`),60);
+  setTimeout(()=>toast(`Đo ${vn1(t/1000)} s · ${r.n}/${r.tong} lần · ±${vn1(r.acc)} m — ${MAU_TEN[m]}${m==='do'?'. '+GPS_NHAC+', rồi đo lại':''}${r.diChuyen?' · Máy đang di chuyển: đứng yên tại chân cột rồi đo lại':r.boDiChuyen?` · bỏ ${r.boDiChuyen} lần đang đi`:''}`),60);
 }
 function gpsTien(){
   if(!gpsM)return;const t=Date.now()-gpsM.t0;
@@ -1154,7 +1229,9 @@ function gpsBatDau(muc){
   if(watchId!==null)navigator.geolocation.clearWatch(watchId);
   gpsM={t0:Date.now(),ms:GPS_CHE_DO[gpsCheDo()].ms,muc:muc||'cot',ds:[],kq:null,tm:setInterval(gpsTien,250)};
   watchId=navigator.geolocation.watchPosition(pos=>{if(!gpsM)return;
-      const q={lat:pos.coords.latitude,lon:pos.coords.longitude,acc:pos.coords.accuracy,ts:Date.now()-gpsM.t0};gpsM.ds.push(q);
+      if(pos.timestamp&&pos.timestamp<gpsM.t0-1500)return;   /* vị trí CŨ trong bộ nhớ máy (trước lúc bấm đo) — bỏ */
+      const q={lat:pos.coords.latitude,lon:pos.coords.longitude,acc:pos.coords.accuracy,ts:Date.now()-gpsM.t0,tsd:pos.timestamp||0,
+        v:pos.coords.speed==null?null:pos.coords.speed};gpsM.ds.push(q);
       gpsM.kq=gpsLoc(gpsM.ds);fix={...q,acc:gpsM.kq.acc,t:Date.now()};gpsLab();
       if(gpsXongSom(gpsM.ds,q.ts))gpsXong();else draw()},
     err=>{if(err.code===1){gpsDung();toast('Chưa cho phép định vị — bật quyền Vị trí cho trình duyệt')}},   /* lỗi hết giờ: vẫn chờ tới hết phiên đo */
@@ -1489,6 +1566,7 @@ function showExport(){
     <button class="big" data-a="dxfvn"><b>Bản vẽ AutoCAD (.dxf) — toạ độ thật VN-2000</b><span>Cột có GPS đặt đúng toạ độ VN-2000 (X = Đông, Y = Bắc). Cột vẽ tay không có GPS giữ vị trí phác, để riêng layer KS_COT_KHONG_GPS.</span></button>
     <label class="sl vn"><span class="k">Tỉnh / kinh tuyến trục VN-2000</span><select id="ex-ktt">${VN.TINH.map(([t,v])=>`<option value="${v}"${Math.abs(v-ktt())<1e-9&&t===(DB.tinh||'Thanh Hoá')?' selected':''}>${t} — ${kttTen(v)}</option>`).join('')}
       <option value="khac"${VN.TINH.some(([t,v])=>Math.abs(v-ktt())<1e-9&&t===(DB.tinh||'Thanh Hoá'))?'':' selected'}>Khác — tự nhập (${kttTen(ktt())})</option></select></label>
+    <button class="big" data-a="anh"><b>📷 Gửi ảnh cột</b><span>Mọi ảnh chụp ở các cột của bản vẽ này, tên file có số cột (vd ${esc(D.ten||'tuyen')}_Cot5_1.jpg). Gửi qua Zalo / Drive, hoặc tải về máy.</span></button>
     <button class="big" data-a="json"><b>File gốc (.json)</b><span>Để mở lại / gộp trên máy khác hoặc gửi Claude chuyển sang CAD.</span></button>
     <p class="note">Excel và JSON có thêm cột X_VN2000 (Bắc), Y_VN2000 (Đông) cho cột có GPS, theo kinh tuyến trục đang chọn (múi 3°) — đã cộng hiệu chỉnh theo mốc và nắn theo khoảng đo (màn ◎ GPS chính xác), kèm toạ độ gốc GPS và cột “Hiệu chỉnh theo mốc”.</p>
     <p class="note">Excel, DXF, JSON lưu vào thư mục <b>Tải xuống (Download)</b>. Gửi qua Zalo: Gửi file → Download.</p>
@@ -1520,7 +1598,7 @@ panel.addEventListener('click',e=>{
   else if(a==='mf-huy'){mocCho=null;closePanel();toast('Không lưu mốc')}
   else if(a==='mf-lai'){mocCho=null;closePanel();gpsBatDau('moc')}
   else if(a==='mf-luu')luuMoc();
-  else if(a==='xlsx')xuatXlsx();else if(a==='dxf')xuatDxf();else if(a==='dxfvn')xuatDxf(true);else if(a==='json')xuatJson();else if(a==='png')guiAnh();
+  else if(a==='xlsx')xuatXlsx();else if(a==='dxf')xuatDxf();else if(a==='dxfvn')xuatDxf(true);else if(a==='json')xuatJson();else if(a==='anh')guiAnhCot();else if(a==='png')guiAnh();
 });
 panel.addEventListener('change',async e=>{
   if(e.target.id==='ex-ktt'){const o=e.target.selectedOptions[0];
