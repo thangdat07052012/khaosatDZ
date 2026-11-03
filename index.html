@@ -213,8 +213,8 @@ label.btn{display:flex;align-items:center;justify-content:center}
     <button id="sh-prev" class="btn sm" aria-label="Cột trước">◀</button>
     <button id="sh-next" class="btn sm" aria-label="Cột sau">▶</button>
     <button id="sh-copy" class="btn sm">⧉ Giống cột trước</button>
-    <span class="grow"></span>
     <button id="sh-anh" class="btn sm" aria-label="Chụp ảnh cột">📷<span id="sh-anh-n"></span></button>
+    <span class="grow"></span>
     <button id="sh-del" class="btn sm danger">Xoá</button>
   </div>
   <input id="anh-in" type="file" accept="image/*" capture="environment" hidden>
@@ -843,7 +843,10 @@ const ANH={db:null,
   xoa(id){return this.tx('readwrite',st=>{st.delete(id)})},
   cuaCot(cot){return this.tx('readonly',st=>new Promise(ok=>{const r=st.index('cot').getAll(cot);r.onsuccess=()=>ok((r.result||[]).sort((a,b)=>a.t-b.t))}))},
   cuaDs(ds){return this.tx('readonly',st=>new Promise(ok=>{const r=st.index('ds').getAll(ds);r.onsuccess=()=>ok((r.result||[]).sort((a,b)=>a.t-b.t))}))}};
-async function nenAnh(file,maxW=1600,q=0.72){
+/* tên file KHÔNG dấu, không cách (trình duyệt đổi tên file có dấu thành "download") */
+const tenFile=t=>String(t||'tuyen').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[đĐ]/g,c=>c==='đ'?'d':'D')
+  .replace(/[^A-Za-z0-9._-]+/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'').slice(0,40)||'tuyen';
+async function nenAnh(file,maxW=2560,q=0.85){   /* 03/11: nét hơn (Truong: ảnh nén bị mờ); bản gốc lưu riêng vào máy */
   const bm=await createImageBitmap(file,{imageOrientation:'from-image'}).catch(()=>null);
   const img=bm||await new Promise((ok,loi)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=loi;i.src=URL.createObjectURL(file)});
   const w=img.width,h=img.height,k=Math.min(1,maxW/Math.max(w,h)),c=document.createElement('canvas');
@@ -861,9 +864,15 @@ async function veAnhCot(){
 $('#sh-anh').addEventListener('click',()=>{if(!editId)return;$('#anh-in').value='';$('#anh-in').click()});
 $('#anh-in').addEventListener('change',async e=>{
   const f=e.target.files&&e.target.files[0],id=editId;if(!f||!id||!D)return;
-  try{const blob=await nenAnh(f),p=byId(id);
+  try{const blob=await nenAnh(f),p=byId(id),so=(p&&parse(p.code).so)||'x';
     await ANH.them({id:uid(),ds:D.id,cot:id,t:Date.now(),blob,lat:fix&&fix.lat,lon:fix&&fix.lon});
-    await veAnhCot();toast(`Đã lưu ảnh cột ${(p&&parse(p.code).so)||''} (${Math.round(blob.size/1024)} KB)`)}
+    const n=(await ANH.cuaCot(id).catch(()=>[])).length;
+    /* bản GỐC (đủ nét) tự lưu vào thư mục Tải xuống của máy — Android hiện trong Thư viện ảnh, mục Download */
+    const ten=`${tenFile(D.ten)}_Cot${tenFile(so)}_${n}_goc.jpg`;
+    try{const goc=new File([f],ten,{type:f.type||'image/jpeg'}),u=URL.createObjectURL(goc),a=document.createElement('a');
+      a.href=u;a.download=ten;a.style.display='none';document.body.appendChild(a);a.click();
+      setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},8000)}catch(e2){}
+    await veAnhCot();toast(`Đã lưu ảnh cột ${so} · bản gốc vào Tải xuống (${ten})`)}
   catch(err){toast('Chưa lưu được ảnh: '+(err&&err.message||err))}
 });
 $('#sh-anhs').addEventListener('click',async e=>{
@@ -880,9 +889,9 @@ $('#sh-anhs').addEventListener('click',async e=>{
 async function guiAnhCot(){
   const ds=(await ANH.cuaDs(D.id).catch(()=>[])).filter(a=>byId(a.cot));
   if(!ds.length){toast('Bản vẽ này chưa có ảnh cột nào');return}
-  const dem={},ten=String(D.ten||'tuyen').replace(/[\\/:*?"<>|]+/g,'_').slice(0,40);
+  const dem={},ten=tenFile(D.ten);
   const files=ds.map(a=>{const so=parse(byId(a.cot).code).so||'x';dem[so]=(dem[so]||0)+1;
-    return new File([a.blob],`${ten}_Cot${so}_${dem[so]}.jpg`,{type:'image/jpeg'})});
+    return new File([a.blob],`${ten}_Cot${tenFile(so)}_${dem[so]}.jpg`,{type:'image/jpeg'})});
   if(navigator.canShare&&navigator.canShare({files})){try{await navigator.share({files,title:`Ảnh cột · ${D.ten}`});return}catch(e){if(e&&e.name==='AbortError')return}}
   for(const f of files){const u=URL.createObjectURL(f),a=document.createElement('a');a.href=u;a.download=f.name;document.body.appendChild(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(u),4000);await new Promise(r=>setTimeout(r,350))}
@@ -1566,7 +1575,7 @@ function showExport(){
     <button class="big" data-a="dxfvn"><b>Bản vẽ AutoCAD (.dxf) — toạ độ thật VN-2000</b><span>Cột có GPS đặt đúng toạ độ VN-2000 (X = Đông, Y = Bắc). Cột vẽ tay không có GPS giữ vị trí phác, để riêng layer KS_COT_KHONG_GPS.</span></button>
     <label class="sl vn"><span class="k">Tỉnh / kinh tuyến trục VN-2000</span><select id="ex-ktt">${VN.TINH.map(([t,v])=>`<option value="${v}"${Math.abs(v-ktt())<1e-9&&t===(DB.tinh||'Thanh Hoá')?' selected':''}>${t} — ${kttTen(v)}</option>`).join('')}
       <option value="khac"${VN.TINH.some(([t,v])=>Math.abs(v-ktt())<1e-9&&t===(DB.tinh||'Thanh Hoá'))?'':' selected'}>Khác — tự nhập (${kttTen(ktt())})</option></select></label>
-    <button class="big" data-a="anh"><b>📷 Gửi ảnh cột</b><span>Mọi ảnh chụp ở các cột của bản vẽ này, tên file có số cột (vd ${esc(D.ten||'tuyen')}_Cot5_1.jpg). Gửi qua Zalo / Drive, hoặc tải về máy.</span></button>
+    <button class="big" data-a="anh"><b>📷 Gửi ảnh cột</b><span>Mọi ảnh chụp ở các cột của bản vẽ này, tên file có số cột (vd ${esc(tenFile(D.ten))}_Cot5_1.jpg). Bản gốc đủ nét đã tự lưu vào Tải xuống lúc chụp. Gửi qua Zalo / Drive, hoặc tải về máy.</span></button>
     <button class="big" data-a="json"><b>File gốc (.json)</b><span>Để mở lại / gộp trên máy khác hoặc gửi Claude chuyển sang CAD.</span></button>
     <p class="note">Excel và JSON có thêm cột X_VN2000 (Bắc), Y_VN2000 (Đông) cho cột có GPS, theo kinh tuyến trục đang chọn (múi 3°) — đã cộng hiệu chỉnh theo mốc và nắn theo khoảng đo (màn ◎ GPS chính xác), kèm toạ độ gốc GPS và cột “Hiệu chỉnh theo mốc”.</p>
     <p class="note">Excel, DXF, JSON lưu vào thư mục <b>Tải xuống (Download)</b>. Gửi qua Zalo: Gửi file → Download.</p>
