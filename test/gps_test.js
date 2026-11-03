@@ -104,4 +104,14 @@ console.log('4. Nắn tuyến theo khoảng đo (5 cột, GPS lệch ngẫu nhi�
   ok(ms<1500&&sMax<0.1,`tuyến 320 cột có nhánh: ${ms.toFixed(0)} ms, ${rr.vong} vòng, sai khoảng lớn nhất ${sMax.toFixed(4)} m`);
   ok(Math.abs(T.VN.kTL(500000)-0.9999)<1e-9&&T.VN.kTL(600000)>0.9999,'hệ số tỉ lệ lưới chiếu k0 = 0,9999 ở kinh tuyến trục');
 }
+console.log('9. (03/11) Bỏ lần trùng, bỏ lần đang đi');
+{const ds=[];for(let i=0;i<10;i++){const q={...dich(LAT,LON,gauss()*1.5,gauss()*1.5),acc:3,ts:500+i*1000,tsd:1e12+i*1000};ds.push(q);ds.push({...q,ts:q.ts+300},{...q,ts:q.ts+600})}
+  const r=T.gpsLoc(ds);ok(r.boTrung===20,`bỏ 20 lần trùng giờ máy (bỏ ${r.boTrung})`);ok(r.n<=10,`chỉ còn ≤ 10 lần thật (${r.n})`);
+  const ds1=ds.filter((q,i)=>i%3===0),r1=T.gpsLoc(ds1);ok(Math.abs(r.acc-r1.acc)<1e-9,'±m giống hệt khi không có lần trùng (trùng không làm ±m nhỏ giả)')}
+{const ds=[];for(let i=0;i<4;i++)ds.push({...dich(LAT,LON,-20+i*5,0),acc:3,ts:500+i*1000,tsd:2e12+i*1000,v:1.4});   // đang đi tới cột
+  for(let i=4;i<12;i++)ds.push({...dich(LAT,LON,gauss()*1,gauss()*1),acc:3,ts:500+i*1000,tsd:2e12+i*1000,v:0.1});
+  const r=T.gpsLoc(ds),e=kc(r,{lat:LAT,lon:LON});ok(r.boDau+r.boDiChuyen===4,`bỏ đủ 4 lần đang đi (khởi động ${r.boDau} + đang đi ${r.boDiChuyen})`);ok(e<1.2,`điểm đo cách chân cột < 1,2 m (${e.toFixed(2)} m)`);ok(!r.diChuyen,'không báo "đang di chuyển" vì có lần đứng yên')}
+{const ds=[];for(let i=0;i<6;i++)ds.push({...dich(LAT,LON,i*3,0),acc:3,ts:500+i*1000,tsd:3e12+i*1000,v:2});
+  const r=T.gpsLoc(ds);ok(r.diChuyen&&r.canh,'đi suốt cả phiên: báo "đang di chuyển", không cho xong sớm');ok(!T.gpsXongSom(ds,6000),'không xong sớm khi đang đi')}
+
 console.log(`\n${nOk} đạt, ${nSai} sai`);process.exit(nSai?1:0);
