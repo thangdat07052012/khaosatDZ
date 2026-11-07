@@ -52,6 +52,9 @@ button{font:inherit;color:inherit;cursor:pointer}
 @media (prefers-color-scheme:dark){#status .pill button{background:rgba(0,0,0,.18)}}
 
 .grid{stroke:var(--grid);stroke-width:1}
+.nen{opacity:.9;pointer-events:none}
+.nenattr{font-size:10px;fill:#fff;stroke:rgba(0,0,0,.65);stroke-width:2.5px;paint-order:stroke;pointer-events:none}
+.ib.on{background:rgba(255,255,255,.28);border-color:#fff}
 .road{stroke:var(--road);fill:none;stroke-linecap:round;stroke-linejoin:round}
 .road.sel{stroke:var(--hi);opacity:.45}
 .roadc{stroke:var(--road-c);fill:none;stroke-width:1.2;stroke-dasharray:6 6}
@@ -194,6 +197,7 @@ label.btn{display:flex;align-items:center;justify-content:center}
   <button id="b-title" class="ttl" aria-label="Đổi tên tuyến">Tuyến</button>
   <button id="b-undo" class="ib" aria-label="Hoàn tác">↶</button>
   <button id="b-fit" class="ib" aria-label="Xem toàn bộ">⤢</button>
+  <button id="b-nen" class="ib" aria-label="Ảnh nền vệ tinh" aria-pressed="false">🛰</button>
   <button id="b-gpsp" class="ib" aria-label="GPS chính xác: chế độ đo, mốc hiệu chỉnh, nắn tuyến">◎</button>
   <button id="b-table" class="ib" aria-label="Bảng cột">▤</button>
   <button id="b-export" class="ib pri">Xuất</button>
@@ -521,8 +525,13 @@ function layout(v,w,h,o,pr,JN){
 }
 function svgInner(v,w,h,o={}){
   const X=x=>+(x*v.s+v.tx).toFixed(1), Y=y=>+(y*v.s+v.ty).toFixed(1), k=o.k||1;
-  let g='';
-  if(!o.noGrid){let st=10;while(st*v.s<18)st*=5;
+  let g='';const nen=!o.print&&DB.nen&&D.geo;
+  if(nen){const a=xyToGeo(-v.tx/v.s,-v.ty/v.s),b=xyToGeo((w-v.tx)/v.s,(h-v.ty)/v.s);
+    const z=NEN.z((a.lat+b.lat)/2,1/(v.s*(window.devicePixelRatio||1)));
+    for(const t of NEN.ds(a.lat,a.lon,b.lat,b.lon,z)){const p=NEN.goc(t.x,t.y,t.z),q=NEN.goc(t.x+1,t.y+1,t.z),A=geoToXY(p.lat,p.lon,false),B=geoToXY(q.lat,q.lon,false);
+      const x0=X(A.x),y0=Y(A.y);
+      g+=`<image class="nen" href="${NEN.url(t.z,t.x,t.y)}" x="${x0}" y="${y0}" width="${(X(B.x)-x0+.6).toFixed(1)}" height="${(Y(B.y)-y0+.6).toFixed(1)}" preserveAspectRatio="none"/>`}}
+  if(!o.noGrid&&!nen){let st=10;while(st*v.s<18)st*=5;
     const gx0=Math.floor(-v.tx/v.s/st)*st, gy0=Math.floor(-v.ty/v.s/st)*st;
     for(let x=gx0;x*v.s+v.tx<w;x+=st)g+=`<line class="grid" x1="${X(x)}" y1="0" x2="${X(x)}" y2="${h}"/>`;
     for(let y=gy0;y*v.s+v.ty<h;y+=st)g+=`<line class="grid" x1="0" y1="${Y(y)}" x2="${w}" y2="${Y(y)}"/>`;}
@@ -568,6 +577,7 @@ function svgInner(v,w,h,o={}){
   for(const t of LB.JL)g+=`<text class="lb jt" x="${f1(t.x+tx)}" y="${f1(t.y+ty)}">${esc(t.t)}</text>`;
   if(fix&&D.geo&&!o.print){const m=geoToXY(fix.lat,fix.lon,false);const mx=X(m.x),my=Y(m.y);
     g+=`<circle class="meacc" cx="${mx}" cy="${my}" r="${Math.min(fix.acc*v.s,200).toFixed(1)}"/><circle class="me" cx="${mx}" cy="${my}" r="7"/>`}
+  if(nen)g+=`<text class="nenattr" x="${w-6}" y="${h-6}" text-anchor="end">Ảnh nền: Esri, Maxar, Earthstar Geographics</text>`;
   return g;
 }
 let rafP=false;
@@ -1034,6 +1044,12 @@ $('#status').addEventListener('click',e=>{
 $('#b-undo').addEventListener('click',()=>{const s=undoSt.pop();if(!s){toast('Không còn gì để hoàn tác');return}
   Object.assign(D,JSON.parse(s));editId=null;F=null;sheet.hidden=true;closeRoad();save();draw();toast('Đã hoàn tác')});
 $('#b-fit').addEventListener('click',()=>{V=fitView(W,H,40);persistView();draw()});
+/* nút ảnh nền vệ tinh (cài đặt chung của máy, lưu trong DB) */
+function nenNut(){const b=$('#b-nen');b.setAttribute('aria-pressed',DB.nen?'true':'false');b.classList.toggle('on',!!DB.nen)}
+$('#b-nen').addEventListener('click',()=>{DB.nen=!DB.nen;saveNow();nenNut();
+  if(DB.nen)toast(D.geo?'Ảnh vệ tinh Esri (cần mạng) — ảnh lệch vài mét so với GPS là bình thường':'Chưa có cột nào lấy GPS — lấy GPS một cột thì ảnh vệ tinh mới hiện');
+  draw()});
+nenNut();
 $('#b-title').addEventListener('click',()=>{const t=prompt('Tên TBA / tuyến',D.ten);if(t!=null&&t.trim()){D.ten=t.trim();save();title()}});
 function title(){$('#b-title').textContent=D.ten;document.title=D.ten+' · Khảo sát tuyến'}
 
@@ -1206,6 +1222,21 @@ function giaiBang(A,b,n,fr){
   const x=new Float64Array(n);for(let i=n-1;i>=0;i--){let s=y[i];for(let k=i+1;k<n;k++)if(fr[k]<=i)s-=L[k*n+i]*x[k];x[i]=s/L[i*n+i]}
   return x;
 }
+/* Ảnh nền vệ tinh: ô ảnh Web Mercator của Esri World Imagery (miễn phí, không cần khoá; Google Maps phải có khoá API trả tiền).
+   Thuần — test/gps_test.js mục 11. Ảnh vệ tinh tự nó lệch vài mét so với GPS: chỉ để nhìn, không lấy toạ độ từ ảnh. */
+const NEN={
+  url:(z,x,y)=>`https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`,
+  oTai(lat,lon,z){const n=2**z,r=Math.max(-85,Math.min(85,lat))*Math.PI/180;
+    return [Math.floor((lon+180)/360*n),Math.floor((1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*n)]},
+  goc(x,y,z){const n=2**z;return {lat:Math.atan(Math.sinh(Math.PI*(1-2*y/n)))*180/Math.PI,lon:x/n*360-180}},
+  /* mức phóng để 1 điểm ảnh của ô ≈ mPx mét (mPx = mét / điểm ảnh thiết bị), kẹp 3..18 — Esri z19 ở VN chỉ trả ô "Map data not yet available", gần hơn thì phóng to ô z18 */
+  z(lat,mPx){return Math.max(3,Math.min(18,Math.round(Math.log2(156543.03392*Math.cos(lat*Math.PI/180)/mPx))))},
+  /* các ô phủ khung nhìn (góc Tây-Bắc → Đông-Nam); quá toiDa ô thì hạ mức phóng */
+  ds(latN,lonW,latS,lonE,z,toiDa=64){
+    for(;z>=3;z--){const [x0,y0]=NEN.oTai(latN,lonW,z),[x1,y1]=NEN.oTai(latS,lonE,z);
+      if((x1-x0+1)*(y1-y0+1)<=toiDa){const L=[];for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++)L.push({z,x,y});return L}}
+    return []}
+};
 /* === HẾT HÀM THUẦN === */
 /* kinh tuyến trục đang dùng (cài đặt chung của máy, mặc định Thanh Hoá 105°00′) */
 function ktt(){return DB.ktt!=null&&isFinite(DB.ktt)?+DB.ktt:105}

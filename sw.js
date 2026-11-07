@@ -1,5 +1,5 @@
 // Đổi PHIEN mỗi lần cập nhật app để máy tải bản mới.
-const PHIEN = 'kstuyen-16';
+const PHIEN = 'kstuyen-17';
 const FILES = ['./', './index.html', './xlsx.full.min.js', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -12,6 +12,8 @@ self.addEventListener('activate', e => {
 });
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+  // Ảnh nền vệ tinh (máy chủ ngoài): để trình duyệt tự tải, không lưu vào bộ nhớ app.
+  if (new URL(e.request.url).origin !== location.origin) return;
   // Trang chính: có mạng thì lấy bản mới, mất mạng thì dùng bản đã lưu.
   if (e.request.mode === 'navigate') {
     e.respondWith(fetch(e.request).then(r => {

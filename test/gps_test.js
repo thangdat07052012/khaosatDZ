@@ -4,7 +4,7 @@ const fs=require('fs'),path=require('path');
 const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
 const a=html.indexOf('const VN=(()=>{'),b=html.indexOf('/* === HẾT HÀM THUẦN === */');
 if(a<0||b<0)throw new Error('Không thấy đoạn hàm thuần');
-const T=new Function(html.slice(a,b)+';return {VN,haversine,gpsLoc,gpsXongSom,gpsMau,hcTinh,docSo,mocNhap,nanTuyen,GPS_CHE_DO};')();
+const T=new Function(html.slice(a,b)+';return {VN,haversine,gpsLoc,gpsXongSom,gpsMau,hcTinh,docSo,mocNhap,nanTuyen,GPS_CHE_DO,NEN};')();
 let nOk=0,nSai=0;
 const ok=(c,m)=>{if(c){nOk++;console.log('  ✓ '+m)}else{nSai++;console.log('  ✗ '+m)}};
 // số ngẫu nhiên có hạt giống (kết quả lặp lại được)
@@ -113,5 +113,22 @@ console.log('9. (03/11) Bỏ lần trùng, bỏ lần đang đi');
   const r=T.gpsLoc(ds),e=kc(r,{lat:LAT,lon:LON});ok(r.boDau+r.boDiChuyen===4,`bỏ đủ 4 lần đang đi (khởi động ${r.boDau} + đang đi ${r.boDiChuyen})`);ok(e<1.2,`điểm đo cách chân cột < 1,2 m (${e.toFixed(2)} m)`);ok(!r.diChuyen,'không báo "đang di chuyển" vì có lần đứng yên')}
 {const ds=[];for(let i=0;i<6;i++)ds.push({...dich(LAT,LON,i*3,0),acc:3,ts:500+i*1000,tsd:3e12+i*1000,v:2});
   const r=T.gpsLoc(ds);ok(r.diChuyen&&r.canh,'đi suốt cả phiên: báo "đang di chuyển", không cho xong sớm');ok(!T.gpsXongSom(ds,6000),'không xong sớm khi đang đi')}
+
+console.log('10. (07/11) JS = Python = PROJ: VN.tu84 so 4 điểm PROJ 9.8.1 (EPSG:4326 -> 5897)');
+// Cùng 4 điểm DIEM_PROJ trong Lisp-CAD/LispcadZP/tools/vn2000/thu_vn2000.py (Python lệch 0,0000 m).
+for(const [lat,lon,xn,ye] of [[19.8,105.78,2190303.7714,581524.8993],[20.3,105.2,2245474.6586,520691.4638],
+  [19.4,104.9,2145843.2410,489301.4412],[21.0,105.85,2323187.6113,588172.1495]]){
+  const [x,y]=T.VN.tu84(lat,lon,105),d=Math.hypot(x-xn,y-ye);
+  ok(d<0.002,`(${lat}, ${lon}): x=${x.toFixed(4)} y=${y.toFixed(4)} lệch ${d.toFixed(4)} m`)}
+
+console.log('11. (07/11) Ảnh nền vệ tinh: ô Web Mercator');
+{const N=T.NEN,[x,y]=N.oTai(19.8,105.78,17),a=N.goc(x,y,17),b=N.goc(x+1,y+1,17);
+  ok(a.lat>=19.8&&b.lat<19.8&&a.lon<=105.78&&b.lon>105.78,`ô z17 (${x},${y}) chứa điểm (19.8, 105.78)`);
+  ok(x===104049&&y===58179,'số ô z17 = 104049/58179 (tính bằng Python theo công thức OSM)');
+  ok(Math.abs(N.goc(0,0,1).lat-85.0511)<1e-3&&N.goc(1,1,1).lon===0,'góc ô z1 = 85,0511° / 0°');
+  ok(N.z(19.8,1.11)===17&&N.z(19.8,0.01)===18&&N.z(19.8,1e5)===3,'mức phóng theo m/điểm ảnh, kẹp 3..18 (Esri z19 vùng VN là ô trống "Map data not yet available")');
+  const L=N.ds(19.81,105.77,19.79,105.79,19);
+  ok(L.length>0&&L.length<=64&&L.every(t=>t.z===L[0].z)&&L[0].z<19,`khung 2 km: ${L.length} ô, tự hạ còn z${L[0].z}`);
+  ok(N.url(17,104049,58179).endsWith('/tile/17/58179/104049'),'URL Esri thứ tự z/y/x')}
 
 console.log(`\n${nOk} đạt, ${nSai} sai`);process.exit(nSai?1:0);
