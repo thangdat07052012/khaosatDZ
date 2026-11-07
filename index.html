@@ -42,8 +42,11 @@ button{font:inherit;color:inherit;cursor:pointer}
 .ttl{flex:1;min-width:0;height:42px;border:0;background:transparent;text-align:left;font-weight:700;font-size:16.5px;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px}
 
-#stage{flex:1;position:relative;min-height:0;background:var(--paper)}
-#cv{position:absolute;inset:0;width:100%;height:100%;touch-action:none;user-select:none;-webkit-user-select:none}
+#stage{flex:1;position:relative;min-height:0;background:var(--paper);overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+/* ảnh nền vệ tinh vẽ lên canvas riêng dưới sơ đồ; kéo / phóng chỉ dịch lớp SVG bằng transform, thả tay mới dựng lại */
+#nen{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+#cv{position:absolute;inset:0;width:100%;height:100%;overflow:visible;transform-origin:0 0;will-change:transform;touch-action:none;user-select:none;-webkit-user-select:none}
+#nenattr{position:absolute;right:6px;bottom:4px;max-width:70%;font-size:10px;line-height:1.3;color:#fff;text-shadow:0 0 2px #000,0 0 3px #000;text-align:right;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #status{position:absolute;left:10px;top:10px;right:10px;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none}
 #status .pill{pointer-events:auto;display:inline-flex;align-items:center;gap:6px;background:var(--fg);color:var(--paper);
   border-radius:999px;padding:5px 5px 5px 12px;font-size:13.5px;font-weight:600;min-height:34px}
@@ -51,9 +54,6 @@ button{font:inherit;color:inherit;cursor:pointer}
 #status .pill button{border:0;background:rgba(255,255,255,.2);border-radius:999px;height:26px;min-width:30px;padding:0 10px;font-size:12.5px;font-weight:700;color:inherit}
 @media (prefers-color-scheme:dark){#status .pill button{background:rgba(0,0,0,.18)}}
 
-.grid{stroke:var(--grid);stroke-width:1}
-.nen{opacity:.9;pointer-events:none}
-.nenattr{font-size:10px;fill:#fff;stroke:rgba(0,0,0,.65);stroke-width:2.5px;paint-order:stroke;pointer-events:none}
 .ib.on{background:rgba(255,255,255,.28);border-color:#fff}
 .road{stroke:var(--road);fill:none;stroke-linecap:round;stroke-linejoin:round}
 .road.sel{stroke:var(--hi);opacity:.45}
@@ -197,12 +197,12 @@ label.btn{display:flex;align-items:center;justify-content:center}
   <button id="b-title" class="ttl" aria-label="Đổi tên tuyến">Tuyến</button>
   <button id="b-undo" class="ib" aria-label="Hoàn tác">↶</button>
   <button id="b-fit" class="ib" aria-label="Xem toàn bộ">⤢</button>
-  <button id="b-nen" class="ib" aria-label="Ảnh nền vệ tinh" aria-pressed="false">🛰</button>
+  <button id="b-nen" class="ib" aria-label="Ảnh nền vệ tinh (giữ lâu: cài đặt ảnh nền)" aria-pressed="false">🛰</button>
   <button id="b-gpsp" class="ib" aria-label="GPS chính xác: chế độ đo, mốc hiệu chỉnh, nắn tuyến">◎</button>
   <button id="b-table" class="ib" aria-label="Bảng cột">▤</button>
   <button id="b-export" class="ib pri">Xuất</button>
 </header>
-<div id="stage"><svg id="cv" role="img" aria-label="Sơ đồ tuyến"></svg><div id="status"></div></div>
+<div id="stage"><canvas id="nen" aria-hidden="true"></canvas><svg id="cv" role="img" aria-label="Sơ đồ tuyến"></svg><div id="nenattr" hidden></div><div id="status"></div></div>
 <nav class="tools" aria-label="Công cụ">
   <button data-tool="cot" class="on"><i><span class="ic-tron"></span></i>Cột</button>
   <button data-tool="duong"><i><span class="ic-road"></span></i>Đường</button>
@@ -441,9 +441,12 @@ function nextPos(p){
 }
 
 /* ================= vẽ ================= */
-const cv=$('#cv'), stage=$('#stage');
+const cv=$('#cv'), stage=$('#stage'), nenCv=$('#nen'), nenCx=nenCv.getContext('2d',{alpha:true}), nenAttr=$('#nenattr');
+let DPR=window.devicePixelRatio||1;
 let W=0,H=0,V=D.view||null,tool='cot',noiA=null,editId=null,selRoad=null,roadStart=null,fix=null,watchId=null,tmpRoad=null;
-function sizeUp(){const r=stage.getBoundingClientRect();W=r.width;H=r.height;cv.setAttribute('viewBox',`0 0 ${W} ${H}`)}
+function sizeUp(){const r=stage.getBoundingClientRect();W=r.width;H=r.height;cv.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  DPR=window.devicePixelRatio||1;const cw=Math.max(1,Math.round(W*DPR)),ch=Math.max(1,Math.round(H*DPR));
+  if(nenCv.width!==cw||nenCv.height!==ch){nenCv.width=cw;nenCv.height=ch}}
 function allPts(){const a=D.poles.map(p=>[p.x,p.y]);for(const r of D.roads)a.push(...r.pts);for(const m of D.mocs)a.push([m.x,m.y]);return a}
 function fitView(w,h,pad){
   const pts=allPts();if(!pts.length)return {s:3,tx:w/2,ty:h/2};
@@ -470,12 +473,25 @@ function layout(v,w,h,o,pr,JN){
     D.edges.map(e=>e.join()).join(),JN.map(j=>j.x.toFixed(1)+','+j.y.toFixed(1)).join(),D.mocs.map(m=>m.x.toFixed(1)+m.y.toFixed(1)+m.ten).join(),
     D.roads.map(r=>(r.ten||'')+r.w+':'+r.pts.join()).join()].join('#');
   if(sig&&LCACHE&&LCACHE.sig===sig)return LCACHE.L;
+  /* đang kéo cột / kéo điểm đường: giữ nhãn đã xếp (đỡ nhảy, đỡ tính lại mỗi khung), nhãn + số khoảng cột của cột đang kéo đi theo cột; thả tay mới xếp lại */
+  const pre=s+'#'+k+'#'+D.id+'#'+(editId||'');
+  if(sig&&LCACHE&&LCACHE.pre===pre&&G&&(G.type==='drag'||G.type==='rdrag')){const L=LCACHE.L;
+    if(G.type==='drag'){const p=G.hit,e=L.PL.find(l=>l.id===p.id);
+      if(e){const dx=X(p.x)-e.px,dy=Y(p.y)-e.py;e.x+=dx;e.y+=dy;e.px+=dx;e.py+=dy}
+      for(const t of L.KC){const a=t.id===p.id?p:byId(t.id),f=a&&a.from&&byId(a.from);
+        if(f&&(a===p||f===p)){t.x=(X(a.x)+X(f.x))/2;t.y=(Y(a.y)+Y(f.y))/2-5*k}}}
+    return L}
   const R=7*k,sz1=o.print?20:13.5,sz2=o.print?15:11,szk=o.print?15:11,szj=o.print?14:10.5,szm=o.print?17:12,szr=o.print?16:12,lh=12.5*k,CW=.58;
-  const obs=[],add=(x0,y0,x1,y1,wt)=>obs.push({x0,y0,x1,y1,wt});
+  /* vật cản chia theo lưới ô 48 điểm: mỗi lần thử chỉ xét vật cản ở các ô chạm khung nhãn (bản cũ quét hết — 300 cột kéo một cột ~77 ms / khung) */
+  const GC=48,GR=new Map(),ck=(i,j)=>(i+50000)*100000+j+50000;let st=0;
+  const add=(x0,y0,x1,y1,wt)=>{const q={x0,y0,x1,y1,wt,m:0},i1=Math.floor(x1/GC),j0=Math.floor(y0/GC),j1=Math.floor(y1/GC);
+    for(let i=Math.floor(x0/GC);i<=i1;i++)for(let j=j0;j<=j1;j++){const c=ck(i,j),a=GR.get(c);if(a)a.push(q);else GR.set(c,[q])}};
   const ov=(a,b)=>Math.max(0,Math.min(a.x1,b.x1)-Math.max(a.x0,b.x0))*Math.max(0,Math.min(a.y1,b.y1)-Math.max(a.y0,b.y0));
   /* ảnh xuất: chừa dải tiêu đề ở trên và chú giải ở dưới */
   const area=o.print?{x0:12-v.tx,y0:70-v.ty,x1:w-12-v.tx,y1:h-80-v.ty}:null;
-  const cost=b=>{let c=0;for(const q of obs){const a=ov(b,q);if(a)c+=a*q.wt}if(area)c+=((b.x1-b.x0)*(b.y1-b.y0)-ov(b,area))*6;return c};
+  const cost=b=>{let c=0;st++;const i1=Math.floor(b.x1/GC),j0=Math.floor(b.y0/GC),j1=Math.floor(b.y1/GC);
+    for(let i=Math.floor(b.x0/GC);i<=i1;i++)for(let j=j0;j<=j1;j++){const a=GR.get(ck(i,j));if(a)for(const q of a){if(q.m===st)continue;q.m=st;const v=ov(b,q);if(v)c+=v*q.wt}}
+    if(area)c+=((b.x1-b.x0)*(b.y1-b.y0)-ov(b,area))*6;return c};
   const pick=(cs,bw,bh)=>{let best=null;
     /* vị trí sát cột được ưu tiên: chạm nhẹ mép đường vẫn hơn phải kẻ đường dẫn ra xa */
     const pen=(c,i)=>i*3+(c[2]?bw*bh*.08+60:0);
@@ -513,28 +529,19 @@ function layout(v,w,h,o,pr,JN){
       const t=a*Math.PI/180,c=Math.cos(t),si=Math.sin(t),px=q.x+c*(q.Rw+d*k),py=q.y+si*(q.Rh+d*k);
       cs.push([c>.3?px:c<-.3?px-bw:px-bw/2,si>.6?py:si<-.6?py-bh:py-bh/2,1])}
     const b=pick(cs,bw,bh);add(b.b.x0,b.b.y0,b.b.x1,b.b.y1,2);
-    PL.push({so,chuaSo:!r.so&&p.shape!=='tba',lines,x:b.b.x0,y:b.b.y0,bw,bh,far:b.far,px:q.x,py:q.y,Rw:q.Rw,Rh:q.Rh})}
+    PL.push({id:p.id,so,chuaSo:!r.so&&p.shape!=='tba',lines,x:b.b.x0,y:b.b.y0,bw,bh,far:b.far,px:q.x,py:q.y,Rw:q.Rw,Rh:q.Rh})}
   /* chữ "Ngã ba / Ngã tư": chỉ ghi khi còn chỗ trống */
   const JL=[],mocNear=(x,y)=>D.mocs.some(m=>Math.hypot(m.x-x,m.y-y)<8);
   for(const j of JN){if(mocNear(j.x,j.y))continue;const x=X(j.x),y=Y(j.y),t='Ngã '+(j.n===4?'tư':'ba'),bw=t.length*szj*CW+2,bh=szj+2;
     const b=pick([[x+8*k,y+3*k],[x-8*k-bw,y+3*k],[x+8*k,y-3*k-bh],[x-8*k-bw,y-3*k-bh]],bw,bh);
     if(b.c<bw*bh*.2){add(b.b.x0,b.b.y0,b.b.x1,b.b.y1,1);JL.push({x:b.b.x0,y:b.b.y0+.85*szj,t})}}
   const L={PL,JL,KC,sz1,lh};
-  if(sig)LCACHE={sig,L};
+  if(sig)LCACHE={sig,pre,L};
   return L;
 }
 function svgInner(v,w,h,o={}){
   const X=x=>+(x*v.s+v.tx).toFixed(1), Y=y=>+(y*v.s+v.ty).toFixed(1), k=o.k||1;
-  let g='';const nen=!o.print&&DB.nen&&D.geo;
-  if(nen){const a=xyToGeo(-v.tx/v.s,-v.ty/v.s),b=xyToGeo((w-v.tx)/v.s,(h-v.ty)/v.s);
-    const z=NEN.z((a.lat+b.lat)/2,1/(v.s*(window.devicePixelRatio||1)));
-    for(const t of NEN.ds(a.lat,a.lon,b.lat,b.lon,z)){const p=NEN.goc(t.x,t.y,t.z),q=NEN.goc(t.x+1,t.y+1,t.z),A=geoToXY(p.lat,p.lon,false),B=geoToXY(q.lat,q.lon,false);
-      const x0=X(A.x),y0=Y(A.y);
-      g+=`<image class="nen" href="${NEN.url(t.z,t.x,t.y)}" x="${x0}" y="${y0}" width="${(X(B.x)-x0+.6).toFixed(1)}" height="${(Y(B.y)-y0+.6).toFixed(1)}" preserveAspectRatio="none"/>`}}
-  if(!o.noGrid&&!nen){let st=10;while(st*v.s<18)st*=5;
-    const gx0=Math.floor(-v.tx/v.s/st)*st, gy0=Math.floor(-v.ty/v.s/st)*st;
-    for(let x=gx0;x*v.s+v.tx<w;x+=st)g+=`<line class="grid" x1="${X(x)}" y1="0" x2="${X(x)}" y2="${h}"/>`;
-    for(let y=gy0;y*v.s+v.ty<h;y+=st)g+=`<line class="grid" x1="0" y1="${Y(y)}" x2="${w}" y2="${Y(y)}"/>`;}
+  let g='';   /* lưới ô và ảnh vệ tinh: vẽ ở canvas #nen (nenVe), không nằm trong SVG */
   for(const r of D.roads){const d='M'+r.pts.map(q=>X(q[0])+' '+Y(q[1])).join('L');
     g+=`<path class="road${r.id===selRoad&&!o.print?' sel':''}" d="${d}" style="stroke-width:${Math.max(r.w*v.s,6).toFixed(1)}px"/><path class="roadc" d="${d}"/>`;
     if(r.ten){const m=roadMid(r);g+=`<text class="lb rn" x="${X(m[0])}" y="${Y(m[1])+4}" text-anchor="middle">${esc(r.ten)}</text>`}}
@@ -577,12 +584,17 @@ function svgInner(v,w,h,o={}){
   for(const t of LB.JL)g+=`<text class="lb jt" x="${f1(t.x+tx)}" y="${f1(t.y+ty)}">${esc(t.t)}</text>`;
   if(fix&&D.geo&&!o.print){const m=geoToXY(fix.lat,fix.lon,false);const mx=X(m.x),my=Y(m.y);
     g+=`<circle class="meacc" cx="${mx}" cy="${my}" r="${Math.min(fix.acc*v.s,200).toFixed(1)}"/><circle class="me" cx="${mx}" cy="${my}" r="7"/>`}
-  if(nen)g+=`<text class="nenattr" x="${w-6}" y="${h-6}" text-anchor="end">Ảnh nền: Esri, Maxar, Earthstar Geographics</text>`;
   return g;
 }
-let rafP=false;
+let rafP=false,rafN=false,Vb=null;   /* Vb: khung nhìn lúc dựng SVG lần cuối */
 function draw(){if(rafP)return;rafP=true;requestAnimationFrame(()=>{rafP=false;render()})}
-function render(){cv.innerHTML=svgInner(V,W,H);status()}
+function render(){Vb={s:V.s,tx:V.tx,ty:V.ty};cv.style.transform='';cv.innerHTML=svgInner(V,W,H);nenVe();status()}
+/* đang kéo / phóng: chỉ dịch + co giãn lớp SVG đã dựng (GPU) và vẽ lại ảnh nền; thả tay mới dựng lại SVG cho nét chữ chuẩn */
+function nhanh(){if(rafN)return;rafN=true;requestAnimationFrame(()=>{rafN=false;if(rafP||!Vb)return;
+  const k=V.s/Vb.s;cv.style.transform=Math.abs(k-1)<1e-9&&V.tx===Vb.tx&&V.ty===Vb.ty?'':`translate(${(V.tx-k*Vb.tx).toFixed(2)}px,${(V.ty-k*Vb.ty).toFixed(2)}px) scale(${k.toFixed(5)})`;nenVe()})}
+let gpsMCu=null;   /* màu chấm GPS lúc dựng thanh trạng thái lần cuối */
+/* đang đo GPS (4 lần / giây): chỉ đổi chữ, đổi màu mới dựng lại thanh trạng thái — không dựng lại sơ đồ */
+function gpsPill(){if(!gpsM)return;const g=gpsTxt(),el=$('#gps-t');if(!el||g.m!==gpsMCu){status();return}el.textContent=g.h}
 function status(){
   const a=activeP(),ed=editId&&byId(editId);let h='';
   if(tool==='noi')h=`<span class="pill solo">${noiA?'Chạm cột thứ hai để nối / bỏ nối':'Nối dây: chạm cột thứ nhất'}</span>`;
@@ -594,36 +606,182 @@ function status(){
   else if(ed&&ed.auto)h=`<span class="pill solo">Cột tự đặt thẳng tuyến — chạm chỗ khác để dời tới đó</span>`;
   else if(a){const so=parse(a.code).so;h=`<span class="pill solo">${so?'Vẽ tiếp từ '+esc(so):'Vẽ tiếp từ cột chưa đánh số'}</span>`}
   else h=`<span class="pill solo">${D.poles.length?'Đoạn mới — cột sau không nối':'Chạm lên bảng để đặt cột đầu tiên'}</span>`;
-  if(gpsM){const g=gpsTxt();h+=`<span class="pill" id="gps-pill">${g.m?`<span class="qdot q-${g.m}"></span>`:''}${esc(g.h)}<button data-st="gstop">${gpsM.ds.length?'Dừng sớm':'Huỷ'}</button></span>`;
+  if(nenDoi){const l=nenLech(),m=v=>vn1(Math.abs(v));
+    h=`<span class="pill">Dời ảnh: kéo cho khớp cột GPS · ${m(l[0])} m ${l[0]<0?'Tây':'Đông'}, ${m(l[1])} m ${l[1]<0?'Bắc':'Nam'}<button data-st="ndx">Xong</button><button data-st="nd0">Bỏ dời</button></span>`}
+  gpsMCu=null;
+  if(gpsM){const g=gpsTxt();gpsMCu=g.m;h+=`<span class="pill" id="gps-pill">${g.m?`<span class="qdot q-${g.m}"></span>`:''}<span id="gps-t">${esc(g.h)}</span><button data-st="gstop">${gpsM.ds.length?'Dừng sớm':'Huỷ'}</button></span>`;
     if(g.m==='do')h+=`<span class="pill solo nhac">${GPS_NHAC}</span>`}
   $('#status').innerHTML=h;
 }
 function persistView(){D.view={s:V.s,tx:V.tx,ty:V.ty};save()}
 
+/* ================= ảnh nền (canvas #nen, dưới lớp SVG) =================
+   Ô ảnh tải một lần vào bộ nhớ OC (giữ ~180 ô gần nhất); kéo / phóng chỉ vẽ lại canvas từ ô có sẵn, không tạo lại thẻ ảnh.
+   Ô chưa về thì phóng tạm ô cha (hoặc ghép 4 ô con) cho khỏi trống. Ô tải được kiểu CORS thì làm nét (lamRo) rồi mới vẽ.
+   Độ lệch ảnh (mét, Đông / Nam) lưu theo từng bản vẽ và từng nguồn ảnh: D.nenLech[nguồn] — chỉ dời ẢNH, toạ độ cột vẫn theo GPS. */
+let nenDoi=false;   /* đang ở chế độ kéo ảnh cho khớp cột GPS */
+const OC=new Map(),OC_MAX=180;let ocDang=0,nenLuot=0,nenRaf=false,ocMoi=0;
+/* ảnh ghép các ô đúng mức ở độ phân giải gốc — khi phải phóng ô to quá (mức cao nhất của nguồn) thì phóng cả ảnh ghép MỘT lần:
+   mép ô liền nhau, không còn lằn kẻ ô; kéo / phóng chỉ vẽ lại ảnh ghép, không ghép lại */
+const GH={cv:null,k:''};
+const NEN_RO={A:0.55,K:1.05};   /* ⚑ độ làm nét (unsharp 4 lân cận) và độ tương phản — chỉnh ở đây nếu thấy gắt */
+const GG={s:null,exp:0,dang:false,loi:false,hong:0,cr:'',crK:'',crT:null};
+const NGUON={
+  esri:{ten:'Esri',zMax:18,url:(z,x,y)=>NEN.url(z,x,y)},
+  /* ⚑ Google Map Tiles API: cần khoá của anh (Google Cloud), phiên createSession; chưa thử với khoá thật */
+  gg:{ten:'Google',zMax:20,url:(z,x,y)=>`https://tile.googleapis.com/v1/2dtiles/${z}/${x}/${y}?session=${encodeURIComponent(GG.s)}&key=${encodeURIComponent(DB.ggKey)}`}
+};
+function nenNguon(){
+  if(DB.nenNguon!=='gg'||!DB.ggKey||GG.loi)return 'esri';
+  if(GG.s&&GG.exp&&GG.exp*1000<Date.now()+60000)GG.s=null;   /* phiên sắp hết hạn: xin phiên mới */
+  if(!GG.s){ggPhien();return GG.s?'gg':'esri'}
+  return 'gg';
+}
+function ggDatLai(){GG.s=null;GG.exp=0;GG.loi=false;GG.hong=0;GG.cr='';GG.crK='';GH.k='';
+  for(const k of [...OC.keys()])if(k.startsWith('gg/')){const o=OC.get(k);if(o.bm&&o.bm.close)o.bm.close();OC.delete(k)}}
+function ggPhien(){
+  if(GG.dang)return;const k=DB.ggKey,c=DB.ggPhien;
+  if(c&&c.key===k&&c.s&&c.exp*1000-Date.now()>3600e3){GG.s=c.s;GG.exp=c.exp;return}
+  GG.dang=true;
+  fetch('https://tile.googleapis.com/v1/createSession?key='+encodeURIComponent(k),{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({mapType:'satellite',language:'vi-VN',region:'VN'})})
+    .then(r=>r.ok?r.json():r.text().then(t=>{throw new Error('mã '+r.status+(t?' '+t.slice(0,80):''))}))
+    .then(j=>{if(!j||!j.session)throw new Error('không có phiên');GG.s=j.session;GG.exp=+j.expiry||0;GG.loi=false;GG.hong=0;
+      DB.ggPhien={key:k,s:GG.s,exp:GG.exp};saveNow()})
+    .catch(e=>{GG.loi=true;toast('Không mở được ảnh Google ('+String(e&&e.message||e).slice(0,70)+') — đang dùng ảnh Esri')})
+    .finally(()=>{GG.dang=false;nenHen()});
+}
+/* dòng bản quyền Google theo khung nhìn (bắt buộc hiện) — hỏi lại khi khung nhìn đổi, chờ 0,7 s cho khỏi hỏi dồn */
+function ggCr(z,n,s,e,w){
+  const k=[z,n.toFixed(3),s.toFixed(3),e.toFixed(3),w.toFixed(3)].join();if(k===GG.crK)return;
+  clearTimeout(GG.crT);GG.crT=setTimeout(()=>{if(!GG.s)return;GG.crK=k;
+    fetch(`https://tile.googleapis.com/tile/v1/viewport?session=${encodeURIComponent(GG.s)}&key=${encodeURIComponent(DB.ggKey)}&zoom=${z}&north=${n}&south=${s}&east=${e}&west=${w}`)
+      .then(r=>r.ok?r.json():null).then(j=>{if(j&&j.copyright!=null){GG.cr=String(j.copyright);nenHen()}}).catch(()=>{})},700);
+}
+function nenLech(){const k=nenNguon();D.nenLech=D.nenLech||{};return D.nenLech[k]||(D.nenLech[k]=[0,0])}
+function nenHen(){if(nenRaf)return;nenRaf=true;requestAnimationFrame(()=>{nenRaf=false;nenVe()})}
+function taiAnh(url,cors){return new Promise((ok,loi)=>{const im=new Image();im.decoding='async';if(cors)im.crossOrigin='anonymous';im.onload=()=>ok(im);im.onerror=loi;im.src=url})}
+let roCv=null,roCx=null;
+/* làm nét ô ảnh: v' = (v + A·(v − trung bình 4 lân cận) − 128)·K + 128, giữ kênh trong suốt. Lỗi gì cũng trả null (dùng ảnh gốc) */
+function lamRo(im){
+  try{const w=im.naturalWidth,h=im.naturalHeight;if(!w||!h)return Promise.resolve(null);
+    if(!roCv){roCv=document.createElement('canvas');roCx=roCv.getContext('2d',{willReadFrequently:true})}
+    if(roCv.width!==w||roCv.height!==h){roCv.width=w;roCv.height=h}
+    roCx.clearRect(0,0,w,h);roCx.drawImage(im,0,0);
+    const d=roCx.getImageData(0,0,w,h),a=d.data,b=new Uint8ClampedArray(a),r=w*4,A=NEN_RO.A,K=NEN_RO.K;
+    for(let y=1;y<h-1;y++)for(let i=y*r+4,e=y*r+r-4;i<e;i+=4)for(let j=i;j<i+3;j++){const v=b[j];a[j]=(v+A*(v-(b[j-4]+b[j+4]+b[j-r]+b[j+r])*0.25)-128)*K+128}
+    return createImageBitmap(d).catch(()=>null);
+  }catch(e){return Promise.resolve(null)}
+}
+function ocDon(){
+  if(OC.size<=OC_MAX)return;
+  for(const [k,o] of OC){if(OC.size<=OC_MAX)break;if(o.dang||o.luot===nenLuot)continue;if(o.bm&&o.bm.close)o.bm.close();OC.delete(k)}
+}
+/* xin tải ô (nếu chưa có, chưa đang tải, không vừa hỏng); tối đa 8 ô cùng lúc */
+function ocTai(src,z,x,y){
+  const k=src+'/'+z+'/'+x+'/'+y;let o=OC.get(k);
+  if(o&&(o.bm||o.dang||(o.hong&&Date.now()-o.hong<30000)))return;
+  if(ocDang>=8)return;
+  if(!o){o={bm:null,dang:false,hong:0,luot:nenLuot};OC.set(k,o)}
+  o.dang=true;ocDang++;const url=NGUON[src].url(z,x,y);
+  taiAnh(url,true).then(im=>[im,true],e=>src==='esri'?taiAnh(url,false).then(im=>[im,false]):Promise.reject(e))
+    .then(([im,cors])=>{o.bm=im;o.w=im.naturalWidth||256;o.hong=0;ocMoi++;if(src==='gg')GG.hong=0;
+      if(cors)lamRo(im).then(b=>{if(!b)return;if(OC.get(k)===o){o.bm=b;o.ro=1;ocMoi++;nenHen()}else b.close()})})
+    .catch(()=>{o.hong=Date.now();
+      if(src==='gg'&&++GG.hong>=6&&!GG.loi){GG.loi=true;toast('Ảnh Google không tải được (khoá / hạn mức / mạng) — đang dùng ảnh Esri')}})
+    .finally(()=>{o.dang=false;ocDang--;nenHen();ocDon()});
+}
+function ocCo(src,z,x,y){const k=src+'/'+z+'/'+x+'/'+y,o=OC.get(k);if(!o)return null;o.luot=nenLuot;if(o.bm){OC.delete(k);OC.set(k,o);return o}return null}
+let mauLuoi=null;
+try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{mauLuoi=null;nenHen()})}catch(e){}
+function nenChu(t){if(nenAttr.textContent===t&&nenAttr.hidden===!t)return;nenAttr.textContent=t;nenAttr.hidden=!t}
+function nenVe(){
+  if(!V||!D)return;
+  const c=nenCx,cw=nenCv.width,ch=nenCv.height,k=cw/(W||1);nenLuot++;
+  c.setTransform(1,0,0,1,0,0);c.clearRect(0,0,cw,ch);
+  if(!DB.nen||!D.geo){   /* lưới ô 10 / 50 / 250 m … như bản cũ */
+    nenCv.style.opacity='';nenChu('');
+    let st=10;while(st*V.s<18)st*=5;const p=st*V.s*k;if(!(p>2))return;
+    if(!mauLuoi)mauLuoi=getComputedStyle(document.documentElement).getPropertyValue('--grid').trim()||'#E3E9E6';
+    c.strokeStyle=mauLuoi;c.lineWidth=Math.max(1,Math.round(k));const o=c.lineWidth%2?0.5:0;c.beginPath();
+    for(let x=((V.tx*k)%p+p)%p;x<cw;x+=p){const X=Math.round(x)+o;c.moveTo(X,0);c.lineTo(X,ch)}
+    for(let y=((V.ty*k)%p+p)%p;y<ch;y+=p){const Y=Math.round(y)+o;c.moveTo(0,Y);c.lineTo(cw,Y)}
+    c.stroke();return;
+  }
+  const src=nenNguon(),N=NGUON[src],g=D.geo,kx=111320*Math.cos(g.lat0*Math.PI/180),ky=110574,l=D.nenLech&&D.nenLech[src]||[0,0];
+  nenCv.style.opacity=String(DB.nenMo||1);
+  c.fillStyle='#5f6663';c.fillRect(0,0,cw,ch);
+  /* khung nhìn ra kinh / vĩ độ (đã trừ độ lệch ảnh) */
+  const lonOf=x=>g.lon0+(x-l[0]-g.x0)/kx,latOf=y=>g.lat0-(y-l[1]-g.y0)/ky;
+  const lonW=lonOf(-V.tx/V.s),lonE=lonOf((W-V.tx)/V.s),latN=latOf(-V.ty/V.s),latS=latOf((H-V.ty)/V.s);
+  const L=NEN.ds(latN,lonW,latS,lonE,NEN.z((latN+latS)/2,1/(V.s*Math.min(DPR,2)),N.zMax),96);
+  if(!L.length){nenChu('');return}
+  const z=L[0].z,n=2**z,x0=L[0].x,y0=L[0].y,x1=L[L.length-1].x,y1=L[L.length-1].y;
+  /* mép cột / hàng ô theo điểm ảnh thiết bị, làm tròn chung để hai ô cạnh nhau không hở */
+  const SX=lon=>Math.round(((g.x0+(lon-g.lon0)*kx+l[0])*V.s+V.tx)*k),SY=lat=>Math.round(((g.y0-(lat-g.lat0)*ky+l[1])*V.s+V.ty)*k);
+  const latT=(t,m)=>Math.atan(Math.sinh(Math.PI*(1-2*t/m)))*180/Math.PI;
+  const cx=[],cy=[];for(let x=x0;x<=x1+1;x++)cx.push(SX(x/n*360-180));for(let y=y0;y<=y1+1;y++)cy.push(SY(latT(y,n)));
+  c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';
+  const T=256,nc=x1-x0+1,nr=y1-y0+1,ghep=(cx[nc]-cx[0])/(nc*T)>1.3&&nc*T<=4096&&nr*T<=4096,
+    khoa=src+'/'+z+'/'+x0+'/'+y0+'/'+x1+'/'+y1+'/'+ocMoi,veLai=!ghep||GH.k!==khoa;
+  let dc=c,CX=cx,CY=cy;
+  if(ghep&&veLai){if(!GH.cv)GH.cv=document.createElement('canvas');GH.cv.width=nc*T;GH.cv.height=nr*T;
+    dc=GH.cv.getContext('2d');dc.imageSmoothingEnabled=true;dc.imageSmoothingQuality='high';dc.fillStyle='#5f6663';dc.fillRect(0,0,nc*T,nr*T);
+    CX=cx.map((_,i)=>i*T);CY=cy.map((_,j)=>j*T)}
+  /* ảnh ghép còn dùng được: không vẽ lại ô, vẫn chạm ô (giữ trong bộ nhớ) và xếp ô thiếu vào hàng tải */
+  const ve=veLai?(o,sx,sy,sw,X0,Y0,X1,Y1)=>{try{dc.drawImage(o.bm,sx,sy,sw,sw,X0,Y0,X1-X0,Y1-Y0)}catch(e){}}:()=>{};
+  const keo=G&&G.type==='pinch';   /* đang phóng hai ngón: chỉ vẽ ô có sẵn, thả tay mới tải ô mức mới */
+  const can=[];
+  for(const t of L){if(t.x<0||t.x>=n||t.y<0||t.y>=n)continue;
+    const i=t.x-x0,j=t.y-y0,X0=CX[i],X1=CX[i+1],Y0=CY[j],Y1=CY[j+1];
+    if(!ghep&&(X1<=0||Y1<=0||X0>=cw||Y0>=ch))continue;
+    const o=ocCo(src,z,t.x,t.y);
+    if(o){ve(o,0,0,o.w,X0,Y0,X1,Y1);continue}
+    can.push([t.x,t.y,Math.hypot((cx[i]+cx[i+1])/2-cw/2,(cy[j]+cy[j+1])/2-ch/2)]);
+    for(let d=1;d<=6&&z-d>=0;d++){const p=ocCo(src,z-d,t.x>>d,t.y>>d);   /* ô cha phóng to tạm */
+      if(p){const sw=p.w/2**d;ve(p,(t.x-((t.x>>d)<<d))*sw,(t.y-((t.y>>d)<<d))*sw,sw,X0,Y0,X1,Y1);break}}
+    if(z<N.zMax){const m=n*2,xm=ghep?(X0+X1)/2:SX((2*t.x+1)/m*360-180),ym=ghep?(Y0+Y1)/2:SY(latT(2*t.y+1,m));   /* ô con có sẵn (lúc thu nhỏ) */
+      for(let a=0;a<2;a++)for(let b=0;b<2;b++){const q=ocCo(src,z+1,2*t.x+a,2*t.y+b);if(q)ve(q,0,0,q.w,a?xm:X0,b?ym:Y0,a?X1:xm,b?Y1:ym)}}
+  }
+  if(ghep){if(veLai)GH.k=khoa;try{c.drawImage(GH.cv,0,0,nc*T,nr*T,cx[0],cy[0],cx[nc]-cx[0],cy[nr]-cy[0])}catch(e){}}
+  /* thứ tự tải: ô thô (z−3) trước cho có hình ngay, rồi ô đúng mức từ giữa ra, rồi một vòng ô quanh khung nhìn */
+  if(z>=3)for(let y=y0>>3;y<=y1>>3;y++)for(let x=x0>>3;x<=x1>>3;x++)if(!ocCo(src,z-3,x,y))ocTai(src,z-3,x,y);
+  if(!keo){can.sort((a,b)=>a[2]-b[2]);for(const t of can)ocTai(src,z,t[0],t[1]);
+    if(ocDang<4)for(let y=y0-1;y<=y1+1;y++)for(let x=x0-1;x<=x1+1;x++)if((y<y0||y>y1||x<x0||x>x1)&&x>=0&&y>=0&&x<n&&y<n&&!ocCo(src,z,x,y))ocTai(src,z,x,y)}
+  if(src==='gg'){nenChu('Google'+(GG.cr?' · '+GG.cr:''));ggCr(z,latN,latS,lonE,lonW)}
+  else nenChu('Ảnh nền: Esri, Maxar, Earthstar Geographics');
+}
+
 /* ================= chạm / kéo / thu phóng ================= */
 const ptrs=new Map();let G=null;
-const loc=e=>{const r=cv.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top}};
+/* toạ độ chạm lấy theo khung #stage (lớp SVG có thể đang bị dịch / co giãn tạm khi kéo) */
+const loc=e=>{const r=stage.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top}};
+const ngoaiBan=e=>e.target.closest&&e.target.closest('#status');
 const toW=pt=>[(pt.x-V.tx)/V.s,(pt.y-V.ty)/V.s];
 function hit(pt){let best=null,bd=26*26;for(const p of D.poles){const dx=p.x*V.s+V.tx-pt.x,dy=p.y*V.s+V.ty-pt.y,d=dx*dx+dy*dy;if(d<bd){bd=d;best=p}}return best}
 function hitMoc(pt){return D.mocs.find(m=>Math.hypot(m.x*V.s+V.tx-pt.x,m.y*V.s+V.ty-8-pt.y)<22)}
 function hitRoad(pt){const [x,y]=toW(pt);const b=nearestRoad(x,y,14/V.s);return b&&b.r}
-cv.addEventListener('pointerdown',e=>{
-  cv.setPointerCapture(e.pointerId);const pt=loc(e);ptrs.set(e.pointerId,pt);
+stage.addEventListener('pointerdown',e=>{
+  if(ngoaiBan(e))return;
+  stage.setPointerCapture(e.pointerId);const pt=loc(e);ptrs.set(e.pointerId,pt);
   if(ptrs.size===1){const hh=hitHandle(pt);
     G={type:'tap',p0:pt,v0:{...V},hh,hit:hh?null:tool==='moc'||tool==='chon'?(hit(pt)||hitMoc(pt)):hit(pt)};
     if(hh&&hh.kind==='v'&&hh.r.pts.length>2)G.lp=setTimeout(()=>{if(G&&G.type==='tap'&&G.hh===hh){snap();hh.r.pts.splice(hh.i,1);save();G=null;draw();toast('Đã bỏ điểm')}},650)}
   else if(ptrs.size===2){tmpRoad=null;if(G&&G.lp)clearTimeout(G.lp);const [a,b]=[...ptrs.values()];
-    G={type:'pinch',d0:Math.hypot(a.x-b.x,a.y-b.y)||1,c0:{x:(a.x+b.x)/2,y:(a.y+b.y)/2},v0:{...V}};draw()}
+    const doi=G&&(G.type==='drag'||G.type==='rdrag'||G.type==='road');
+    G={type:'pinch',d0:Math.hypot(a.x-b.x,a.y-b.y)||1,c0:{x:(a.x+b.x)/2,y:(a.y+b.y)/2},v0:{...V}};if(doi){save();draw()}}
 });
-cv.addEventListener('pointermove',e=>{
+stage.addEventListener('pointermove',e=>{
   if(!ptrs.has(e.pointerId)||!G)return;const pt=loc(e);ptrs.set(e.pointerId,pt);
   if(G.type==='tap'){if(Math.hypot(pt.x-G.p0.x,pt.y-G.p0.y)>8){
       if(G.lp)clearTimeout(G.lp);
-      if(G.hh){snap();G.type='rdrag';G.vi=G.hh.kind==='m'?(G.hh.r.pts.splice(G.hh.i+1,0,toW(pt)),G.hh.i+1):G.hh.i}
+      if(nenDoi){G.type='lech';G.l0=nenLech().slice()}
+      else if(G.hh){snap();G.type='rdrag';G.vi=G.hh.kind==='m'?(G.hh.r.pts.splice(G.hh.i+1,0,toW(pt)),G.hh.i+1):G.hh.i}
       else if(G.hit&&(tool==='chon'||G.hit.id===editId)){snap();G.type='drag'}
       else if(tool==='duong'){G.type='road';roadStart=null;tmpRoad=[toW(G.p0),toW(pt)]}
       else G.type='pan'}else return}
-  if(G.type==='pan'){V.tx=G.v0.tx+pt.x-G.p0.x;V.ty=G.v0.ty+pt.y-G.p0.y;draw()}
+  if(G.type==='pan'){V.tx=G.v0.tx+pt.x-G.p0.x;V.ty=G.v0.ty+pt.y-G.p0.y;nhanh()}
+  else if(G.type==='lech'){const l=nenLech();l[0]=G.l0[0]+(pt.x-G.p0.x)/V.s;l[1]=G.l0[1]+(pt.y-G.p0.y)/V.s;nenHen();status()}
   else if(G.type==='drag'){const [x,y]=toW(pt);G.hit.x=x;G.hit.y=y;if(G.hit.auto)G.hit.auto=false;draw()}
   else if(G.type==='road'){tmpRoad[1]=toW(pt);draw()}
   else if(G.type==='rdrag'){G.hh.r.pts[G.vi]=toW(pt);draw()}
@@ -631,24 +789,30 @@ cv.addEventListener('pointermove',e=>{
     const d=Math.hypot(a.x-b.x,a.y-b.y),c={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
     const s=Math.min(Math.max(G.v0.s*d/G.d0,0.05),60);
     const wx=(G.c0.x-G.v0.tx)/G.v0.s,wy=(G.c0.y-G.v0.ty)/G.v0.s;
-    V.s=s;V.tx=c.x-wx*s;V.ty=c.y-wy*s;draw()}
+    V.s=s;V.tx=c.x-wx*s;V.ty=c.y-wy*s;nhanh()}
 });
 function pEnd(e){
   if(!ptrs.has(e.pointerId))return;ptrs.delete(e.pointerId);
   if(!G)return;
   if(G.lp)clearTimeout(G.lp);
-  if(G.type==='tap'&&ptrs.size===0){if(G.hh)draw();else onTap(G.p0,G.hit)}
+  if(G.type==='tap'&&ptrs.size===0){if(nenDoi)toast('Đang dời ảnh nền: kéo ảnh cho khớp cột GPS rồi bấm Xong');else if(G.hh)draw();else onTap(G.p0,G.hit)}
+  if(G.type==='lech'&&ptrs.size===0){const l=nenLech();l[0]=+l[0].toFixed(2);l[1]=+l[1].toFixed(2);save();status()}
   if(G.type==='rdrag'){const r=G.hh.r,L=r.pts.length;
     if(G.vi===0||G.vi===L-1){const sp=snapRoadPt(r.pts[G.vi],r);r.pts[G.vi]=[+sp.pt[0].toFixed(3),+sp.pt[1].toFixed(3)]}
     save();draw()}
-  if(G.type==='drag')save();
+  if(G.type==='drag'){save();draw()}   /* thả cột: xếp lại nhãn */
   if(G.type==='road'&&ptrs.size===0){const t=tmpRoad;tmpRoad=null;if(t)makeRoad(t[0],t[1]);else draw()}
   if(G.type==='pan'||G.type==='pinch')persistView();
+  /* nhấc một ngón khi đang phóng: ngón còn lại kéo tiếp, không phải đặt tay lại */
+  if(G.type==='pinch'&&ptrs.size===1){const [q]=[...ptrs.values()];G={type:'pan',p0:q,v0:{...V}};return}
+  if(G.type==='pan'||G.type==='pinch')draw();
   if(ptrs.size===0||G.type==='pinch')G=null;
 }
-cv.addEventListener('pointerup',pEnd);cv.addEventListener('pointercancel',e=>{ptrs.delete(e.pointerId);G=null;tmpRoad=null;draw()});
-cv.addEventListener('wheel',e=>{e.preventDefault();const pt=loc(e),f=Math.exp(-e.deltaY*0.0015);
-  const s=Math.min(Math.max(V.s*f,0.05),60),wx=(pt.x-V.tx)/V.s,wy=(pt.y-V.ty)/V.s;V.s=s;V.tx=pt.x-wx*s;V.ty=pt.y-wy*s;draw();persistView()},{passive:false});
+stage.addEventListener('pointerup',pEnd);stage.addEventListener('pointercancel',e=>{if(!ptrs.has(e.pointerId))return;ptrs.delete(e.pointerId);G=null;tmpRoad=null;draw()});
+let wheelT=null;
+stage.addEventListener('wheel',e=>{e.preventDefault();const pt=loc(e),f=Math.exp(-e.deltaY*(e.deltaMode===1?0.05:e.deltaMode===2?1:0.0015));
+  const s=Math.min(Math.max(V.s*f,0.05),60),wx=(pt.x-V.tx)/V.s,wy=(pt.y-V.ty)/V.s;V.s=s;V.tx=pt.x-wx*s;V.ty=pt.y-wy*s;nhanh();
+  clearTimeout(wheelT);wheelT=setTimeout(()=>{wheelT=null;draw();persistView()},160)},{passive:false});
 /* điểm đầu/cuối đường: hít vào đầu mút đường cũ (nối dài) hoặc vào thân đường (ngã ba) */
 function snapRoadPt(p,bo){
   let best=null;const tolE=24/V.s;
@@ -1040,15 +1204,40 @@ $('#status').addEventListener('click',e=>{
   if(s==='new'){finishSheet();D.active=null;save();draw();toast('Cột tiếp theo bắt đầu đoạn mới')}
   else if(s==='rx'){roadStart=null;draw()}
   else if(s==='gstop'){if(gpsM&&gpsM.ds.length)gpsXong();else{gpsDung();toast('Đã huỷ đo GPS')}}
+  else if(s==='ndx'){nenDoi=false;save();status();const l=nenLech();toast(l[0]||l[1]?'Đã lưu độ dời ảnh nền cho bản vẽ này':'Ảnh nền giữ nguyên chỗ')}
+  else if(s==='nd0'){const l=nenLech();l[0]=0;l[1]=0;nenDoi=false;save();nenVe();status();toast('Ảnh nền về chỗ cũ')}
 });
 $('#b-undo').addEventListener('click',()=>{const s=undoSt.pop();if(!s){toast('Không còn gì để hoàn tác');return}
   Object.assign(D,JSON.parse(s));editId=null;F=null;sheet.hidden=true;closeRoad();save();draw();toast('Đã hoàn tác')});
 $('#b-fit').addEventListener('click',()=>{V=fitView(W,H,40);persistView();draw()});
 /* nút ảnh nền vệ tinh (cài đặt chung của máy, lưu trong DB) */
 function nenNut(){const b=$('#b-nen');b.setAttribute('aria-pressed',DB.nen?'true':'false');b.classList.toggle('on',!!DB.nen)}
-$('#b-nen').addEventListener('click',()=>{DB.nen=!DB.nen;saveNow();nenNut();
-  if(DB.nen)toast(D.geo?'Ảnh vệ tinh Esri (cần mạng) — ảnh lệch vài mét so với GPS là bình thường':'Chưa có cột nào lấy GPS — lấy GPS một cột thì ảnh vệ tinh mới hiện');
-  draw()});
+function nenBat(on){DB.nen=on;if(!on)nenDoi=false;saveNow();nenNut();draw()}
+{const b=$('#b-nen');let t=null,dai=false;
+  b.addEventListener('pointerdown',()=>{dai=false;clearTimeout(t);t=setTimeout(()=>{dai=true;showNen()},550)});
+  for(const ev of ['pointerup','pointerleave','pointercancel'])b.addEventListener(ev,()=>clearTimeout(t));
+  b.addEventListener('contextmenu',e=>{e.preventDefault();clearTimeout(t);if(!dai){dai=true;showNen()}});
+  b.addEventListener('click',()=>{if(dai){dai=false;return}nenBat(!DB.nen);
+    if(DB.nen)toast(D.geo?`Ảnh vệ tinh ${NGUON[nenNguon()].ten} (cần mạng) · giữ lâu nút 🛰: đổi nguồn, độ mờ, dời ảnh cho khớp GPS`:'Chưa có cột nào lấy GPS — lấy GPS một cột thì ảnh vệ tinh mới hiện')})}
+function showNen(){
+  finishSheet();closeRoad();
+  const gg=DB.nenNguon==='gg',mo=DB.nenMo||1,l=nenLech(),dl=l[0]||l[1],m=v=>vn1(Math.abs(v));
+  panel.innerHTML=`<div class="pin">
+    <div class="row" style="align-items:center"><h2 style="flex:1 1 auto">Ảnh nền vệ tinh</h2><button class="btn" data-a="close" style="flex:0 0 auto">Đóng</button></div>
+    <button class="big${DB.nen?' pri':''}" data-a="nen-bat"><b>${DB.nen?'Đang bật — bấm để tắt':'Đang tắt — bấm để bật'}</b><span>${D.geo?'Ảnh nằm dưới sơ đồ, cần mạng. Ô đã tải giữ trong bộ nhớ, kéo / phóng lại không tải lại.':'Bản vẽ chưa có cột nào lấy GPS — lấy GPS một cột thì ảnh mới hiện.'}</span></button>
+    <div class="h3">Nguồn ảnh</div>
+    <div class="seg" style="grid-template-columns:repeat(2,minmax(0,1fr))"><button class="btn${gg?'':' pri'}" data-a="nen-src" data-m="esri">Esri (miễn phí)</button><button class="btn${gg?' pri':''}" data-a="nen-src" data-m="gg">Google (cần khoá)</button></div>
+    ${gg?`<label class="sl vn"><span class="k">Khoá Google Map Tiles API (chỉ lưu trên máy này)</span><input id="gg-key" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(DB.ggKey||'')}" style="font:700 15px var(--f);border:0;background:transparent;color:var(--fg);padding:4px 0;width:100%"></label>
+    <p class="note">${!DB.ggKey?'Chưa có khoá — đang dùng ảnh Esri.':GG.loi?'Khoá chưa dùng được (sai khoá, chưa bật Map Tiles API hoặc hết hạn mức) — đang dùng ảnh Esri. Sửa khoá rồi mở lại bảng này.':GG.s?'Đang dùng ảnh Google (phóng gần tới mức 20).':'Đang mở phiên Google…'} Khoá lấy ở Google Cloud Console, bật “Map Tiles API”; Google tính phí khi dùng vượt mức miễn phí của tài khoản.</p>`:''}
+    <div class="h3">Độ đậm ảnh</div>
+    <div class="seg">${[[1,'100%'],[0.75,'75%'],[0.5,'50%']].map(([v,t])=>`<button class="btn${Math.abs(mo-v)<1e-6?' pri':''}" data-a="nen-mo" data-m="${v}">${t}</button>`).join('')}</div>
+    <div class="h3">Cho ảnh khớp GPS</div>
+    <button class="big" data-a="nen-doi"><b>Dời ảnh cho khớp cột GPS</b><span>${dl?`Đang dời ${m(l[0])} m ${l[0]<0?'Tây':'Đông'}, ${m(l[1])} m ${l[1]<0?'Bắc':'Nam'}. `:''}Kéo ảnh cho chân cột / góc nhà trên ảnh trùng cột đã đo GPS. Độ dời lưu riêng cho bản vẽ này và nguồn ảnh này.</span></button>
+    ${dl?`<button class="btn" data-a="nen-0">Đưa ảnh về chỗ cũ (bỏ dời)</button>`:''}
+    <p class="note">Ảnh vệ tinh tự nó lệch vài mét so với GPS. Toạ độ cột, khoảng cột, file CAD vẫn lấy theo GPS — dời ảnh chỉ để nhìn cho khớp.</p>
+  </div>`;
+  panel.hidden=false;
+}
 nenNut();
 $('#b-title').addEventListener('click',()=>{const t=prompt('Tên TBA / tuyến',D.ten);if(t!=null&&t.trim()){D.ten=t.trim();save();title()}});
 function title(){$('#b-title').textContent=D.ten;document.title=D.ten+' · Khảo sát tuyến'}
@@ -1229,8 +1418,9 @@ const NEN={
   oTai(lat,lon,z){const n=2**z,r=Math.max(-85,Math.min(85,lat))*Math.PI/180;
     return [Math.floor((lon+180)/360*n),Math.floor((1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*n)]},
   goc(x,y,z){const n=2**z;return {lat:Math.atan(Math.sinh(Math.PI*(1-2*y/n)))*180/Math.PI,lon:x/n*360-180}},
-  /* mức phóng để 1 điểm ảnh của ô ≈ mPx mét (mPx = mét / điểm ảnh thiết bị), kẹp 3..18 — Esri z19 ở VN chỉ trả ô "Map data not yet available", gần hơn thì phóng to ô z18 */
-  z(lat,mPx){return Math.max(3,Math.min(18,Math.round(Math.log2(156543.03392*Math.cos(lat*Math.PI/180)/mPx))))},
+  /* mức phóng để 1 điểm ảnh của ô ≤ ~1,2 mPx mét (mPx = mét / điểm ảnh thiết bị) — làm tròn LÊN (nét hơn bản cũ làm tròn gần), kẹp 3..zMax.
+     Esri zMax 18: z19 ở VN chỉ trả ô "Map data not yet available", gần hơn thì phóng to ô z18 */
+  z(lat,mPx,zMax=18){return Math.max(3,Math.min(zMax,Math.ceil(Math.log2(156543.03392*Math.cos(lat*Math.PI/180)/mPx)-0.3)))},
   /* các ô phủ khung nhìn (góc Tây-Bắc → Đông-Nam); quá toiDa ô thì hạ mức phóng */
   ds(latN,lonW,latS,lonE,z,toiDa=64){
     for(;z>=3;z--){const [x0,y0]=NEN.oTai(latN,lonW,z),[x1,y1]=NEN.oTai(latS,lonE,z);
@@ -1279,7 +1469,7 @@ function gpsTien(){
   if(!gpsM)return;const t=Date.now()-gpsM.t0;
   if(gpsM.ds.length&&(t>=gpsM.ms||gpsXongSom(gpsM.ds,t)))return gpsXong();
   if(t>=30000){gpsDung();toast('Chưa bắt được GPS, ra chỗ thoáng rồi bấm lại');return}
-  draw();
+  gpsPill();
 }
 function gpsTxt(){
   const t=(Date.now()-gpsM.t0)/1000,T=gpsM.ms/1000,ds=gpsM.ds,ten=gpsM.muc==='moc'?'Đo mốc':'Đang đo';
@@ -1296,7 +1486,7 @@ function gpsBatDau(muc){
       if(pos.timestamp&&pos.timestamp<gpsM.t0-1500)return;   /* vị trí CŨ trong bộ nhớ máy (trước lúc bấm đo) — bỏ */
       const q={lat:pos.coords.latitude,lon:pos.coords.longitude,acc:pos.coords.accuracy,ts:Date.now()-gpsM.t0,tsd:pos.timestamp||0,
         v:pos.coords.speed==null?null:pos.coords.speed};gpsM.ds.push(q);
-      gpsM.kq=gpsLoc(gpsM.ds);fix={...q,acc:gpsM.kq.acc,t:Date.now()};gpsLab();
+      gpsM.kq=gpsLoc(gpsM.ds);fix={...q,lat:gpsM.kq.lat,lon:gpsM.kq.lon,acc:gpsM.kq.acc,t:Date.now()};gpsLab();
       if(gpsXongSom(gpsM.ds,q.ts))gpsXong();else draw()},
     err=>{if(err.code===1){gpsDung();toast('Chưa cho phép định vị — bật quyền Vị trí cho trình duyệt')}},   /* lỗi hết giờ: vẫn chờ tới hết phiên đo */
     {enableHighAccuracy:true,maximumAge:0,timeout:20000});
@@ -1665,9 +1855,16 @@ panel.addEventListener('click',e=>{
   else if(a==='mf-huy'){mocCho=null;closePanel();toast('Không lưu mốc')}
   else if(a==='mf-lai'){mocCho=null;closePanel();gpsBatDau('moc')}
   else if(a==='mf-luu')luuMoc();
+  else if(a==='nen-bat'){nenBat(!DB.nen);showNen()}
+  else if(a==='nen-src'){DB.nenNguon=b.dataset.m;if(DB.nenNguon==='gg')ggDatLai();saveNow();showNen();draw()}
+  else if(a==='nen-mo'){DB.nenMo=+b.dataset.m;saveNow();showNen();nenVe()}
+  else if(a==='nen-doi'){closePanel();if(!D.geo){toast('Lấy GPS ít nhất một cột trước');return}if(!DB.nen)nenBat(true);nenDoi=true;draw();toast('Kéo ảnh cho khớp cột GPS, xong bấm Xong ở trên')}
+  else if(a==='nen-0'){const l=nenLech();l[0]=0;l[1]=0;save();showNen();nenVe();toast('Ảnh nền về chỗ cũ')}
   else if(a==='xlsx')xuatXlsx();else if(a==='dxf')xuatDxf();else if(a==='dxfvn')xuatDxf(true);else if(a==='json')xuatJson();else if(a==='anh')guiAnhCot();else if(a==='png')guiAnh();
 });
 panel.addEventListener('change',async e=>{
+  if(e.target.id==='gg-key'){DB.ggKey=e.target.value.trim();DB.ggPhien=null;ggDatLai();saveNow();draw();
+    toast(DB.ggKey?'Đã lưu khoá Google — đang mở phiên ảnh':'Đã xoá khoá Google — dùng ảnh Esri');setTimeout(()=>{if(!panel.hidden&&$('#gg-key'))showNen()},2500);return}
   if(e.target.id==='ex-ktt'){const o=e.target.selectedOptions[0];
     if(e.target.value==='khac'){const t=prompt('Kinh tuyến trục (độ thập phân, vd 105 hoặc 104.75)',String(ktt()));const v=parseFloat(String(t||'').replace(',','.'));
       if(t!==null&&isFinite(v)&&v>=100&&v<=112){DB.ktt=v;DB.tinh=''}else if(t!==null)toast('Kinh tuyến trục phải trong khoảng 100–112°')}

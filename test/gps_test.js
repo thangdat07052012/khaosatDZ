@@ -127,6 +127,7 @@ console.log('11. (07/11) Ảnh nền vệ tinh: ô Web Mercator');
   ok(x===104049&&y===58179,'số ô z17 = 104049/58179 (tính bằng Python theo công thức OSM)');
   ok(Math.abs(N.goc(0,0,1).lat-85.0511)<1e-3&&N.goc(1,1,1).lon===0,'góc ô z1 = 85,0511° / 0°');
   ok(N.z(19.8,1.11)===17&&N.z(19.8,0.01)===18&&N.z(19.8,1e5)===3,'mức phóng theo m/điểm ảnh, kẹp 3..18 (Esri z19 vùng VN là ô trống "Map data not yet available")');
+  ok(N.z(19.8,0.85)===18&&N.z(19.8,0.01,20)===20&&N.z(19.8,0.3,20)===19,'mức phóng làm tròn LÊN cho nét (0,85 m/điểm → z18), trần theo nguồn (Google z20)');
   const L=N.ds(19.81,105.77,19.79,105.79,19);
   ok(L.length>0&&L.length<=64&&L.every(t=>t.z===L[0].z)&&L[0].z<19,`khung 2 km: ${L.length} ô, tự hạ còn z${L[0].z}`);
   ok(N.url(17,104049,58179).endsWith('/tile/17/58179/104049'),'URL Esri thứ tự z/y/x')}
