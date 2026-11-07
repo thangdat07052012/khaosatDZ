@@ -157,6 +157,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .typ{display:flex;gap:4px}
 .typ .inp{flex:1;min-width:0;height:34px;border-radius:7px;border:1.5px solid var(--line);background:var(--paper);color:var(--fg);font:600 15px var(--mono);padding:0 8px}
 #sh-noi{flex:0 0 auto}#o-noi{font:500 14px var(--f)}
+.sl.vn input.gt{font:600 15.5px var(--f);border:0;background:transparent;color:var(--fg);padding:4px 0;width:100%;outline:none}
 #sh-mic.on{background:var(--warn);border-color:var(--warn);color:#fff;animation:nhay 1s ease-in-out infinite}
 @keyframes nhay{50%{opacity:.6}}
 .cnt{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
@@ -225,7 +226,7 @@ label.btn{display:flex;align-items:center;justify-content:center}
     <span class="grow"></span>
     <button id="sh-del" class="btn sm danger">Xoá</button>
   </div>
-  <div id="sh-noi" class="typ" hidden><input id="o-noi" class="inp" placeholder="Nói / gõ cả câu: cột số 5 ly tâm tám rưỡi dây ABC 4x120 khoảng 35 mét" autocomplete="off" spellcheck="false" enterkeyhint="done"><button id="o-noi-ok" type="button" class="btn sm pri">Điền</button></div>
+  <div id="sh-noi" class="typ" hidden><input id="o-noi" class="inp" placeholder="Nói / gõ cả câu: cột số 5 ly tâm tám rưỡi dây ABC 4x120 khoảng 35 mét" autocomplete="off" spellcheck="false" enterkeyhint="done"><button id="o-noi-nho" type="button" class="btn sm" aria-label="Bộ nhớ giọng nói">📖</button><button id="o-noi-ok" type="button" class="btn sm pri">Điền</button></div>
   <input id="anh-in" type="file" accept="image/*" capture="environment" hidden>
   <div id="sh-anhs" class="anhs" hidden></div>
   <div id="slots" class="slots"></div>
@@ -1063,11 +1064,43 @@ $('#sh-anh').addEventListener('click',()=>{if(!editId)return;$('#anh-in').value=
    Máy không có API (Firefox, WebView cũ) → hiện ô gõ câu: gõ, hoặc bấm 🎤 trên bàn phím điện thoại rồi nói, xong bấm Điền */
 var SR=window.SpeechRecognition||window.webkitSpeechRecognition,GHE=null;
 function giongTat(){if(GHE){const g=GHE;GHE=null;try{g.abort()}catch(e){}}const b=$('#sh-mic');if(b)b.classList.remove('on')}
+var giongCon='',giongCau='';   /* câu vừa nói + phần chưa hiểu của nó — 📖 điền sẵn phần chưa hiểu vào ô «Khi nói» */
+const giongDs=()=>({cot:learned('cot'),cotTT:learned('cotTT'),day:learned('day'),dayTT:learned('dayTT'),sau:learned('sau')});
+/* lưu một cụm dạy; câu «hiểu là» app không hiểu gì → ⚑ lưu thành Ghi chú */
+function giongLuu(noi,la){const ds=giongDs();if(!giongMa(la,ds).hieu.length)la='ghi chú '+la;
+  const r=giongGop(DB.giongTu||[],[{noi,la}],true);DB.giongTu=r.list;saveNow();return {sua:r.sua>0,t:giongMa(la,ds)}}
+/* cụm nhớ đi kèm file .json mở / gộp từ máy khác: thêm cụm chưa có, cụm trùng giữ bản của máy này */
+function giongNhap(L){if(!Array.isArray(L)||!L.length)return 0;const r=giongGop(DB.giongTu||[],L,false);if(r.them){DB.giongTu=r.list;saveNow()}return r.them}
+/* 📖 bảng bộ nhớ giọng nói — mở đè lên ô nhập cột (không đóng ô nhập): Đóng là về lại cột đang sửa */
+function showGiong(pre){
+  const L=DB.giongTu||[],ds=giongDs();
+  panel.innerHTML=`<div class="pin">
+    <div class="row" style="align-items:center"><h2 style="flex:1 1 auto">📖 Bộ nhớ giọng nói</h2><button class="btn" data-a="close" style="flex:0 0 auto">Đóng</button></div>
+    <p class="note">Dạy app cách anh nói. Bấm 🎤 rồi nói <b>«nhớ cột cao là ly tâm 12»</b> — lần sau nói «cột cao» app điền LT12. Muốn thành ghi chú: «nhớ cạnh trường là ghi chú gần trường học». Xoá: nói <b>«quên cột cao»</b>. Hoặc gõ ở dưới.</p>
+    ${giongCau?`<p class="note">Câu vừa nói: «${esc(giongCau)}»${giongCon?` — app chưa hiểu: <b>«${esc(giongCon)}»</b>`:''}</p>`:''}
+    <label class="sl vn"><span class="k">Khi nói</span><input id="gt-noi" class="gt" type="text" autocomplete="off" spellcheck="false" enterkeyhint="next" value="${esc(pre||'')}" placeholder="cột cao"></label>
+    <label class="sl vn"><span class="k">Hiểu là — nói như khi điền ô, hoặc «ghi chú …»</span><input id="gt-la" class="gt" type="text" autocomplete="off" spellcheck="false" enterkeyhint="done" placeholder="ly tâm 12"></label>
+    <p class="note" id="gt-thu"></p>
+    <button class="btn pri" data-a="gt-luu">Lưu cụm</button>
+    <div class="h3">Đã nhớ ${L.length} cụm</div>
+    ${L.map((e,i)=>`<div class="card"><button class="tx" data-a="gt-sua" data-i="${i}"><b>«${esc(e.noi)}»</b><span>→ ${esc(giongMa(e.la,ds).hieu.join(' · ')||e.la)}</span></button><button class="btn danger" data-a="gt-xoa" data-i="${i}">Xoá</button></div>`).join('')||'<p class="note">Chưa có cụm nào.</p>'}
+    <p class="note">Lưu trên máy này, đi kèm file .json khi xuất. Mở / gộp file đó trên máy khác là máy đó nhớ luôn (cụm trùng giữ bản của máy đang dùng).</p>
+  </div>`;
+  panel.hidden=false;if(pre)$('#gt-la').focus();
+}
+function giongThu(){const k=$('#gt-thu'),i=$('#gt-la');if(!k||!i)return;const v=i.value.trim();if(!v){k.textContent='';return}
+  const t=giongMa(v,giongDs());
+  k.textContent=t.hieu.length?'→ app sẽ điền: '+t.hieu.join(' · ')+(t.con?' — chưa hiểu: '+t.con:''):'⚑ App chưa hiểu câu này — sẽ lưu thành Ghi chú «'+v+'»'}
 function apGiong(text){const p=curP();if(!p||!F)return null;
   text=String(text||'').trim();if(!text)return null;
-  const ds={cot:learned('cot'),cotTT:learned('cotTT'),day:learned('day'),dayTT:learned('dayTT'),sau:learned('sau')};
-  const g=giongMa(text,ds);
-  if(!g.hieu.length){toast('🎤 Chưa hiểu: «'+text+'»');return g}
+  const d=giongDay(text);
+  if(d&&d.quen){const k=giongKhoa(d.quen),L=DB.giongTu||[],M=L.filter(e=>giongKhoa(e.noi)!==k);
+    if(M.length===L.length)toast('📖 Chưa nhớ cụm «'+d.quen+'»');else{DB.giongTu=M;saveNow();toast('📖 Đã quên «'+d.quen+'»')}return null}
+  if(d){const r=giongLuu(d.noi,d.la);giongCon='';
+    toast('📖 '+(r.sua?'Đã sửa':'Đã nhớ')+': nói «'+d.noi+'» → '+r.t.hieu.join(' · ')+(r.t.con?' — chưa hiểu: '+r.t.con:''));return null}
+  const g=giongMa(text,giongDs(),DB.giongTu);
+  giongCau=text;giongCon=g.hieu.length?g.con||'':text;
+  if(!g.hieu.length){toast('🎤 Chưa hiểu: «'+text+'» — bấm 📖 để dạy app');return g}
   if(g.shape||g.doi){if(!sheetSnap){snap();sheetSnap=true}
     if(g.shape){p.shape=g.shape;if(g.shape==='tba')p.doi=false}
     if(g.doi&&p.shape!=='tba')p.doi=true;p.auto=false}
@@ -1077,7 +1110,7 @@ function apGiong(text){const p=curP();if(!p||!F)return null;
   if(g.dd)for(const v of g.dd)if(!F.dd.includes(v))F.dd.push(v);
   if(g.gc)for(const v of g.gc)if(!F.gc.includes(v))F.gc.push(v);
   commit();
-  toast('🎤 '+g.hieu.join(' · ')+(g.con?'  — bỏ qua: '+g.con:''));return g}
+  toast('🎤 '+(g.nho.length?'📖 ':'')+g.hieu.join(' · ')+(g.con?'  — bỏ qua: '+g.con+' (bấm 📖 để dạy)':''));return g}
 $('#sh-mic').addEventListener('click',()=>{
   if(!editId)return;
   if(GHE){try{GHE.stop()}catch(e){giongTat()}return}
@@ -1098,6 +1131,7 @@ $('#sh-mic').addEventListener('click',()=>{
   try{g.start()}catch(e){GHE=null;$('#sh-mic').classList.remove('on');o.focus();toast('Không mở được nhận giọng nói — gõ câu rồi bấm Điền')}
 });
 $('#o-noi-ok').addEventListener('click',()=>{giongTat();apGiong($('#o-noi').value)});
+$('#o-noi-nho').addEventListener('click',()=>{giongTat();showGiong(giongCon)});
 $('#o-noi').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();giongTat();apGiong(e.target.value)}});
 $('#anh-in').addEventListener('change',async e=>{
   const f=e.target.files&&e.target.files[0],id=editId;if(!f||!id||!D)return;
@@ -1534,7 +1568,7 @@ function chuSo(s){
   R(/(\d) (mét|m) rưỡi(?= )/g,'$1,5m');R(/(\d) (mét|m)(?= )/g,'$1m');
   return t.trim();
 }
-function giongMa(text,ds){
+function giongMa(text,ds,tu){
   ds=ds||{};
   const N=v=>String(v).toUpperCase().replace(/\s+/g,'');
   const HOA=v=>v.replace(/[a-zA-ZđĐ]+/g,(m,o,s)=>/^x$/i.test(m)&&/\d/.test(s[o-1]||'')&&/\d/.test(s[o+1]||'')?'x':m.toUpperCase());
@@ -1546,6 +1580,17 @@ function giongMa(text,ds){
   r.chu=chuSo(src);
   let c=' '+r.chu+' ';
   const dd=[],gc=[],add=(L,v)=>{if(!L.includes(v))L.push(v)};
+  /* 📖 cụm Truong đã dạy: thay TRƯỚC mọi luật khác — cụm dài trước, khớp nguyên từ, so sau chuSo; phần «ghi chú …» của câu dạy
+     vào Ghi chú nguyên văn. Thay qua dấu giữ chỗ để cụm ngắn không ăn vào chữ vừa thay. */
+  r.nho=[];
+  if(tu&&tu.length){const vs=[];
+    for(const x of tu.map(e=>({e,k:e?giongKhoa(e.noi):''})).filter(x=>x.k).sort((a,b)=>b.k.length-a.k.length)){
+      const kk=' '+x.k+' ';if(c.indexOf(kk)<0)continue;
+      let la=String(x.e.la||'').normalize('NFC');const q=la.search(/ghi chú|ghi chu/i);
+      if(q>=0){const t=la.slice(q).replace(/^ghi ch[uú]/i,'').replace(/^[\s:,.-]+/,'').replace(/[\s.]+$/,'');if(t)add(gc,t.charAt(0).toUpperCase()+t.slice(1));la=la.slice(0,q)}
+      vs.push(chuSo(la));while(c.indexOf(kk)>=0)c=c.replace(kk,' \u0003'+(vs.length-1)+' ');
+      r.nho.push(String(x.e.noi).trim())}
+    c=c.replace(/\u0003(\d+)/g,(m,i)=>vs[+i]).replace(/ {2,}/g,' ')}
   const X=(re,f)=>{c=c.replace(re,(...a)=>' '+(f(...a)||'')).replace(/ {2,}/g,' ')};
   /* thiết bị trên cột → Ghi chú */
   X(/ tủ (bù|tụ bù)(?= )/g,()=>{add(gc,'Tủ bù')});
@@ -1648,6 +1693,28 @@ function giongMa(text,ds){
   r.con=tk.filter((x,i)=>!U[i]&&!FIL.test(x)&&!NOI.test(x)&&!BO.test(x)&&!/^(#\w+|và|với|rồi|thì|ở|của|này|đó|ạ|nhé|nha|mét|m|trên|ngay|đây|cũng|đi|cho|số|khoảng|cách|cột|tiếp)$/.test(x)).join(' ');
   return r;
 }
+/* 📖 BỘ NHỚ GIỌNG NÓI (07/11) — Truong tự dạy app cách mình nói; lưu DB.giongTu=[{noi,la}] trên máy (đi kèm file .json).
+   giongDay: «nhớ <cụm> là <hiểu là>» → {noi,la}; «quên <cụm>» → {quen}; câu thường → null.
+   giongKhoa: khoá so khớp của một cụm (sau chuSo: «trạm năm» = «trạm 5», hoa / thường như nhau).
+   giongGop: thêm cụm vào danh sách — ghiDe=true thì cụm trùng khoá được sửa theo bản mới, false thì giữ bản cũ. */
+function giongKhoa(s){return chuSo(s).replace(/[\u0000-\u001f]/g,'').trim()}
+function giongDay(text){
+  const s=String(text||'').normalize('NFC').replace(/\s+/g,' ').trim().replace(/[.!?…]+$/,''),bo=v=>v.replace(/^["“«']+|["”»']+$/g,'').trim();
+  let m=s.match(/^(?:hãy )?(?:quên|xoá nhớ|xóa nhớ|bỏ nhớ)(?: cụm| câu| chữ)? (.+)$/i);
+  if(m){const q=bo(m[1]);return giongKhoa(q)?{quen:q}:null}
+  m=s.match(/^(?:hãy )?(?:ghi nhớ|nhớ|dạy)(?: giúp| cho tôi| rằng)?[:,]? (?:khi (?:tôi |anh |em )?nói |cụm |câu |chữ )?(.+?)(?: thì)? (?:nghĩa là|tức là|hiểu là|là|=) (.+)$/i);
+  if(!m)return null;
+  const noi=bo(m[1]),la=bo(m[2]);
+  if(!giongKhoa(noi)||!la||giongKhoa(noi)===giongKhoa(la))return null;
+  return {noi,la}}
+function giongGop(list,them,ghiDe){
+  const L=(Array.isArray(list)?list:[]).slice();let n=0,sua=0;
+  for(const t of Array.isArray(them)?them:[]){
+    if(!t||typeof t.noi!=='string'||typeof t.la!=='string')continue;
+    const noi=t.noi.trim().slice(0,200),la=t.la.trim().slice(0,300),k=giongKhoa(noi);if(!k||!la)continue;
+    const i=L.findIndex(e=>giongKhoa(e.noi)===k);
+    if(i<0){L.push({noi,la});n++}else if(ghiDe&&L[i].la!==la){L[i]={noi,la};sua++}}
+  return {list:L,them:n,sua}}
 /* === HẾT HÀM THUẦN === */
 /* kinh tuyến trục đang dùng (cài đặt chung của máy, mặc định Thanh Hoá 105°00′) */
 function ktt(){return DB.ktt!=null&&isFinite(DB.ktt)?+DB.ktt:105}
@@ -1943,7 +2010,7 @@ function xuatJson(){
   const out={app:'khao-sat-tuyen',ver:3,ten:D.ten,ngay:D.ngay,geo:D.geo,
     vn2000:{kinhTuyenTruc:ktt(),mui:3,k0:0.9999,ghiChu:'X_VN2000 = Bắc, Y_VN2000 = Đông (đã cộng hiệu chỉnh theo mốc và nắn theo khoảng đo); X/Y_VN2000_goc = theo GPS chưa sửa; 7 tham số QĐ 05/2007/QĐ-BTNMT'},
     hieuChinh:{bat:!D.hcTat,banKinh_m:HC_KC,cuaSo_phut:HC_PHUT,cach:'nội suy nghịch đảo bình phương khoảng cách gộp √(d² + (Δt·1000/60)²)'},
-    poles,edges:D.edges,roads:D.roads,mocs:D.mocs,mocDo:D.mocDo||[],hcTat:!!D.hcTat};
+    poles,edges:D.edges,roads:D.roads,mocs:D.mocs,mocDo:D.mocDo||[],hcTat:!!D.hcTat,...(DB.giongTu&&DB.giongTu.length?{giongTu:DB.giongTu}:{})};
   giao(new Blob([JSON.stringify(out,null,1)],{type:'application/json'}),fname('.json'));
 }
 const PNGCSS=`.ed{stroke:#2F5FA8;stroke-width:3}.pole{fill:#fff;stroke:#15201C;stroke-width:3}.fillk{fill:#15201C}
@@ -2081,8 +2148,16 @@ panel.addEventListener('click',e=>{
   else if(a==='nen-mo'){DB.nenMo=+b.dataset.m;saveNow();showNen();nenVe()}
   else if(a==='nen-doi'){closePanel();if(!D.geo){toast('Lấy GPS ít nhất một cột trước');return}if(!DB.nen)nenBat(true);nenDoi=true;draw();toast('Kéo ảnh cho khớp cột GPS, xong bấm Xong ở trên')}
   else if(a==='nen-0'){const l=nenLech();l[0]=0;l[1]=0;save();showNen();nenVe();toast('Ảnh nền về chỗ cũ')}
+  else if(a==='gt-luu'){const n=$('#gt-noi').value.trim(),la=$('#gt-la').value.trim();
+    if(!giongKhoa(n)||!la){toast('Gõ đủ «Khi nói» và «Hiểu là»');return}
+    const r=giongLuu(n,la);giongCon='';showGiong();toast('📖 '+(r.sua?'Đã sửa':'Đã nhớ')+' «'+n+'» → '+(r.t.hieu.join(' · ')||la))}
+  else if(a==='gt-xoa'){const L=(DB.giongTu||[]).slice(),x=L.splice(+b.dataset.i,1)[0];DB.giongTu=L;saveNow();showGiong();if(x)toast('📖 Đã quên «'+x.noi+'»')}
+  else if(a==='gt-sua'){const x=(DB.giongTu||[])[+b.dataset.i];if(!x)return;$('#gt-noi').value=x.noi;$('#gt-la').value=x.la;giongThu();$('#gt-noi').scrollIntoView({block:'center'})}
   else if(a==='xlsx')xuatXlsx();else if(a==='dxf')xuatDxf();else if(a==='dxfvn')xuatDxf(true);else if(a==='json')xuatJson();else if(a==='anh')guiAnhCot();else if(a==='png')guiAnh();
 });
+panel.addEventListener('input',e=>{if(e.target.id==='gt-la')giongThu()});
+panel.addEventListener('keydown',e=>{if(e.key!=='Enter')return;
+  if(e.target.id==='gt-noi'){e.preventDefault();$('#gt-la').focus()}else if(e.target.id==='gt-la'){e.preventDefault();panel.querySelector('[data-a="gt-luu"]').click()}});
 panel.addEventListener('change',async e=>{
   if(e.target.id==='gg-key'){DB.ggKey=e.target.value.trim();DB.ggPhien=null;ggDatLai();saveNow();draw();
     toast(DB.ggKey?'Đã lưu khoá Google — đang mở phiên ảnh':'Đã xoá khoá Google — dùng ảnh Esri');setTimeout(()=>{if(!panel.hidden&&$('#gg-key'))showNen()},2500);return}
@@ -2094,14 +2169,14 @@ panel.addEventListener('change',async e=>{
   const fl=e.target.files;if(!fl||!fl.length)return;
   if(e.target.id==='gop'){
     snap();const kq=[];
-    for(const f of fl){try{const o=JSON.parse(await docFile(f));napPoles(o.poles);const r=gop(o);kq.push(`${f.name}: thêm ${r.them} cột${r.trung?`, ${r.trung} cột trùng số`:''} (${r.how})`)}
+    for(const f of fl){try{const o=JSON.parse(await docFile(f));napPoles(o.poles);const r=gop(o),gn=giongNhap(o.giongTu);if(gn)kq.push(`+${gn} cụm giọng nói`);kq.push(`${f.name}: thêm ${r.them} cột${r.trung?`, ${r.trung} cột trùng số`:''} (${r.how})`)}
       catch(err){kq.push(`${f.name}: không đọc được`)}}
     save();closePanel();V=fitView(W,H,40);persistView();draw();toast(kq.join(' · '));return;
   }
   if(e.target.id==='imp'){
     try{const o=JSON.parse(await docFile(fl[0]));if(!Array.isArray(o.poles))throw 0;napPoles(o.poles);
       const d={id:uid(),ten:o.ten||'Tuyến nhập',ngay:o.ngay||today(),poles:o.poles,edges:o.edges||[],roads:o.roads||[],mocs:o.mocs||[],mocDo:o.mocDo||[],hcTat:!!o.hcTat,geo:o.geo||null,active:null,view:null,capNhat:Date.now()};
-      DB.ds[d.id]=d;saveNow();switchTo(d);closePanel();toast('Đã mở file')}catch(err){toast('File không đúng định dạng của app')}
+      const gn=giongNhap(o.giongTu);DB.ds[d.id]=d;saveNow();switchTo(d);closePanel();toast('Đã mở file'+(gn?` · máy nhớ thêm ${gn} cụm giọng nói`:''))}catch(err){toast('File không đúng định dạng của app')}
   }
 });
 $('#b-list').addEventListener('click',showList);

@@ -4,7 +4,7 @@ const fs=require('fs'),path=require('path');
 const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
 const a=html.indexOf('const VN=(()=>{'),b=html.indexOf('/* === HẾT HÀM THUẦN === */');
 if(a<0||b<0)throw new Error('Không thấy đoạn hàm thuần');
-const T=new Function(html.slice(a,b)+';return {VN,haversine,gpsLoc,gpsXongSom,gpsMau,hcTinh,docSo,mocNhap,nanTuyen,GPS_CHE_DO,NEN,chuSo,giongMa};')();
+const T=new Function(html.slice(a,b)+';return {VN,haversine,gpsLoc,gpsXongSom,gpsMau,hcTinh,docSo,mocNhap,nanTuyen,GPS_CHE_DO,NEN,chuSo,giongMa,giongDay,giongKhoa,giongGop};')();
 let nOk=0,nSai=0;
 const ok=(c,m)=>{if(c){nOk++;console.log('  ✓ '+m)}else{nSai++;console.log('  ✗ '+m)}};
 // số ngẫu nhiên có hạt giống (kết quả lặp lại được)
@@ -164,4 +164,27 @@ console.log('12. (07/11) Giọng nói → ô: chuSo / giongMa');
   g=G('cột số 5 abcxyz');ok(g.so==='5'&&/abcxyz/.test(g.con),'từ không hiểu → báo "bỏ qua"');
 }
 
+console.log('13. (07/11) Bộ nhớ giọng nói: giongDay / giongKhoa / giongGop / giongMa(…, cụm đã dạy)');
+{const {giongDay:Dy,giongKhoa:K,giongGop:Gp,giongMa:G}=T,J=JSON.stringify,eq=(a,b)=>J(a)===J(b);
+  let d=Dy('nhớ cột cao là ly tâm 12');ok(d&&d.noi==='cột cao'&&d.la==='ly tâm 12','«nhớ cột cao là ly tâm 12» → '+J(d));
+  d=Dy('Ghi nhớ khi nói cột cao thì hiểu là ly tâm mười hai.');ok(d&&d.noi==='cột cao'&&d.la==='ly tâm mười hai','«ghi nhớ khi nói … thì hiểu là …» → '+J(d));
+  d=Dy('dạy "trụ góc" là néo góc');ok(d&&d.noi==='trụ góc'&&d.la==='néo góc','«dạy "trụ góc" là néo góc» → '+J(d));
+  d=Dy('Quên cột cao');ok(d&&d.quen==='cột cao','«quên cột cao» → '+J(d));
+  ok(Dy('cột số 5 ly tâm 8,5')===null&&Dy('nhớ ghi chú cột nghiêng')===null,'câu thường (kể cả «nhớ ghi chú …» không có «là») → không phải câu dạy');
+  ok(Dy('nhớ néo là Néo')===null,'dạy cụm giống hệt nghĩa → bỏ');
+  ok(K('Trạm Năm')===K('trạm 5'),'khoá so khớp: «Trạm Năm» = «trạm 5»');
+  let r=Gp([],[{noi:'cột cao',la:'ly tâm 12'}],true);ok(r.them===1&&r.list.length===1,'thêm cụm mới');
+  r=Gp(r.list,[{noi:'Cột Cao',la:'ly tâm 14'}],true);ok(r.sua===1&&r.list.length===1&&r.list[0].la==='ly tâm 14','dạy lại cụm cũ (khác hoa / thường) → sửa, không nhân đôi');
+  r=Gp(r.list,[{noi:'cột cao',la:'ly tâm 10'},{noi:'trụ góc',la:'néo góc'},{noi:'',la:'x'},{noi:1,la:'y'},null],false);
+  ok(r.them===1&&r.list[0].la==='ly tâm 14'&&r.list.length===2,'gộp từ file: cụm trùng giữ bản máy này, bỏ cụm hỏng');
+  const tu=[{noi:'cột cao',la:'ly tâm 12'},{noi:'trụ góc',la:'néo góc'},{noi:'cạnh trường',la:'ghi chú gần trường học'},{noi:'trạm năm',la:'cột số 5'}];
+  let g=G('cột cao',{},[]);ok(!g.cotHT&&/cao/.test(g.con),'chưa dạy: «cột cao» không hiểu');
+  g=G('cột số 7 cột cao trụ góc',{},tu);ok(g.so==='7'&&eq(g.cotHT,['LT12'])&&eq(g.dd,['Néo','Góc'])&&eq(g.nho,['cột cao','trụ góc'])&&!g.con,'đã dạy: «cột số 7 cột cao trụ góc» → '+g.hieu.join(' · '));
+  g=G('Cột Cao, dây vặn xoắn bốn nhân chín lăm',{},tu);ok(eq(g.cotHT,['LT12'])&&eq(g.dayHT,['ABC4x95']),'hoa / thường, dấu phẩy vẫn khớp → '+g.hieu.join(' · '));
+  g=G('cột cạnh trường',{},tu);ok(eq(g.gc,['Gần trường học']),'cụm dạy thành ghi chú → '+J(g.gc));
+  g=G('trạm 5 khoảng ba mươi mét',{},tu);ok(g.so==='5'&&g.kc===30,'«trạm năm» dạy bằng chữ, nói «trạm 5» vẫn khớp → '+g.hieu.join(' · '));
+  g=G('cột cao',{},[{noi:'cao',la:'chữ hắt tám rưỡi'},{noi:'cột cao',la:'ly tâm 12'}]);ok(eq(g.cotHT,['LT12']),'cụm dài khớp trước, cụm ngắn không ăn vào chữ vừa thay → '+J(g.cotHT));
+  g=G('cột số 7 ghi chú cột cao sát nhà',{},tu);ok(g.so==='7'&&!g.cotHT&&eq(g.gc,['Cột cao sát nhà']),'phần «ghi chú …» của câu nói giữ nguyên văn, không thay');
+  g=G('cột cao',{cot:['LT 12']},tu);ok(eq(g.cotHT,['LT 12']),'cụm dạy vẫn bám chữ trong danh sách chọn của app → '+J(g.cotHT));
+}
 console.log(`\n${nOk} đạt, ${nSai} sai`);process.exit(nSai?1:0);
