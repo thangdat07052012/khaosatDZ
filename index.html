@@ -156,7 +156,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .o.on{background:var(--hi);border-color:var(--hi);color:var(--hi-fg)}
 .typ{display:flex;gap:4px}
 .typ .inp{flex:1;min-width:0;height:34px;border-radius:7px;border:1.5px solid var(--line);background:var(--paper);color:var(--fg);font:600 15px var(--mono);padding:0 8px}
-#sh-noi{flex:0 0 auto}#o-noi{font:500 14px var(--f)}#o-noi-x{padding:0 9px}
+#sh-noi{flex:0 0 auto}#o-noi{font:500 14px var(--f)}#o-noi.lenh{border-color:var(--hi);box-shadow:0 0 0 2px var(--hi-soft)}#o-noi-x{padding:0 9px}
 .sl.vn input.gt{font:600 15.5px var(--f);border:0;background:transparent;color:var(--fg);padding:4px 0;width:100%;outline:none}
 #sh-mic.on{background:var(--warn);border-color:var(--warn);color:#fff;animation:nhay 1s ease-in-out infinite}
 @keyframes nhay{50%{opacity:.6}}
@@ -248,7 +248,7 @@ label.btn{display:flex;align-items:center;justify-content:center}
 </section>
 <section id="panel" hidden></section>
 <div id="toast" role="status" aria-live="polite" hidden></div>
-<script src="xlsx.full.min.js" defer></script>
+<!-- xlsx.full.min.js (881 KB) nạp khi mở Xuất (napXlsx) — không làm chậm lúc mở app; sw.js vẫn lưu sẵn để dùng mất mạng -->
 <script>
 'use strict';
 const $=s=>document.querySelector(s);
@@ -886,10 +886,15 @@ function sizeKey(v){
   const ti=ORD.indexOf(m[2]);return [ti<0?50:ti,f(m[3]),m[4]?f(m[4]):0,+m[1]||1,u];
 }
 function cmpSize(a,b,boLoai){const A=sizeKey(a),B=sizeKey(b);for(let i=boLoai&&A[0]<50&&B[0]<50?1:0;i<4;i++)if(A[i]!==B[i])return A[i]-B[i];return A[4]<B[4]?-1:A[4]>B[4]?1:0}
+/* mã cột → các danh sách learned cần (parse chỉ phụ thuộc chuỗi mã nên nhớ theo mã là đúng; 07/11: 🎤 điền 1 câu
+   gọi learned 5 lần, mỗi lần đọc lại mọi cột mọi bản vẽ → chậm trên điện thoại) */
+const hocNho=new Map();
+function hocDoc(code){let r=hocNho.get(code);
+  if(!r){const q=parse(code);r={cot:q.cotHT,cotTT:q.cotTT,day:q.dayHT,dayTT:q.dayTT,sau:q.sau,gc:q.gc};if(hocNho.size>5000)hocNho.clear();hocNho.set(code,r)}
+  return r}
 function learned(kind){
   const src=kind==='cotTT'?'cot':kind==='dayTT'?'day':kind,cnt={};
-  for(const d of Object.values(DB.ds))for(const p of d.poles){const r=parse(p.code);
-    const vals=kind==='cot'?r.cotHT:kind==='cotTT'?r.cotTT:kind==='day'?r.dayHT:kind==='dayTT'?r.dayTT:kind==='sau'?r.sau:kind==='gc'?r.gc:[];
+  for(const d of Object.values(DB.ds))for(const p of d.poles){const vals=hocDoc(p.code)[kind]||[];
     for(const v of vals)if(v)cnt[v]=(cnt[v]||0)+1}
   const base=BASE[kind],have=new Set(base.map(norm));
   const all=base.concat(Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a]).filter(v=>!have.has(norm(v))).slice(0,12));
@@ -1070,18 +1075,19 @@ const GIONG_IM=60000,GIONG_LOI={'not-allowed':'Chưa cho phép micro — bấm �
   'network':'Nhận giọng nói cần mạng — gõ câu rồi bấm Điền','audio-capture':'Không mở được micro'};
 function giongTat(){giongNghe=false;giongChot=false;clearTimeout(giongHen);clearTimeout(giongGo);
   if(GHE){const g=GHE;GHE=null;try{g.abort()}catch(e){}}const b=$('#sh-mic');if(b)b.classList.remove('on')}
-function giongBat(){clearTimeout(giongHen);if(!giongNghe||!editId||!SR||GHE)return;
+function giongBat(thu){clearTimeout(giongHen);if(!giongNghe||!editId||!SR||GHE)return;
   const o=$('#o-noi'),g=new SR(),t0=Date.now();g.lang='vi-VN';g.interimResults=true;g.continuous=false;g.maxAlternatives=1;
   let fin='',tam='',loi='',cu='';GHE=g;
   /* câu đang nghe kết thúc bằng khẩu lệnh → làm luôn, KHÔNG chờ máy «chốt» câu hay tắt phiên (iPhone, vài máy Android
-     không bao giờ chốt): chữ đã chốt thì sau 0,15 s, còn chữ tạm thì đứng yên 0,9 s ⚑ (nói tiếp «tiếp địa» là thôi) */
+     không bao giờ chốt): chữ đã chốt thì làm ngay, còn chữ tạm thì đứng yên ~0,5 s (tiếp / dừng ~0,7 s) — giongCho ⚑.
+     Ô câu nói viền vàng = đã nghe ra lệnh, đang chờ làm (nói tiếp «tiếp địa» là thôi) */
   const lam=()=>{if(GHE!==g)return;GHE=null;try{g.abort()}catch(e){}
     const v=o.value.trim();giongDem=v;giongHong=0;giongLuc=Date.now();if(!giongLam(v))giongMoi()};
   g.onresult=e=>{let f='',t='';for(let i=0;i<e.results.length;i++){const r=e.results[i];if(r.isFinal)f+=r[0].transcript;else t+=r[0].transcript}
     fin=giongChuan(f);tam=t;giongLuc=Date.now();
     const v=(giongDem+' '+giongChuan(f+' '+t)).replace(/\s+/g,' ').trim();o.value=v;
     if(v===cu)return;cu=v;clearTimeout(giongGo);
-    if(giongLenh(v).lenh)giongGo=setTimeout(lam,t.trim()?900:150)};
+    const k=giongLenh(v).lenh;o.classList.toggle('lenh',!!k);if(k)giongGo=setTimeout(lam,giongCho(k,!!t.trim()))};
   g.onerror=e=>{loi=e.error||'loi'};
   g.onend=()=>{if(GHE!==g)return;GHE=null;clearTimeout(giongGo);   /* đã bị huỷ (✕, Điền, đổi cột, đóng ô nhập) → bỏ */
     const s=fin.trim()||giongChuan(tam);   /* máy tắt phiên mà chưa chốt câu → lấy chữ tạm, không để mất */
@@ -1093,11 +1099,12 @@ function giongBat(){clearTimeout(giongHen);if(!giongNghe||!editId||!SR||GHE)retu
     if(GIONG_LOI[loi]){giongTat();toast(GIONG_LOI[loi]);return}
     if(!s&&Date.now()-t0<1000&&++giongHong>=3){giongTat();toast(loi&&loi!=='no-speech'&&loi!=='aborted'?'Lỗi nhận giọng: '+loi:'Micro không nghe được — gõ câu rồi bấm Điền');return}
     if(Date.now()-giongLuc>GIONG_IM){giongTat();toast('🎤 Im 1 phút — đã tắt nghe'+(o.value.trim()?'. Câu còn trong ô: bấm Điền':''));return}
-    giongHen=setTimeout(giongBat,120)};
-  try{g.start()}catch(e){GHE=null;giongTat();o.focus();toast('Không mở được nhận giọng nói — gõ câu rồi bấm Điền')}}
+    giongHen=setTimeout(giongBat,GIONG_CHO.lai)};
+  try{g.start()}catch(e){GHE=null;if(!thu){giongHen=setTimeout(()=>giongBat(1),250);return}   /* mở lại sớm quá máy chưa nhả micro → thử lại 1 lần */
+    giongTat();o.focus();toast('Không mở được nhận giọng nói — gõ câu rồi bấm Điền')}}
 /* câu trong ô vừa đổi ngoài nhận giọng (✕, Điền, gõ tay) → bỏ phiên đang nghe (nó còn giữ chữ cũ), nghe lại phiên mới */
-function giongMoi(){if(!giongNghe)return;if(GHE){const g=GHE;GHE=null;try{g.abort()}catch(e){}}clearTimeout(giongHen);giongHen=setTimeout(giongBat,150)}
-function giongXoa(){$('#o-noi').value='';giongDem='';clearTimeout(giongGo)}
+function giongMoi(){if(!giongNghe)return;if(GHE){const g=GHE;GHE=null;try{g.abort()}catch(e){}}clearTimeout(giongHen);giongHen=setTimeout(giongBat,GIONG_CHO.lai)}
+function giongXoa(){const o=$('#o-noi');o.value='';o.classList.remove('lenh');giongDem='';clearTimeout(giongGo)}
 /* câu có khẩu lệnh ở cuối → làm; trả false nếu không có lệnh */
 function giongLam(s){const l=giongLenh(s);if(!l.lenh)return false;
   if(l.lenh==='xoa'){giongXoa();giongMoi();toast('Đã xoá câu — nói lại');return true}
@@ -1187,9 +1194,10 @@ $('#o-noi-nho').addEventListener('click',()=>{const v=giongLenh($('#o-noi').valu
   if(v){const g=giongMa(v,giongDs(),DB.giongTu);giongCau=v;giongCon=g.hieu.length?g.con||'':v}
   giongTat();showGiong(giongCon)});
 $('#o-noi').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();giongDien()}});
-/* gõ tay / 🎤 bàn phím: câu kết thúc bằng khẩu lệnh → chờ 1,2 s ⚑ (còn gõ tiếp, vd «tiếp địa», thì thôi) rồi làm */
+/* gõ tay / 🎤 bàn phím: câu kết thúc bằng khẩu lệnh → chờ 0,8 s ⚑ (còn gõ tiếp, vd «tiếp địa», thì thôi) rồi làm */
 $('#o-noi').addEventListener('input',e=>{giongDem=e.target.value.trim();if(GHE)giongMoi();
-  clearTimeout(giongGo);if(giongLenh(e.target.value).lenh)giongGo=setTimeout(()=>{const v=$('#o-noi').value;if(editId&&giongLenh(v).lenh)giongLam(v)},1200)});
+  clearTimeout(giongGo);const k=giongLenh(e.target.value).lenh;e.target.classList.toggle('lenh',!!k);
+  if(k)giongGo=setTimeout(()=>{const v=$('#o-noi').value;if(editId&&giongLenh(v).lenh)giongLam(v)},GIONG_CHO.go)});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&giongNghe)giongTat()});
 $('#anh-in').addEventListener('change',async e=>{
   const f=e.target.files&&e.target.files[0],id=editId;if(!f||!id||!D)return;
@@ -1233,7 +1241,7 @@ async function guiAnhCot(){
   toast(`Đã tải ${files.length} ảnh vào thư mục Tải xuống`);
 }
 function openSheet(p){
-  rsheet.hidden=true;selRoad=null;giongTat();$('#sh-noi').hidden=true;$('#o-noi').value='';giongDem='';
+  rsheet.hidden=true;selRoad=null;giongTat();$('#sh-noi').hidden=true;giongXoa();
   editId=p.id;F=parse(p.code);sheetSnap=false;
   slot=!F.so?'so':F.cotHT.length?'ct':'cot';
   sheet.hidden=false;renderSlots();renderOpts();$('#opts').scrollTop=0;veAnhCot();
@@ -1777,7 +1785,12 @@ function giongGop(list,them,ghiDe){
 /* 🎤 KHẨU LỆNH ở CUỐI câu nói (07/11): «điền» · «tiếp» (= Tiếp ▸) · «dừng» (= Dừng) · «đoạn mới» · «nói lại» / «xoá câu»
    → {lenh:'dien'|'tiep'|'dung'|'doan'|'xoa'|null, con: phần câu trước lệnh}. Chỉ nhận ở CUỐI câu, có chốt chặn:
    «tiếp địa», «nối tiếp», «trạm dừng», «xã Quảng Điền» không thành lệnh */
-const BAN_APP='kstuyen-24';
+const BAN_APP='kstuyen-25';
+/* 🎤 chờ bao lâu (ms) rồi mới làm khẩu lệnh cuối câu (07/11 rút ngắn ⚑): máy đã chốt câu → làm gần như ngay;
+   còn chữ tạm → chờ ngắn xem có nói tiếp không («tiếp», «dừng» chờ lâu hơn chút vì hay đi tiếp chữ, vd «tiếp địa»);
+   gõ tay / 🎤 bàn phím chờ lâu nhất; lai = nghỉ trước khi mở phiên nghe mới */
+const GIONG_CHO={chot:30,tam:{dien:450,xoa:450,doan:450,tiep:700,dung:700},go:800,lai:60};
+function giongCho(lenh,tam){return tam?(GIONG_CHO.tam[lenh]||700):GIONG_CHO.chot}
 const GIONG_TEN=/^(?:Quảng|Phong|Phú|Hải|Văn|Tân|Thanh|Mỹ|Long|Vĩnh|Hưng|Gia|Ngọc|Kim)$/;
 function giongLenh(text){
   const t=String(text||'').normalize('NFC').replace(/\s+/g,' ').replace(/[\s.,!?;:…]+$/,'').trim(),lo=t.toLowerCase();
@@ -1999,8 +2012,13 @@ function giao(blob,name){
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.append(a);a.click();
   setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000);toast(`Đã lưu ${name} vào Tải xuống`);
 }
-function xuatXlsx(){
-  if(!window.XLSX){toast('Chưa tải xong bộ tạo Excel — thử lại sau vài giây');return}
+let xlsxHua=null;
+function napXlsx(){if(window.XLSX)return Promise.resolve(window.XLSX);
+  return xlsxHua||(xlsxHua=new Promise((ok,loi)=>{const s=document.createElement('script');s.src='xlsx.full.min.js';
+    s.onload=()=>window.XLSX?ok(window.XLSX):(xlsxHua=null,loi(new Error('xlsx')));
+    s.onerror=()=>{xlsxHua=null;s.remove();loi(new Error('xlsx'))};document.head.appendChild(s)}))}
+async function xuatXlsx(){
+  if(!window.XLSX){try{await napXlsx()}catch(e){toast('Chưa tải được bộ tạo Excel — có mạng rồi thử lại');return}}
   const rows=sorted().map((p,i)=>{const r=parse(p.code);const n=v=>v||'';
     return [i+1,r.so,ddText(p,r).join(', '),r.kc===''?'':r.kc,J(r.cotHT),J(r.cotTT),J(r.dayHT),J(r.dayTT),n(r.h1),n(r.h2),n(r.h4),n(r.p3),
       r.tuCu?tuText(r):n(r.tuMoi),J(r.sau),r.gc.join('; ')]});
@@ -2205,7 +2223,7 @@ function showExport(){
     <p class="note">Excel và JSON có thêm cột X_VN2000 (Bắc), Y_VN2000 (Đông) cho cột có GPS, theo kinh tuyến trục đang chọn (múi 3°) — đã cộng hiệu chỉnh theo mốc và nắn theo khoảng đo (màn ◎ GPS chính xác), kèm toạ độ gốc GPS và cột “Hiệu chỉnh theo mốc”.</p>
     <p class="note">Excel, DXF, JSON lưu vào thư mục <b>Tải xuống (Download)</b>. Gửi qua Zalo: Gửi file → Download.</p>
   </div>`;
-  panel.hidden=false;
+  panel.hidden=false;napXlsx().catch(()=>{});   /* nạp sẵn bộ tạo Excel trong lúc chọn */
 }
 let delListT={};
 panel.addEventListener('click',e=>{

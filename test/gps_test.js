@@ -4,7 +4,7 @@ const fs=require('fs'),path=require('path');
 const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
 const a=html.indexOf('const VN=(()=>{'),b=html.indexOf('/* === HẾT HÀM THUẦN === */');
 if(a<0||b<0)throw new Error('Không thấy đoạn hàm thuần');
-const T=new Function(html.slice(a,b)+';return {VN,haversine,gpsLoc,gpsXongSom,gpsMau,hcTinh,docSo,mocNhap,nanTuyen,GPS_CHE_DO,NEN,chuSo,giongMa,giongDay,giongKhoa,giongGop,giongLenh,giongChuan};')();
+const T=new Function(html.slice(a,b)+';return {VN,haversine,gpsLoc,gpsXongSom,gpsMau,hcTinh,docSo,mocNhap,nanTuyen,GPS_CHE_DO,NEN,chuSo,giongMa,giongDay,giongKhoa,giongGop,giongLenh,giongChuan,giongCho,GIONG_CHO};')();
 let nOk=0,nSai=0;
 const ok=(c,m)=>{if(c){nOk++;console.log('  ✓ '+m)}else{nSai++;console.log('  ✗ '+m)}};
 // số ngẫu nhiên có hạt giống (kết quả lặp lại được)
@@ -236,11 +236,22 @@ console.log('15. (07/11) Lệnh nghe nhầm + làm khi máy chưa chốt câu: g
   c('cột số 5 '+C('đoán mới'),'doan','cột số 5');
   /* chốt trong code: nghe chữ tạm (chưa chốt) cũng làm lệnh; trang tự tải bản mới */
   const gb=html.slice(html.indexOf('function giongBat'),html.indexOf('function giongMoi'));
-  ok(/giongLenh\(v\)\.lenh\)giongGo=setTimeout\(lam,/.test(gb),'giongBat: câu (cả chữ tạm) kết thúc bằng lệnh → hẹn làm, không chờ máy chốt');
+  ok(/const k=giongLenh\(v\)\.lenh;[^\n]*if\(k\)giongGo=setTimeout\(lam,giongCho\(k,/.test(gb),'giongBat: câu (cả chữ tạm) kết thúc bằng lệnh → hẹn làm theo giongCho, không chờ máy chốt');
+  /* 07/11 tốc độ: chốt câu làm gần như ngay, chữ tạm chờ ngắn, «tiếp»/«dừng» chờ lâu hơn «điền»; mở phiên nghe mới nhanh */
+  const {giongCho,GIONG_CHO}=T;
+  ok(giongCho('dien',false)<=50&&giongCho('tiep',false)<=50,'giongCho: máy đã chốt câu → làm ngay (≤ 50 ms)');
+  ok(giongCho('dien',true)<=500&&giongCho('xoa',true)<=500&&giongCho('doan',true)<=500,'giongCho: chữ tạm «điền / nói lại / đoạn mới» chờ ≤ 0,5 s');
+  ok(giongCho('tiep',true)>giongCho('dien',true)&&giongCho('tiep',true)<=800&&giongCho('dung',true)<=800,'giongCho: «tiếp», «dừng» chờ lâu hơn «điền» (tiếp địa) nhưng ≤ 0,8 s');
+  ok(GIONG_CHO.go<=800&&GIONG_CHO.go>giongCho('tiep',true)-1&&GIONG_CHO.lai<=80,'GIONG_CHO: gõ tay chờ ≤ 0,8 s, mở phiên nghe mới ≤ 80 ms');
+  ok(/giongHen=setTimeout\(giongBat,GIONG_CHO\.lai\)/.test(gb)&&/function giongMoi\(\)\{[^\n]*setTimeout\(giongBat,GIONG_CHO\.lai\)/.test(html),'giongBat / giongMoi mở phiên nghe mới sau GIONG_CHO.lai');
+  ok(/catch\(e\)\{GHE=null;if\(!thu\)\{giongHen=setTimeout\(\(\)=>giongBat\(1\),/.test(gb),'giongBat: mở micro lỗi (mở lại sớm quá) → thử lại 1 lần rồi mới báo');
+  ok(/function hocDoc\(code\)/.test(html)&&/vals=hocDoc\(p\.code\)\[kind\]/.test(html),'learned đọc mã qua hocDoc (nhớ theo chuỗi mã), không parse lại mọi cột mỗi lần');
+  ok(!/<script src="xlsx\.full\.min\.js"/.test(html)&&/function napXlsx\(\)/.test(html)&&/async function xuatXlsx\(\)\{\s*if\(!window\.XLSX\)\{try\{await napXlsx\(\)\}/.test(html),'xlsx.full.min.js chỉ nạp khi xuất Excel (napXlsx), không nạp lúc mở app');
   ok(/fin\.trim\(\)\|\|giongChuan\(tam\)/.test(gb),'giongBat: máy tắt phiên chưa chốt → giữ chữ tạm');
   ok(/controllerchange/.test(html)&&/function taiLai\(\)\{try\{saveNow\(\)\}/.test(html),'có bản app mới → lưu rồi tự tải lại');
   ok(/id="ban-app">Bản app: \$\{BAN_APP\}/.test(html),'☰ luôn hiện «Bản app: …» (lấy từ BAN_APP, không cần bộ nhớ đệm)');
   const sw=fs.readFileSync(path.join(__dirname,'..','sw.js'),'utf8'),ph=(sw.match(/const PHIEN = '([^']+)'/)||[])[1],ba=(html.match(/const BAN_APP='([^']+)'/)||[])[1];
   ok(ph&&ph===ba,`BAN_APP (${ba}) trùng PHIEN sw.js (${ph}) — đổi bản thì đổi cả hai`);
+  ok(/'\.\/xlsx\.full\.min\.js'/.test(sw),'sw.js vẫn lưu sẵn xlsx.full.min.js (xuất Excel khi mất mạng)');
 }
 console.log(`\n${nOk} đạt, ${nSai} sai`);process.exit(nSai?1:0);
