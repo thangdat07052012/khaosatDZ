@@ -223,6 +223,9 @@ console.log('15. (07/11) Lệnh nghe nhầm + làm khi máy chưa chốt câu: g
   const c=(s,k,con)=>{const r=Lh(s);ok(r.lenh===k&&(con===undefined||r.con===con),`«${s}» → ${r.lenh}${r.lenh?' | '+r.con:''} (cần ${k}${con!==undefined?' | '+con:''})`)};
   c('cột số 5 '+C('Điện.'),'dien','cột số 5');
   c('hòm H4 Điền','dien','hòm H4');
+  c('cột BTLT Điền','dien','cột BTLT');
+  c('dây ABC 4x95 Điền.','dien','dây ABC 4x95');
+  c('cột BTLT '+C('Điền'),'dien','cột BTLT');
   c('Cột số 5 Điền','dien','Cột số 5');
   c('ghi chú gần xã Quảng Điền',null);
   c('đường Phong Điền',null);
@@ -236,6 +239,8 @@ console.log('15. (07/11) Lệnh nghe nhầm + làm khi máy chưa chốt câu: g
   ok(/giongLenh\(v\)\.lenh\)giongGo=setTimeout\(lam,/.test(gb),'giongBat: câu (cả chữ tạm) kết thúc bằng lệnh → hẹn làm, không chờ máy chốt');
   ok(/fin\.trim\(\)\|\|giongChuan\(tam\)/.test(gb),'giongBat: máy tắt phiên chưa chốt → giữ chữ tạm');
   ok(/controllerchange/.test(html)&&/function taiLai\(\)\{try\{saveNow\(\)\}/.test(html),'có bản app mới → lưu rồi tự tải lại');
-  ok(/id="ban-app"/.test(html),'☰ hiện «Bản app: kstuyen-…»');
+  ok(/id="ban-app">Bản app: \$\{BAN_APP\}/.test(html),'☰ luôn hiện «Bản app: …» (lấy từ BAN_APP, không cần bộ nhớ đệm)');
+  const sw=fs.readFileSync(path.join(__dirname,'..','sw.js'),'utf8'),ph=(sw.match(/const PHIEN = '([^']+)'/)||[])[1],ba=(html.match(/const BAN_APP='([^']+)'/)||[])[1];
+  ok(ph&&ph===ba,`BAN_APP (${ba}) trùng PHIEN sw.js (${ph}) — đổi bản thì đổi cả hai`);
 }
 console.log(`\n${nOk} đạt, ${nSai} sai`);process.exit(nSai?1:0);

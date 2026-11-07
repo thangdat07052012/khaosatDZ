@@ -1777,6 +1777,7 @@ function giongGop(list,them,ghiDe){
 /* 🎤 KHẨU LỆNH ở CUỐI câu nói (07/11): «điền» · «tiếp» (= Tiếp ▸) · «dừng» (= Dừng) · «đoạn mới» · «nói lại» / «xoá câu»
    → {lenh:'dien'|'tiep'|'dung'|'doan'|'xoa'|null, con: phần câu trước lệnh}. Chỉ nhận ở CUỐI câu, có chốt chặn:
    «tiếp địa», «nối tiếp», «trạm dừng», «xã Quảng Điền» không thành lệnh */
+const BAN_APP='kstuyen-24';
 const GIONG_TEN=/^(?:Quảng|Phong|Phú|Hải|Văn|Tân|Thanh|Mỹ|Long|Vĩnh|Hưng|Gia|Ngọc|Kim)$/;
 function giongLenh(text){
   const t=String(text||'').normalize('NFC').replace(/\s+/g,' ').replace(/[\s.,!?;:…]+$/,'').trim(),lo=t.toLowerCase();
@@ -2184,10 +2185,10 @@ function showList(){
     ${ds.map(d=>`<div class="card${d.id===D.id?' cur':''}"><button class="tx" data-a="open" data-id="${d.id}"><b>${esc(d.ten)}</b>
       <span>${esc(d.ngay||'')} · ${d.poles.length} cột</span></button><button class="btn danger" data-a="del" data-id="${d.id}">Xoá</button></div>`).join('')}
     <p class="note">Bản vẽ lưu ngay trên điện thoại này, không cần mạng. Xoá dữ liệu trình duyệt hoặc gỡ app là mất — xuất file gửi đi trước.</p>
-    <p class="note" id="ban-app"></p>
+    <p class="note" id="ban-app">Bản app: ${BAN_APP}</p>
   </div>`;
   panel.hidden=false;
-  if(window.caches)caches.keys().then(ks=>{const k=ks.filter(k=>/^kstuyen-\d+$/.test(k)).pop(),e=$('#ban-app');if(k&&e)e.textContent='Bản app: '+k}).catch(()=>{});
+  if(window.caches)caches.keys().then(ks=>{const k=ks.filter(k=>/^kstuyen-\d+$/.test(k)).pop(),e=$('#ban-app');if(k&&e&&k!==BAN_APP)e.textContent='Bản app: '+BAN_APP+' · bộ nhớ còn '+k+' — tắt hẳn app mở lại'}).catch(()=>{});
 }
 function showExport(){
   finishSheet();closeRoad();
@@ -2282,6 +2283,8 @@ new ResizeObserver(()=>{sizeUp();if(!V)V=fitView(W,H,40);draw()}).observe(stage)
 sizeUp();if(!V)V=fitView(W,H,40);title();draw();keepAwake();
 /* bản app mới (sw.js đổi PHIEN): máy tự tải lại, khỏi phải tắt hẳn app; đang mở ô nhập / bảng / đo GPS thì chờ xong ⚑ */
 var banMoi=false,swDk=null;
+/* BAN_APP phải trùng PHIEN trong sw.js (test mục 15 canh). Lần đầu mở bản mới → báo một lần để biết máy đã lên bản mới ⚑ */
+try{const cu=localStorage.getItem('kstuyen_ban');if(cu!==BAN_APP){localStorage.setItem('kstuyen_ban',BAN_APP);setTimeout(()=>toast('⟳ App đã lên bản '+BAN_APP),800)}}catch(e){}
 function rong(){return !editId&&!gpsM&&rsheet.hidden&&panel.hidden}
 function taiLai(){try{saveNow()}catch(e){}location.reload()}
 if('serviceWorker' in navigator&&location.protocol==='https:'){const coSan=!!navigator.serviceWorker.controller;
