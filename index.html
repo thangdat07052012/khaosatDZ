@@ -156,7 +156,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .o.on{background:var(--hi);border-color:var(--hi);color:var(--hi-fg)}
 .typ{display:flex;gap:4px}
 .typ .inp{flex:1;min-width:0;height:34px;border-radius:7px;border:1.5px solid var(--line);background:var(--paper);color:var(--fg);font:600 15px var(--mono);padding:0 8px}
-#sh-noi{flex:0 0 auto}#o-noi{font:500 14px var(--f)}
+#sh-noi{flex:0 0 auto}#o-noi{font:500 14px var(--f)}#o-noi-x{padding:0 9px}
 .sl.vn input.gt{font:600 15.5px var(--f);border:0;background:transparent;color:var(--fg);padding:4px 0;width:100%;outline:none}
 #sh-mic.on{background:var(--warn);border-color:var(--warn);color:#fff;animation:nhay 1s ease-in-out infinite}
 @keyframes nhay{50%{opacity:.6}}
@@ -226,7 +226,7 @@ label.btn{display:flex;align-items:center;justify-content:center}
     <span class="grow"></span>
     <button id="sh-del" class="btn sm danger">Xoá</button>
   </div>
-  <div id="sh-noi" class="typ" hidden><input id="o-noi" class="inp" placeholder="Nói / gõ cả câu: cột số 5 ly tâm tám rưỡi dây ABC 4x120 khoảng 35 mét" autocomplete="off" spellcheck="false" enterkeyhint="done"><button id="o-noi-nho" type="button" class="btn sm" aria-label="Bộ nhớ giọng nói">📖</button><button id="o-noi-ok" type="button" class="btn sm pri">Điền</button></div>
+  <div id="sh-noi" class="typ" hidden><input id="o-noi" class="inp" placeholder="Nói cả câu, cuối câu «điền» — «tiếp» sang cột sau" autocomplete="off" spellcheck="false" enterkeyhint="done"><button id="o-noi-x" type="button" class="btn sm" aria-label="Xoá câu nói">✕</button><button id="o-noi-nho" type="button" class="btn sm" aria-label="Bộ nhớ giọng nói">📖</button><button id="o-noi-ok" type="button" class="btn sm pri">Điền</button></div>
   <input id="anh-in" type="file" accept="image/*" capture="environment" hidden>
   <div id="sh-anhs" class="anhs" hidden></div>
   <div id="slots" class="slots"></div>
@@ -1063,7 +1063,56 @@ $('#sh-anh').addEventListener('click',()=>{if(!editId)return;$('#anh-in').value=
 /* 🎤 nói cả câu → tự điền ô (Web Speech API, tiếng Việt). ⚑ Chrome Android cần mạng để nhận giọng; câu nói được đọc thành ô bằng giongMa ngay trên máy.
    Máy không có API (Firefox, WebView cũ) → hiện ô gõ câu: gõ, hoặc bấm 🎤 trên bàn phím điện thoại rồi nói, xong bấm Điền */
 var SR=window.SpeechRecognition||window.webkitSpeechRecognition,GHE=null;
-function giongTat(){if(GHE){const g=GHE;GHE=null;try{g.abort()}catch(e){}}const b=$('#sh-mic');if(b)b.classList.remove('on')}
+/* 🎤 nghe liền (07/11): bấm 🎤 một lần là nghe tới khi nói «tiếp» / «dừng» / «đoạn mới», bấm 🎤 lần nữa, hoặc im 1 phút.
+   Câu nói dồn vào ô; cuối câu nói «điền» là điền ô rồi nghe tiếp (giongLenh). ⚑ Chrome Android mỗi lần nghe lại có thể kêu «bíp» */
+var giongNghe=false,giongChot=false,giongDem='',giongLuc=0,giongHong=0,giongDaBao=false,giongHen=null,giongGo=null;
+const GIONG_IM=60000,GIONG_LOI={'not-allowed':'Chưa cho phép micro — bấm ổ khoá trên thanh địa chỉ để cho phép','service-not-allowed':'Chưa cho phép micro',
+  'network':'Nhận giọng nói cần mạng — gõ câu rồi bấm Điền','audio-capture':'Không mở được micro'};
+function giongTat(){giongNghe=false;giongChot=false;clearTimeout(giongHen);clearTimeout(giongGo);
+  if(GHE){const g=GHE;GHE=null;try{g.abort()}catch(e){}}const b=$('#sh-mic');if(b)b.classList.remove('on')}
+function giongBat(){clearTimeout(giongHen);if(!giongNghe||!editId||!SR||GHE)return;
+  const o=$('#o-noi'),g=new SR(),t0=Date.now();g.lang='vi-VN';g.interimResults=true;g.continuous=false;g.maxAlternatives=1;
+  let fin='',loi='';GHE=g;
+  g.onresult=e=>{let f='',t='';for(let i=0;i<e.results.length;i++){const r=e.results[i];if(r.isFinal)f+=r[0].transcript;else t+=r[0].transcript}
+    fin=f;giongLuc=Date.now();o.value=(giongDem+' '+f+' '+t).replace(/\s+/g,' ').trim()};
+  g.onerror=e=>{loi=e.error||'loi'};
+  g.onend=()=>{if(GHE!==g)return;GHE=null;   /* đã bị huỷ (✕, Điền, đổi cột, đóng ô nhập) → bỏ */
+    const s=fin.trim();
+    if(s){giongDem=(giongDem+' '+s).replace(/\s+/g,' ').trim();giongHong=0}
+    if(giongChot){giongChot=false;if(s)o.value=giongDem;giongTat();giongXong();return}   /* bấm 🎤 lần 2: không có kết quả chốt thì lấy cả chữ tạm trong ô */
+    o.value=giongDem;
+    if(s)giongLam(giongDem);
+    if(!giongNghe||!editId||GHE)return;
+    if(GIONG_LOI[loi]){giongTat();toast(GIONG_LOI[loi]);return}
+    if(!s&&Date.now()-t0<1000&&++giongHong>=3){giongTat();toast(loi&&loi!=='no-speech'&&loi!=='aborted'?'Lỗi nhận giọng: '+loi:'Micro không nghe được — gõ câu rồi bấm Điền');return}
+    if(Date.now()-giongLuc>GIONG_IM){giongTat();toast('🎤 Im 1 phút — đã tắt nghe'+(o.value.trim()?'. Câu còn trong ô: bấm Điền':''));return}
+    giongHen=setTimeout(giongBat,120)};
+  try{g.start()}catch(e){GHE=null;giongTat();o.focus();toast('Không mở được nhận giọng nói — gõ câu rồi bấm Điền')}}
+/* câu trong ô vừa đổi ngoài nhận giọng (✕, Điền, gõ tay) → bỏ phiên đang nghe (nó còn giữ chữ cũ), nghe lại phiên mới */
+function giongMoi(){if(!giongNghe)return;if(GHE){const g=GHE;GHE=null;try{g.abort()}catch(e){}}clearTimeout(giongHen);giongHen=setTimeout(giongBat,150)}
+function giongXoa(){$('#o-noi').value='';giongDem='';clearTimeout(giongGo)}
+/* câu có khẩu lệnh ở cuối → làm; trả false nếu không có lệnh */
+function giongLam(s){const l=giongLenh(s);if(!l.lenh)return false;
+  if(l.lenh==='xoa'){giongXoa();giongMoi();toast('Đã xoá câu — nói lại');return true}
+  if(l.lenh==='dien'){giongXoa();if(l.con)apGiong(l.con);else toast('Chưa có câu để điền');giongMoi();return true}
+  giongNut(l.lenh,l.con);return true}
+/* bấm 🎤 lần 2: làm câu đang có trong ô (có lệnh thì theo lệnh, không thì điền) */
+function giongXong(){const s=$('#o-noi').value.trim();if(!s||giongLam(s))return;giongXoa();apGiong(s)}
+/* Tiếp ▸ / Dừng / Đoạn mới — bấm tay hay nói: câu còn trong ô được điền trước ⚑, rồi làm như nút */
+function giongNut(lenh,con){
+  if(!editId)return;const o=$('#o-noi'),nghe=giongNghe,hien=!$('#sh-noi').hidden,foc=document.activeElement===o;
+  if(con==null)con=giongLenh(o.value).con;con=String(con||'').trim();
+  giongTat();giongXoa();
+  const g=con?apGiong(con):null,ghi=g?(g.hieu.length?'🎤 '+g.hieu.join(' · '):'🎤 Chưa hiểu «'+con+'»')+' — ':'';
+  if(lenh==='tiep'){const truoc=editId;xong();
+    if(editId&&editId!==truoc&&!sheet.hidden){giongMoLai(hien,nghe,foc);if(ghi||nghe)toast(ghi+'▸ Cột mới'+(giongNghe?' — đang nghe':''))}
+    else if(ghi)toast(ghi+'Đi tới cột sau rồi bấm GPS');
+    return}
+  finishSheet();
+  if(lenh==='doan'){D.active=null;save();draw();toast(ghi+'Cột tiếp theo bắt đầu đoạn mới, không nối dây');return}
+  if(ghi||nghe)toast(ghi+'■ Dừng — đã lưu cột')}
+function giongMoLai(hien,nghe,foc){if(hien||nghe)$('#sh-noi').hidden=false;
+  if(nghe&&SR){giongNghe=true;giongLuc=Date.now();giongHong=0;$('#sh-mic').classList.add('on');giongBat()}else if(foc)$('#o-noi').focus()}
 var giongCon='',giongCau='';   /* câu vừa nói + phần chưa hiểu của nó — 📖 điền sẵn phần chưa hiểu vào ô «Khi nói» */
 const giongDs=()=>({cot:learned('cot'),cotTT:learned('cotTT'),day:learned('day'),dayTT:learned('dayTT'),sau:learned('sau')});
 /* lưu một cụm dạy; câu «hiểu là» app không hiểu gì → ⚑ lưu thành Ghi chú */
@@ -1077,6 +1126,7 @@ function showGiong(pre){
   panel.innerHTML=`<div class="pin">
     <div class="row" style="align-items:center"><h2 style="flex:1 1 auto">📖 Bộ nhớ giọng nói</h2><button class="btn" data-a="close" style="flex:0 0 auto">Đóng</button></div>
     <p class="note">Dạy app cách anh nói. Bấm 🎤 rồi nói <b>«nhớ cột cao là ly tâm 12»</b> — lần sau nói «cột cao» app điền LT12. Muốn thành ghi chú: «nhớ cạnh trường là ghi chú gần trường học». Xoá: nói <b>«quên cột cao»</b>. Hoặc gõ ở dưới.</p>
+    <p class="note">Khẩu lệnh cuối câu: <b>«điền»</b> điền ô rồi nghe tiếp · <b>«tiếp»</b> = Tiếp ▸ · <b>«dừng»</b> = Dừng · <b>«đoạn mới»</b> = Đoạn mới · <b>«nói lại»</b> xoá câu (hoặc bấm ✕). Bấm 🎤 một lần là nghe liền tới khi nói «tiếp / dừng / đoạn mới», bấm 🎤 lần nữa, hoặc im 1 phút.</p>
     ${giongCau?`<p class="note">Câu vừa nói: «${esc(giongCau)}»${giongCon?` — app chưa hiểu: <b>«${esc(giongCon)}»</b>`:''}</p>`:''}
     <label class="sl vn"><span class="k">Khi nói</span><input id="gt-noi" class="gt" type="text" autocomplete="off" spellcheck="false" enterkeyhint="next" value="${esc(pre||'')}" placeholder="cột cao"></label>
     <label class="sl vn"><span class="k">Hiểu là — nói như khi điền ô, hoặc «ghi chú …»</span><input id="gt-la" class="gt" type="text" autocomplete="off" spellcheck="false" enterkeyhint="done" placeholder="ly tâm 12"></label>
@@ -1112,27 +1162,28 @@ function apGiong(text){const p=curP();if(!p||!F)return null;
   commit();
   toast('🎤 '+(g.nho.length?'📖 ':'')+g.hieu.join(' · ')+(g.con?'  — bỏ qua: '+g.con+' (bấm 📖 để dạy)':''));return g}
 $('#sh-mic').addEventListener('click',()=>{
-  if(!editId)return;
-  if(GHE){try{GHE.stop()}catch(e){giongTat()}return}
-  const o=$('#o-noi');$('#sh-noi').hidden=false;o.value='';
-  if(!SR){o.focus();toast('Máy này không có nhận giọng nói — gõ câu, hoặc bấm 🎤 trên bàn phím rồi nói, xong bấm Điền');return}
-  const g=new SR();g.lang='vi-VN';g.interimResults=true;g.continuous=false;g.maxAlternatives=1;
-  let fin='',loi='';GHE=g;$('#sh-mic').classList.add('on');
-  g.onresult=e=>{let f='',t='';for(let i=0;i<e.results.length;i++){const r=e.results[i];if(r.isFinal)f+=r[0].transcript;else t+=r[0].transcript}
-    fin=f;o.value=(f+' '+t).trim()};
-  g.onerror=e=>{loi=e.error||'loi'};
-  g.onend=()=>{const me=GHE===g;if(me){GHE=null;$('#sh-mic').classList.remove('on')}
-    if(!me)return;   /* đã bị huỷ (đổi cột / đóng ô nhập) → bỏ */
-    const s=(fin||o.value).trim();
-    if(s){apGiong(s);return}
-    toast({'not-allowed':'Chưa cho phép micro — bấm ổ khoá trên thanh địa chỉ để cho phép','service-not-allowed':'Chưa cho phép micro',
-      'network':'Nhận giọng nói cần mạng — gõ câu rồi bấm Điền','no-speech':'Không nghe thấy gì — bấm 🎤 nói lại',
-      'audio-capture':'Không mở được micro'}[loi]||(loi&&loi!=='aborted'?'Lỗi nhận giọng: '+loi:'Không nghe thấy gì — bấm 🎤 nói lại'))};
-  try{g.start()}catch(e){GHE=null;$('#sh-mic').classList.remove('on');o.focus();toast('Không mở được nhận giọng nói — gõ câu rồi bấm Điền')}
+  if(!editId)return;const o=$('#o-noi');
+  if(giongNghe){if(GHE){giongChot=true;try{GHE.stop()}catch(e){giongTat();giongXong()}}else{giongTat();giongXong()}return}
+  $('#sh-noi').hidden=false;giongDem=o.value.trim();
+  if(!SR){o.focus();toast('Máy này không có nhận giọng nói — bấm 🎤 trên bàn phím rồi nói, cuối câu nói «điền» (hoặc «tiếp», «dừng», «đoạn mới»)');return}
+  giongNghe=true;giongChot=false;giongLuc=Date.now();giongHong=0;$('#sh-mic').classList.add('on');giongBat();
+  if(!giongDaBao){giongDaBao=true;toast('🎤 Đang nghe — cuối câu nói «điền», «tiếp», «dừng», «đoạn mới» hoặc «nói lại». Bấm 🎤 lần nữa là thôi')}
 });
-$('#o-noi-ok').addEventListener('click',()=>{giongTat();apGiong($('#o-noi').value)});
-$('#o-noi-nho').addEventListener('click',()=>{giongTat();showGiong(giongCon)});
-$('#o-noi').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();giongTat();apGiong(e.target.value)}});
+/* ✕ xoá nhanh câu đang nói — pointerdown giữ ô nhập không mất focus (bàn phím không sập) */
+$('#o-noi-x').addEventListener('pointerdown',e=>e.preventDefault());
+$('#o-noi-x').addEventListener('click',()=>{const o=$('#o-noi'),f=document.activeElement===o;giongXoa();giongMoi();if(f||!SR)o.focus()});
+function giongDien(){const o=$('#o-noi'),l=giongLenh(o.value);clearTimeout(giongGo);
+  if(l.lenh&&l.lenh!=='dien'){giongLam(o.value);return}
+  giongXoa();if(l.con)apGiong(l.con);giongMoi()}
+$('#o-noi-ok').addEventListener('click',giongDien);
+$('#o-noi-nho').addEventListener('click',()=>{const v=giongLenh($('#o-noi').value).con;
+  if(v){const g=giongMa(v,giongDs(),DB.giongTu);giongCau=v;giongCon=g.hieu.length?g.con||'':v}
+  giongTat();showGiong(giongCon)});
+$('#o-noi').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();giongDien()}});
+/* gõ tay / 🎤 bàn phím: câu kết thúc bằng khẩu lệnh → chờ 1,2 s ⚑ (còn gõ tiếp, vd «tiếp địa», thì thôi) rồi làm */
+$('#o-noi').addEventListener('input',e=>{giongDem=e.target.value.trim();if(GHE)giongMoi();
+  clearTimeout(giongGo);if(giongLenh(e.target.value).lenh)giongGo=setTimeout(()=>{const v=$('#o-noi').value;if(editId&&giongLenh(v).lenh)giongLam(v)},1200)});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&giongNghe)giongTat()});
 $('#anh-in').addEventListener('change',async e=>{
   const f=e.target.files&&e.target.files[0],id=editId;if(!f||!id||!D)return;
   try{const p=byId(id),so=(p&&parse(p.code).so)||'x',t=Date.now(),lat=fix&&fix.lat,lon=fix&&fix.lon;
@@ -1175,7 +1226,7 @@ async function guiAnhCot(){
   toast(`Đã tải ${files.length} ảnh vào thư mục Tải xuống`);
 }
 function openSheet(p){
-  rsheet.hidden=true;selRoad=null;giongTat();$('#sh-noi').hidden=true;$('#o-noi').value='';
+  rsheet.hidden=true;selRoad=null;giongTat();$('#sh-noi').hidden=true;$('#o-noi').value='';giongDem='';
   editId=p.id;F=parse(p.code);sheetSnap=false;
   slot=!F.so?'so':F.cotHT.length?'ct':'cot';
   sheet.hidden=false;renderSlots();renderOpts();$('#opts').scrollTop=0;veAnhCot();
@@ -1219,9 +1270,9 @@ $('#sh-copy').addEventListener('click',()=>{
   if(!sheetSnap){snap();sheetSnap=true}p.shape=src.shape==='tba'?(p.shape||'tron'):src.shape;p.doi=!!src.doi&&src.shape!=='tba';
   commit();toast(`Đã chép theo cột ${r.so||'trước'} (trừ số cột, khoảng, ghi chú)`);
 });
-$('#sh-ok').addEventListener('click',xong);
-$('#sh-end').addEventListener('click',finishSheet);
-$('#sh-new').addEventListener('click',()=>{finishSheet();D.active=null;save();draw();toast('Cột tiếp theo bắt đầu đoạn mới, không nối dây')});
+$('#sh-ok').addEventListener('click',()=>giongNut('tiep'));
+$('#sh-end').addEventListener('click',()=>giongNut('dung'));
+$('#sh-new').addEventListener('click',()=>giongNut('doan'));
 let delT=null;
 $('#sh-del').addEventListener('click',e=>{
   const b=e.currentTarget;
@@ -1715,6 +1766,24 @@ function giongGop(list,them,ghiDe){
     const i=L.findIndex(e=>giongKhoa(e.noi)===k);
     if(i<0){L.push({noi,la});n++}else if(ghiDe&&L[i].la!==la){L[i]={noi,la};sua++}}
   return {list:L,them:n,sua}}
+/* 🎤 KHẨU LỆNH ở CUỐI câu nói (07/11): «điền» · «tiếp» (= Tiếp ▸) · «dừng» (= Dừng) · «đoạn mới» · «nói lại» / «xoá câu»
+   → {lenh:'dien'|'tiep'|'dung'|'doan'|'xoa'|null, con: phần câu trước lệnh}. Chỉ nhận ở CUỐI câu, có chốt chặn:
+   «tiếp địa», «nối tiếp», «trạm dừng», «xã Quảng Điền» không thành lệnh */
+function giongLenh(text){
+  const t=String(text||'').normalize('NFC').replace(/\s+/g,' ').replace(/[\s.,!?;:…]+$/,'').trim(),lo=t.toLowerCase();
+  const L=[['dien',/(?:^| )(?:ok |oke |xong )?điền(?: vào| đi| luôn| nhé)?$/],
+    ['tiep',/(?:^| )(?:sang |qua |chuyển )?(?:cột )?(?:kế )?tiếp(?: theo)?$/],
+    ['dung',/(?:^| )(?:tạm )?dừng(?: lại)?$/],
+    ['doan',/(?:^| )(?:bắt đầu |sang |qua |làm )?đoạn mới$/],
+    ['xoa',/(?:^| )(?:(?:xoá|xóa) (?:câu|hết)|nói lại)$/]];
+  for(const [k,re] of L){const m=lo.match(re);if(!m)continue;
+    let con=t.slice(0,m.index).trim();const cl=con.toLowerCase(),w=con.split(' ').pop()||'';
+    if(k==='tiep'&&/(?:^| )nối$/.test(cl))continue;
+    if(k==='dung'&&/(?:^| )(?:trạm|điểm|bến)$/.test(cl))continue;
+    if(k==='dien'&&/Điền$/.test(t)&&/^\p{Lu}/u.test(w)&&!/[.,!?;:…]$/.test(w))continue;   /* tên riêng «Quảng Điền» */
+    con=con.replace(/(^| )điền(?= |$)/g,'$1').replace(/ {2,}/g,' ').replace(/[\s.,!?;:…]+$/,'').trim();
+    return {lenh:k,con}}
+  return {lenh:null,con:t}}
 /* === HẾT HÀM THUẦN === */
 /* kinh tuyến trục đang dùng (cài đặt chung của máy, mặc định Thanh Hoá 105°00′) */
 function ktt(){return DB.ktt!=null&&isFinite(DB.ktt)?+DB.ktt:105}

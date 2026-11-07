@@ -4,7 +4,7 @@ const fs=require('fs'),path=require('path');
 const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
 const a=html.indexOf('const VN=(()=>{'),b=html.indexOf('/* === HẾT HÀM THUẦN === */');
 if(a<0||b<0)throw new Error('Không thấy đoạn hàm thuần');
-const T=new Function(html.slice(a,b)+';return {VN,haversine,gpsLoc,gpsXongSom,gpsMau,hcTinh,docSo,mocNhap,nanTuyen,GPS_CHE_DO,NEN,chuSo,giongMa,giongDay,giongKhoa,giongGop};')();
+const T=new Function(html.slice(a,b)+';return {VN,haversine,gpsLoc,gpsXongSom,gpsMau,hcTinh,docSo,mocNhap,nanTuyen,GPS_CHE_DO,NEN,chuSo,giongMa,giongDay,giongKhoa,giongGop,giongLenh};')();
 let nOk=0,nSai=0;
 const ok=(c,m)=>{if(c){nOk++;console.log('  ✓ '+m)}else{nSai++;console.log('  ✗ '+m)}};
 // số ngẫu nhiên có hạt giống (kết quả lặp lại được)
@@ -186,5 +186,32 @@ console.log('13. (07/11) Bộ nhớ giọng nói: giongDay / giongKhoa / giongGo
   g=G('cột cao',{},[{noi:'cao',la:'chữ hắt tám rưỡi'},{noi:'cột cao',la:'ly tâm 12'}]);ok(eq(g.cotHT,['LT12']),'cụm dài khớp trước, cụm ngắn không ăn vào chữ vừa thay → '+J(g.cotHT));
   g=G('cột số 7 ghi chú cột cao sát nhà',{},tu);ok(g.so==='7'&&!g.cotHT&&eq(g.gc,['Cột cao sát nhà']),'phần «ghi chú …» của câu nói giữ nguyên văn, không thay');
   g=G('cột cao',{cot:['LT 12']},tu);ok(eq(g.cotHT,['LT 12']),'cụm dạy vẫn bám chữ trong danh sách chọn của app → '+J(g.cotHT));
+}
+console.log('14. (07/11) Khẩu lệnh cuối câu: giongLenh');
+{const {giongLenh:Lh,giongMa:G,giongDay:Dy}=T;
+  const c=(s,k,con)=>{const r=Lh(s);ok(r.lenh===k&&(con===undefined||r.con===con),`«${s}» → ${r.lenh}${r.lenh?' | '+r.con:''} (cần ${k}${con!==undefined?' | '+con:''})`)};
+  c('cột số 5 ly tâm 12 điền','dien','cột số 5 ly tâm 12');
+  c('Cột số 5 ly tâm 12. Điền.','dien','Cột số 5 ly tâm 12');
+  c('ok điền','dien','');
+  c('tiếp','tiep','');
+  c('dây abc 4x95 cột tiếp theo','tiep','dây abc 4x95');
+  c('khoảng ba lăm mét sang cột kế tiếp','tiep','khoảng ba lăm mét');
+  c('cột có tiếp địa',null);
+  c('nối tiếp',null);
+  c('ghi chú cạnh trạm dừng',null);
+  c('ghi chú gần xã Quảng Điền',null);
+  c('dừng lại','dung','');
+  c('cột số 9 néo dừng','dung','cột số 9 néo');
+  c('sang đoạn mới','doan','');
+  c('bắt đầu đoạn mới','doan','');
+  c('nói lại','xoa','');
+  c('cột số 5 xoá câu','xoa','cột số 5');
+  c('cột số 5 xóa hết','xoa','cột số 5');
+  c('cột số 5 điền ly tâm 12 điền','dien','cột số 5 ly tâm 12');
+  c('cột số 5 ly tâm 12',null);
+  c('',null,'');
+  let r=Lh('nhớ cột cao là ly tâm 12 điền'),d=Dy(r.con);ok(r.lenh==='dien'&&d&&d.noi==='cột cao','«nhớ … là … điền» → dạy cụm, bỏ «điền» → '+JSON.stringify(d));
+  r=Lh('cột số 7 ly tâm 12 tiếp');const g=G(r.con);ok(r.lenh==='tiep'&&g.so==='7'&&!g.con,'«… tiếp» → phần trước lệnh điền đủ: '+g.hieu.join(' · '));
+  r=Lh('  cột   số 5   điền  ');ok(r.lenh==='dien'&&r.con==='cột số 5','khoảng trắng thừa → «cột số 5»');
 }
 console.log(`\n${nOk} đạt, ${nSai} sai`);process.exit(nSai?1:0);
