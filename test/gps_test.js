@@ -4,7 +4,7 @@ const fs=require('fs'),path=require('path');
 const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
 const a=html.indexOf('const VN=(()=>{'),b=html.indexOf('/* === HẾT HÀM THUẦN === */');
 if(a<0||b<0)throw new Error('Không thấy đoạn hàm thuần');
-const T=new Function(html.slice(a,b)+';return {VN,haversine,gpsLoc,gpsXongSom,gpsMau,hcTinh,docSo,mocNhap,nanTuyen,GPS_CHE_DO,NEN};')();
+const T=new Function(html.slice(a,b)+';return {VN,haversine,gpsLoc,gpsXongSom,gpsMau,hcTinh,docSo,mocNhap,nanTuyen,GPS_CHE_DO,NEN,chuSo,giongMa};')();
 let nOk=0,nSai=0;
 const ok=(c,m)=>{if(c){nOk++;console.log('  ✓ '+m)}else{nSai++;console.log('  ✗ '+m)}};
 // số ngẫu nhiên có hạt giống (kết quả lặp lại được)
@@ -131,5 +131,37 @@ console.log('11. (07/11) Ảnh nền vệ tinh: ô Web Mercator');
   const L=N.ds(19.81,105.77,19.79,105.79,19);
   ok(L.length>0&&L.length<=64&&L.every(t=>t.z===L[0].z)&&L[0].z<19,`khung 2 km: ${L.length} ô, tự hạ còn z${L[0].z}`);
   ok(N.url(17,104049,58179).endsWith('/tile/17/58179/104049'),'URL Esri thứ tự z/y/x')}
+
+console.log('12. (07/11) Giọng nói → ô: chuSo / giongMa');
+{const {chuSo:C,giongMa:G}=T,J=JSON.stringify,eq=(a,b)=>J(a)===J(b);
+  for(const [s,v] of [['một trăm hai','120'],['một trăm hai mươi','120'],['hai trăm tư','240'],['chín lăm','95'],['ba mươi lăm','35'],
+    ['hai mươi mốt','21'],['một trăm linh năm','105'],['tám rưỡi','8,5'],['mười rưỡi','10,5'],['một nghìn hai','1200'],['mười hai','12']])
+    ok(C(s)===v,`chuSo «${s}» → ${C(s)} (cần ${v})`);
+  ok(C('dây a bê xê bốn nhân một trăm hai mươi')==='dây abc4x120','«a bê xê bốn nhân một trăm hai mươi» → '+C('dây a bê xê bốn nhân một trăm hai mươi'));
+  ok(C('bê tông ly tâm tám mét rưỡi')==='lt8,5m','«bê tông ly tâm tám mét rưỡi» → '+C('bê tông ly tâm tám mét rưỡi'));
+  ok(C('constructor toString')==='constructor tostring','từ lạ (constructor) không làm hỏng');
+  let g=G('cột số 5 bê tông ly tâm tám rưỡi dây a bê xê bốn nhân một trăm hai mươi khoảng cột ba lăm mét hòm h bốn hai cái néo');
+  ok(g.so==='5'&&eq(g.cotHT,['LT8,5'])&&eq(g.dayHT,['ABC4x120'])&&g.kc===35&&g.h4===2&&eq(g.dd,['Néo'])&&!g.con,
+    'câu đủ: số 5 · LT8,5 · ABC4x120 · 35 m · H4×2 · Néo → '+g.hieu.join(' · ')+(g.con?' | thừa: '+g.con:''));
+  g=G('thay dây thành ABC 4x95');ok(eq(g.dayTT,['ABC4x95'])&&!g.dayHT,'«thay dây thành ABC 4x95» → ô Thay dây');
+  g=G('dây ABC 4x120 thay bằng ABC 4x95');ok(eq(g.dayHT,['ABC4x120'])&&eq(g.dayTT,['ABC4x95']),'«A thay bằng B» → hiện trạng A, thay B');
+  g=G('cột gỗ thay bằng ly tâm 8,5');ok(eq(g.cotHT,['Cột gỗ'])&&eq(g.cotTT,['LT8,5']),'«cột gỗ thay bằng ly tâm 8,5» → '+g.hieu.join(' · '));
+  g=G('cột 1.2 chữ hắt tám mét rưỡi');ok(g.so==='1.2'&&eq(g.cotHT,['H8,5']),'«cột 1.2 chữ hắt tám mét rưỡi» → số 1.2, H8,5 → '+g.hieu.join(' · '));
+  g=G('cột tám rưỡi dây vặn xoắn bốn nhân chín lăm');ok(g.so==null&&eq(g.cotHT,['LT8,5'])&&eq(g.dayHT,['ABC4x95']),'«cột tám rưỡi» = LT8,5 (không phải số cột) → '+g.hieu.join(' · '));
+  g=G('số 3 ba mươi mét');ok(g.so==='3'&&g.kc===30,'«số 3 ba mươi mét» → số 3, khoảng 30');
+  g=G('khoảng cách bốn mươi mét');ok(g.kc===40,'«khoảng cách bốn mươi mét» → 40');
+  g=G('sau công tơ 2x10');ok(eq(g.sau,['CXV2x10']),'«sau công tơ 2x10» → CXV2x10');
+  g=G('2 công tơ ba pha');ok(g.p3===2,'«2 công tơ ba pha» → 3 pha × 2');
+  g=G('hai hòm h1 và tủ');ok(g.h1===2&&g.tuMoi===1,'«hai hòm h1 và tủ» → H1×2, Tủ×1');
+  g=G('tủ bù');ok(eq(g.gc,['Tủ bù']),'«tủ bù» → Ghi chú Tủ bù');
+  g=G('cột chiếu sáng');ok(g.shape==='cs','«cột chiếu sáng» → ký hiệu CS');
+  g=G('cột đôi vuông');ok(g.shape==='vuong'&&g.doi===true,'«cột đôi vuông» → vuông + đôi');
+  g=G('cột số 12 nhổ bỏ thu hồi dây');ok(g.so==='12'&&eq(g.cotTT,['Nhổ bỏ'])&&eq(g.dayTT,['Thu hồi']),'«nhổ bỏ, thu hồi dây» → '+g.hieu.join(' · '));
+  g=G('néo góc ghi chú cột nằm sát nhà dân');ok(eq(g.dd,['Néo','Góc'])&&eq(g.gc,['Cột nằm sát nhà dân']),'«… ghi chú …» → ghi chú nguyên văn');
+  g=G('đổi sang ABC 4x95');ok(eq(g.dayTT,['ABC4x95']),'«đổi sang ABC 4x95» → ô Thay dây');
+  g=G('dây abc 4x120',{day:['Abc 4x120']});ok(eq(g.dayHT,['Abc 4x120']),'bám đúng chữ trong danh sách chọn của app');
+  g=G('xin chào bà con');ok(!g.hieu.length,'câu không có gì → không điền');
+  g=G('cột số 5 abcxyz');ok(g.so==='5'&&/abcxyz/.test(g.con),'từ không hiểu → báo "bỏ qua"');
+}
 
 console.log(`\n${nOk} đạt, ${nSai} sai`);process.exit(nSai?1:0);

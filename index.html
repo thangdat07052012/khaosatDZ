@@ -113,7 +113,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .grip{border:0;background:transparent;display:flex;flex-direction:column;align-items:center;gap:3px;padding:2px 0 3px;margin-top:-2px;width:100%;flex:0 0 auto;touch-action:none}
 .grip span{width:46px;height:5px;border-radius:3px;background:var(--line)}
 .grip em{display:none;font-style:normal;font-size:12.5px;font-weight:600;color:var(--fg);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sheet.mini .slots,.sheet.mini .opts,.sheet.mini .shh{display:none}
+.sheet.mini .slots,.sheet.mini .opts,.sheet.mini .shh,.sheet.mini #sh-noi{display:none}
 .sheet.mini .grip em{display:block}
 .shh{display:flex;align-items:center;gap:4px;flex:0 0 auto}
 .grow{flex:1}
@@ -156,6 +156,9 @@ button{font:inherit;color:inherit;cursor:pointer}
 .o.on{background:var(--hi);border-color:var(--hi);color:var(--hi-fg)}
 .typ{display:flex;gap:4px}
 .typ .inp{flex:1;min-width:0;height:34px;border-radius:7px;border:1.5px solid var(--line);background:var(--paper);color:var(--fg);font:600 15px var(--mono);padding:0 8px}
+#sh-noi{flex:0 0 auto}#o-noi{font:500 14px var(--f)}
+#sh-mic.on{background:var(--warn);border-color:var(--warn);color:#fff;animation:nhay 1s ease-in-out infinite}
+@keyframes nhay{50%{opacity:.6}}
 .cnt{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
 .cn{display:flex;align-items:center;border:1.5px solid var(--line);border-radius:7px;background:var(--paper);min-width:0}
 .cn.has{border-color:var(--hi);background:var(--hi-soft)}
@@ -218,9 +221,11 @@ label.btn{display:flex;align-items:center;justify-content:center}
     <button id="sh-next" class="btn sm" aria-label="Cột sau">▶</button>
     <button id="sh-copy" class="btn sm">⧉ Giống cột trước</button>
     <button id="sh-anh" class="btn sm" aria-label="Chụp ảnh cột">📷<span id="sh-anh-n"></span></button>
+    <button id="sh-mic" class="btn sm" aria-label="Nói để điền">🎤</button>
     <span class="grow"></span>
     <button id="sh-del" class="btn sm danger">Xoá</button>
   </div>
+  <div id="sh-noi" class="typ" hidden><input id="o-noi" class="inp" placeholder="Nói / gõ cả câu: cột số 5 ly tâm tám rưỡi dây ABC 4x120 khoảng 35 mét" autocomplete="off" spellcheck="false" enterkeyhint="done"><button id="o-noi-ok" type="button" class="btn sm pri">Điền</button></div>
   <input id="anh-in" type="file" accept="image/*" capture="environment" hidden>
   <div id="sh-anhs" class="anhs" hidden></div>
   <div id="slots" class="slots"></div>
@@ -1054,6 +1059,46 @@ async function veAnhCot(){
   box.innerHTML=ds.map(a=>{const u=URL.createObjectURL(a.blob);anhUrl.push(u);return `<img src="${u}" data-anh="${a.id}" alt="Ảnh cột">`}).join('');
 }
 $('#sh-anh').addEventListener('click',()=>{if(!editId)return;$('#anh-in').value='';$('#anh-in').click()});
+/* 🎤 nói cả câu → tự điền ô (Web Speech API, tiếng Việt). ⚑ Chrome Android cần mạng để nhận giọng; câu nói được đọc thành ô bằng giongMa ngay trên máy.
+   Máy không có API (Firefox, WebView cũ) → hiện ô gõ câu: gõ, hoặc bấm 🎤 trên bàn phím điện thoại rồi nói, xong bấm Điền */
+var SR=window.SpeechRecognition||window.webkitSpeechRecognition,GHE=null;
+function giongTat(){if(GHE){const g=GHE;GHE=null;try{g.abort()}catch(e){}}const b=$('#sh-mic');if(b)b.classList.remove('on')}
+function apGiong(text){const p=curP();if(!p||!F)return null;
+  text=String(text||'').trim();if(!text)return null;
+  const ds={cot:learned('cot'),cotTT:learned('cotTT'),day:learned('day'),dayTT:learned('dayTT'),sau:learned('sau')};
+  const g=giongMa(text,ds);
+  if(!g.hieu.length){toast('🎤 Chưa hiểu: «'+text+'»');return g}
+  if(g.shape||g.doi){if(!sheetSnap){snap();sheetSnap=true}
+    if(g.shape){p.shape=g.shape;if(g.shape==='tba')p.doi=false}
+    if(g.doi&&p.shape!=='tba')p.doi=true;p.auto=false}
+  if(g.so!=null)F.so=g.so; if(g.kc!=null)F.kc=g.kc;
+  for(const k of ['cotHT','cotTT','dayHT','dayTT','sau'])if(g[k])F[k]=g[k].slice();
+  for(const k of ['h1','h2','h4','p3','tuMoi','tuCu'])if(g[k]!=null)F[k]=g[k];
+  if(g.dd)for(const v of g.dd)if(!F.dd.includes(v))F.dd.push(v);
+  if(g.gc)for(const v of g.gc)if(!F.gc.includes(v))F.gc.push(v);
+  commit();
+  toast('🎤 '+g.hieu.join(' · ')+(g.con?'  — bỏ qua: '+g.con:''));return g}
+$('#sh-mic').addEventListener('click',()=>{
+  if(!editId)return;
+  if(GHE){try{GHE.stop()}catch(e){giongTat()}return}
+  const o=$('#o-noi');$('#sh-noi').hidden=false;o.value='';
+  if(!SR){o.focus();toast('Máy này không có nhận giọng nói — gõ câu, hoặc bấm 🎤 trên bàn phím rồi nói, xong bấm Điền');return}
+  const g=new SR();g.lang='vi-VN';g.interimResults=true;g.continuous=false;g.maxAlternatives=1;
+  let fin='',loi='';GHE=g;$('#sh-mic').classList.add('on');
+  g.onresult=e=>{let f='',t='';for(let i=0;i<e.results.length;i++){const r=e.results[i];if(r.isFinal)f+=r[0].transcript;else t+=r[0].transcript}
+    fin=f;o.value=(f+' '+t).trim()};
+  g.onerror=e=>{loi=e.error||'loi'};
+  g.onend=()=>{const me=GHE===g;if(me){GHE=null;$('#sh-mic').classList.remove('on')}
+    if(!me)return;   /* đã bị huỷ (đổi cột / đóng ô nhập) → bỏ */
+    const s=(fin||o.value).trim();
+    if(s){apGiong(s);return}
+    toast({'not-allowed':'Chưa cho phép micro — bấm ổ khoá trên thanh địa chỉ để cho phép','service-not-allowed':'Chưa cho phép micro',
+      'network':'Nhận giọng nói cần mạng — gõ câu rồi bấm Điền','no-speech':'Không nghe thấy gì — bấm 🎤 nói lại',
+      'audio-capture':'Không mở được micro'}[loi]||(loi&&loi!=='aborted'?'Lỗi nhận giọng: '+loi:'Không nghe thấy gì — bấm 🎤 nói lại'))};
+  try{g.start()}catch(e){GHE=null;$('#sh-mic').classList.remove('on');o.focus();toast('Không mở được nhận giọng nói — gõ câu rồi bấm Điền')}
+});
+$('#o-noi-ok').addEventListener('click',()=>{giongTat();apGiong($('#o-noi').value)});
+$('#o-noi').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();giongTat();apGiong(e.target.value)}});
 $('#anh-in').addEventListener('change',async e=>{
   const f=e.target.files&&e.target.files[0],id=editId;if(!f||!id||!D)return;
   try{const p=byId(id),so=(p&&parse(p.code).so)||'x',t=Date.now(),lat=fix&&fix.lat,lon=fix&&fix.lon;
@@ -1096,7 +1141,7 @@ async function guiAnhCot(){
   toast(`Đã tải ${files.length} ảnh vào thư mục Tải xuống`);
 }
 function openSheet(p){
-  rsheet.hidden=true;selRoad=null;
+  rsheet.hidden=true;selRoad=null;giongTat();$('#sh-noi').hidden=true;$('#o-noi').value='';
   editId=p.id;F=parse(p.code);sheetSnap=false;
   slot=!F.so?'so':F.cotHT.length?'ct':'cot';
   sheet.hidden=false;renderSlots();renderOpts();$('#opts').scrollTop=0;veAnhCot();
@@ -1112,7 +1157,7 @@ function openSheet(p){
     if(moved)persistView();
     draw()}));
 }
-function closeSheet(){if(!editId)return;editId=null;F=null;sheet.hidden=true;if(document.activeElement)document.activeElement.blur();draw()}
+function closeSheet(){if(!editId)return;giongTat();editId=null;F=null;sheet.hidden=true;if(document.activeElement)document.activeElement.blur();draw()}
 /* chốt cột đang mở: chuẩn hoá mã, bỏ cột tự đặt chưa dùng */
 function finishSheet(){
   if(!editId)return;
@@ -1427,6 +1472,182 @@ const NEN={
       if((x1-x0+1)*(y1-y0+1)<=toiDa){const L=[];for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++)L.push({z,x,y});return L}}
     return []}
 };
+/* ===== GIỌNG NÓI → Ô (07/11) — đọc một câu nói tiếng Việt thành các ô của cột. Chạy ngay trên máy, không gửi đi đâu.
+   Không dùng lookbehind (Safari iOS cũ báo lỗi), không dùng \b (không nhận chữ có dấu): chuỗi đệm một dấu cách hai đầu,
+   mẫu dạng / từ(?= )/ (ăn dấu cách trước, chỉ nhìn dấu cách sau) nên hai từ liền nhau vẫn bắt được.
+   chuSo: chữ số / tên chữ cái → mã ("bê tông ly tâm tám rưỡi" → "lt8,5", "a bê xê bốn nhân một trăm hai mươi" → "abc4x120").
+   giongMa: câu → {so, kc, cotHT, cotTT, dayHT, dayTT, sau, dd, gc, h1…tuCu, shape, doi} — chỉ có khoá được nhắc tới;
+   kèm hieu (những gì đã hiểu, để báo lại), con (từ còn thừa chưa hiểu). */
+const GS_U=Object.assign(Object.create(null),{'không':0,'một':1,'mốt':1,'hai':2,'ba':3,'bốn':4,'tư':4,'năm':5,'lăm':5,'nhăm':5,'sáu':6,'bảy':7,'bẩy':7,'tám':8,'chín':9});
+const GS_KDAU=Object.assign(Object.create(null),{'mốt':1,'tư':1,'lăm':1,'nhăm':1,'không':1});   /* các từ này không mở đầu một số */
+function chuSo(s){
+  let t=' '+String(s||'').normalize('NFC').toLowerCase().replace(/[“”"«»()\[\]]/g,' ')+' ';
+  /* giữ dấu thập phân / dấu chấm giữa hai chữ số (8,5 · 1.2), bỏ các dấu câu khác */
+  for(let i=0;i<3;i++)t=t.replace(/(\d)\.(\d)/g,'$1\u0001$2').replace(/(\d),(\d)/g,'$1\u0002$2');
+  t=t.replace(/[,.;:!?…]+/g,' ').replace(/\u0001/g,'.').replace(/\u0002/g,',').replace(/\s+/g,' ');
+  const R=(re,v)=>{t=t.replace(re,v).replace(/ {2,}/g,' ')};
+  /* tên chữ cái → mã */
+  R(/ (bê tông )?chữ (h|hát|hắt)(?= )/g,' h');R(/ (hát|hắt)(?= )/g,' h');
+  R(/ (bê tông )?(ly|li) tâm(?= )/g,' lt');R(/ (lờ tờ|l t|btlt)(?= )/g,' lt');R(/ bê tông(?= )/g,' lt');   /* ⚑ "bê tông" không nói rõ = ly tâm */
+  R(/ (a b c|a bê xê|a bê cê|a bờ cờ|a bê xi|vặn xoắn)(?= )/g,' abc');R(/ (a vê|a v)(?= )/g,' av');
+  R(/ (xê ích vê|cê ích vê|c x v|xê xê vê)(?= )/g,' cxv');R(/ (đê ét tê a|đê ét tê|d s t a)(?= )/g,' dsta');
+  R(/ (en pê xê|n p c)(?= )/g,' npc');R(/ (t b a|tê bê a)(?= )/g,' tba');R(/ (đ k c s|đê ca xê ét)(?= )/g,' đkcs');
+  /* hòm H1/H2/H4, công tơ 3 pha — làm TRƯỚC khi đổi chữ số ("h bốn hai cái" = H4 × 2, không phải 42) */
+  R(/ (hòm |hộp )?(công tơ )?h ?(một|mốt|1)(?= )/g,' h1');R(/ (hòm |hộp )?(công tơ )?h ?(hai|2)(?= )/g,' h2');R(/ (hòm |hộp )?(công tơ )?h ?(bốn|tư|4)(?= )/g,' h4');
+  R(/ (hòm|hộp) (công tơ )?(một|mốt|1)(?= )/g,' h1');R(/ (hòm|hộp) (công tơ )?(hai|2)(?= )/g,' h2');R(/ (hòm|hộp) (công tơ )?(bốn|tư|4)(?= )/g,' h4');
+  R(/ (ba|3) ?(pha|p)(?= )/g,' 3p');
+  /* chữ số → số: một trăm hai mươi = 120, một trăm hai = 120, hai trăm tư = 240, ba lăm = 35, tám rưỡi = 8,5, mười rưỡi = 10,5 */
+  const w=t.trim().split(' '),o=[];
+  for(let i=0;i<w.length;){
+    const a=w[i];
+    if(/^\d+$/.test(a)&&w[i+1]==='rưỡi'){o.push(a+',5');i+=2;continue}
+    if(!((a in GS_U)&&!GS_KDAU[a])&&a!=='mười'){o.push(a);i++;continue}
+    let tot=0,h=null,tc=null,u=null,last='',fr=0,j=i;
+    for(;j<w.length;j++){const x=w[j],v=GS_U[x];
+      if(x==='rưỡi'){if(last==='h'){tc=5;j++}else if(last==='k'){h=5;j++}else if(last==='u'||last==='u2'||last==='t'||last==='tt'){fr=5;j++}break}
+      if(x==='mười'){if(tc==null&&u==null&&(last===''||last==='h'||last==='l')){tc=1;last='t';continue}break}
+      if(x==='mươi'){if(last==='u'&&tc==null){tc=u;u=null;last='t';continue}if(last==='tt'){last='t';continue}break}
+      if(x==='trăm'){if(last==='u'&&h==null&&tc==null){h=u;u=null;last='h';continue}if(last==='ht'){last='h';continue}break}
+      if(x==='nghìn'||x==='ngàn'){if(/^(u|u2|t|tt|h)$/.test(last)){tot+=((h||0)*100+(tc||0)*10+(u||0))*1000;h=tc=u=null;last='k';continue}break}
+      if(x==='linh'||x==='lẻ'){if(last==='h'||last==='k'){last='l';continue}break}
+      if(v===undefined)break;
+      if(x==='không'){if(last==='h'){last='l';continue}if(last==='k'){h=0;last='ht';continue}break}
+      if(last===''){u=v;last='u';continue}
+      if(last==='u'&&tc==null&&h==null){tc=u;u=v;last='u2';continue}   /* nói tắt: "ba lăm" = 35, "chín lăm" = 95 */
+      if(last==='t'||last==='l'){u=v;last='u2';continue}
+      if(last==='h'){tc=v;last='tt';continue}                      /* "một trăm hai" = 120 */
+      if(last==='tt'){u=v;last='u2';continue}                      /* "một trăm hai lăm" = 125 */
+      if(last==='k'){h=v;last='ht';continue}                       /* "một nghìn hai" = 1200 */
+      break;
+    }
+    if(j===i){o.push(a);i++;continue}
+    o.push(String(tot+(h||0)*100+(tc||0)*10+(u||0))+(fr?','+fr:''));i=j;
+  }
+  t=' '+o.join(' ')+' ';
+  /* ghép: "1 chấm 2" → 1.2 ; "8 phẩy 5" → 8,5 ; "4 nhân 120" → 4x120 ; "3x10 cộng 1x6" → 3x10+1x6 */
+  for(let i=0;i<3;i++){R(/(\d) chấm (\d)/g,'$1.$2');R(/(\d) (phẩy|phảy) (\d)/g,'$1,$3')}
+  R(/(\d) ?(x|nhân|ích|×|\*) ?(\d)/g,'$1x$3');R(/(\d) ?(x|nhân|ích|×|\*) ?(\d)/g,'$1x$3');
+  R(/(\dx\d+) ?(cộng|\+) ?(\d)/g,'$1+$3');
+  /* mã + số: "abc 4x120" → abc4x120 ; "lt 8,5" → lt8,5 */
+  R(/ (2abc|abc|av|ac|a|cxv|dsta|lt|h|bt|npc|vx|cu) (\d)/g,' $1$2');
+  /* số + mét: "35 mét" → 35m ; "8 mét rưỡi" → 8,5m */
+  R(/(\d) (mét|m) rưỡi(?= )/g,'$1,5m');R(/(\d) (mét|m)(?= )/g,'$1m');
+  return t.trim();
+}
+function giongMa(text,ds){
+  ds=ds||{};
+  const N=v=>String(v).toUpperCase().replace(/\s+/g,'');
+  const HOA=v=>v.replace(/[a-zA-ZđĐ]+/g,(m,o,s)=>/^x$/i.test(m)&&/\d/.test(s[o-1]||'')&&/\d/.test(s[o+1]||'')?'x':m.toUpperCase());
+  const r={hieu:[]},H=x=>r.hieu.push(x);
+  let src=String(text||'').normalize('NFC').trim(),gcTu='';
+  /* "… ghi chú <câu tự do>" → phần sau vào Ghi chú nguyên văn */
+  const g=src.search(/ghi chú|ghi chu/i);
+  if(g>=0){gcTu=src.slice(g).replace(/^ghi ch[uú]/i,'').replace(/^[\s:,.-]+/,'').replace(/[\s.]+$/,'');src=src.slice(0,g)}
+  r.chu=chuSo(src);
+  let c=' '+r.chu+' ';
+  const dd=[],gc=[],add=(L,v)=>{if(!L.includes(v))L.push(v)};
+  const X=(re,f)=>{c=c.replace(re,(...a)=>' '+(f(...a)||'')).replace(/ {2,}/g,' ')};
+  /* thiết bị trên cột → Ghi chú */
+  X(/ tủ (bù|tụ bù)(?= )/g,()=>{add(gc,'Tủ bù')});
+  X(/ tủ (điều khiển chiếu sáng|điều khiển|đkcs)(?= )/g,()=>{add(gc,'Tủ ĐKCS')});
+  X(/ (tiếp địa|nối đất)(?= )/g,()=>{add(gc,'Tiếp địa')});
+  X(/ hộp đấu dây(?= )/g,()=>{add(gc,'Hộp đấu dây')});
+  X(/ chống sét(?= )/g,()=>{add(gc,'Chống sét')});
+  /* tủ công tơ, dây sau công tơ */
+  X(/ tủ( công tơ)? cũ(?= )/g,()=>'#tucu');
+  X(/ tủ( công tơ| điện)?( mới)?(?= )/g,()=>'#tumoi');
+  X(/ (dây |cáp )?sau (công tơ|ct)(?= )/g,()=>'#sau');X(/ (dây|cáp) (vào nhà|sau)(?= )/g,()=>'#sau');X(/ vào nhà(?= )/g,()=>'#sau');
+  /* đặc điểm cột */
+  X(/ néo(?= )/g,()=>{add(dd,'Néo')});X(/ góc(?= )/g,()=>{add(dd,'Góc')});X(/ cuối( tuyến)?(?= )/g,()=>{add(dd,'Cuối')});
+  X(/ rẽ( nhánh)?(?= )/g,()=>{add(dd,'Rẽ nhánh')});X(/ đầu (nguồn|tuyến)(?= )/g,()=>{add(dd,'Đầu nguồn')});
+  X(/ nghiêng( cột)?(?= )/g,()=>{add(dd,'Nghiêng')});X(/ nứt( chân)?( cột)?(?= )/g,()=>{add(dd,'Nứt')});X(/ gãy(?= )/g,()=>{add(dd,'Gãy')});
+  /* ký hiệu, cột đôi */
+  X(/ (trạm biến áp|trạm|tba)(?= )/g,()=>{r.shape='tba'});
+  X(/ (chiếu sáng|đèn)(?= )/g,()=>{r.shape='cs'});
+  X(/ vuông(?= )/g,()=>{r.shape='vuong'});X(/ tròn(?= )/g,()=>{r.shape='tron'});
+  X(/ (đôi|kép)(?= )/g,()=>{r.doi=true});
+  /* nhổ cột, thu hồi dây, cột gỗ / thép */
+  X(/ (nhổ bỏ|nhổ cột|bỏ cột|tháo cột|thu hồi cột|nhổ)(?= )/g,()=>'#nhobo');
+  X(/ (thu hồi|tháo) (dây|cáp)(?= )/g,()=>'#thuhoiday');X(/ (thu hồi|tháo)(?= )/g,()=>'#thuhoi');
+  X(/ cột gỗ(?= )/g,()=>'cột #cotgo');X(/ cột (thép|sắt)(?= )/g,()=>'cột #cotthep');
+  const tk=c.trim().split(' ').filter(Boolean),U=tk.map(()=>false);
+  const isN=x=>/^\d+([.,]\d+)*$/.test(x||''),isI=x=>/^\d+$/.test(x||''),isM=x=>/^(m|mét)$/.test(x||'');
+  /* số cột: "cột số 5", "số 1.2" (⚑ dấu phẩy đổi thành chấm), hoặc "cột 5" ở đầu câu */
+  for(let i=0;i<tk.length;i++){
+    if(tk[i]==='số'&&isN(tk[i+1])&&!isM(tk[i+2])){r.so=tk[i+1].replace(/,/g,'.');U[i]=U[i+1]=true;if(tk[i-1]==='cột')U[i-1]=true;break}
+  }
+  if(r.so==null&&tk[0]==='cột'&&/^\d+(\.\d+)*$/.test(tk[1]||'')&&!isM(tk[2])){r.so=tk[1];U[0]=U[1]=true}
+  /* khoảng cột: "khoảng (cột / cách) 35 mét", hoặc "35 mét" đứng riêng (⚑ từ 15 m trở lên mới coi là khoảng cột) */
+  const mN=x=>{const m=/^(\d+([.,]\d+)?)m$/.exec(x||'');return m?parseFloat(m[1].replace(',','.')):null};
+  for(let i=0;i<tk.length&&r.kc==null;i++){
+    if(U[i]||!/^(khoảng|cách)$/.test(tk[i]))continue;
+    let j=i+1;while(j<tk.length&&/^(cột|cách|là|trước|đến|tới|khoảng|tầm|độ|với)$/.test(tk[j]))j++;
+    const v=mN(tk[j])!=null?mN(tk[j]):isN(tk[j])&&!/\./.test(tk[j])?parseFloat(tk[j].replace(',','.')):null;
+    if(v!=null){r.kc=v;for(let k=i;k<=j;k++)U[k]=true;if(isM(tk[j+1]))U[j+1]=true}
+  }
+  for(let i=0;i<tk.length&&r.kc==null;i++){const v=mN(tk[i]);if(!U[i]&&v!=null&&v>=15){r.kc=v;U[i]=true}}
+  /* số lượng: "2 hòm H4", "h4 2 cái", "2 công tơ 3 pha", "tủ" (không nói số = 1) — đếm cộng dồn trong câu, rồi GHI ĐÈ ô */
+  const CN={h1:'h1',h2:'h2',h4:'h4','3p':'p3','#tumoi':'tuMoi','#tucu':'tuCu'},FIL=/^(hòm|hộp|cái|chiếc|bộ|công|tơ|có|là|gồm|loại|thêm)$/;
+  for(let i=0;i<tk.length;i++){const k=CN[tk[i]];if(!k||U[i])continue;U[i]=true;let n=null;
+    for(let j=i-1;j>=0;j--){if(U[j])break;if(FIL.test(tk[j]))continue;
+      if(isI(tk[j])&&+tk[j]>0&&+tk[j]<=50){n=+tk[j];for(let q=j;q<i;q++)U[q]=true}break}
+    if(n==null)for(let j=i+1;j<tk.length;j++){if(U[j])break;if(FIL.test(tk[j]))continue;
+      if(isI(tk[j])&&+tk[j]>0&&+tk[j]<=50&&!isM(tk[j+1])){n=+tk[j];for(let q=i+1;q<=j;q++)U[q]=true;
+        while(j+1<tk.length&&/^(cái|chiếc|bộ|hòm)$/.test(tk[j+1]))U[++j]=true}
+      break}
+    r[k]=(r[k]||0)+(n==null?1:n)}
+  /* mã cột / dây theo ngữ cảnh "cột" · "dây" "cáp" · "sau công tơ"; "A thay (bằng / thành) B" = hiện trạng A, thay bằng B;
+     nói "thay" mà chỉ có một mã → mã đó vào ô Thay */
+  const KIND=x=>{if(x==='#cotgo'||x==='#cotthep')return 'cot';if(/^\d+x\d/.test(x))return 'tran';
+    if(/^(2?abc|av|ac|a|vx|cu)\d/.test(x))return 'day';if(/^(cxv|dsta)\d/.test(x))return 'sau';if(/^(lt|h|bt|npc)\d+([.,]\d+)?m?$/.test(x))return 'cot';return ''};
+  const NOI=/^(thay|bằng|thành|sang|đổi|qua|lên|thế|→|>)$/,BO=/^(cột|dây|cáp|loại|mới|là|cũ|hiện|trạng|có)$/;
+  let ctx='',thay=false;
+  const kOf=x=>{let k=KIND(x);if(k==='tran')k=ctx==='sau'?'sau':'day';
+    if(!k&&ctx==='cot'&&/^\d+(,\d+)?$/.test(x)){const v=+x.replace(',','.');if(v>=6&&v<=20)k='cotso'}   /* ⚑ "cột tám rưỡi" = LT8,5 */
+    return k};
+  const giaTri=(x,kind)=>{
+    if(x==='#cotgo')return 'Cột gỗ';if(x==='#cotthep')return 'Cột thép';
+    if(kind==='cot'&&/^\d/.test(x))return 'LT'+x.replace(/\./g,',');
+    let v=x;if(kind==='cot')v=v.replace(/m$/,'').replace(/\./g,',');
+    if(/^\d+x\d/.test(v))v=(kind==='sau'?'cxv':'abc')+v;   /* ⚑ chỉ nói "4x120": dây = ABC, sau công tơ = CXV */
+    return HOA(v)};
+  const vao=(kind,tt,v)=>{const k=kind==='cot'?(tt?'cotTT':'cotHT'):kind==='sau'?'sau':(tt?'dayTT':'dayHT');
+    r[k]=r[k]||[];if(!r[k].includes(v))r[k].push(v)};
+  for(let i=0;i<tk.length;i++){if(U[i])continue;const x=tk[i];
+    if(x==='cột'){ctx='cot';U[i]=true;continue}
+    if(x==='dây'||x==='cáp'){ctx='day';U[i]=true;continue}
+    if(x==='#sau'){ctx='sau';U[i]=true;continue}
+    if(x==='#nhobo'){vao('cot',true,'Nhổ bỏ');U[i]=true;continue}
+    if(x==='#thuhoiday'){vao('day',true,'Thu hồi');U[i]=true;continue}
+    if(x==='#thuhoi'){if(ctx==='cot')vao('cot',true,'Nhổ bỏ');else vao('day',true,'Thu hồi');U[i]=true;continue}
+    if(x==='thay'||x==='đổi'){thay=true;U[i]=true;continue}
+    let k=kOf(x);if(!k)continue;
+    if(k==='cotso'){if(!(tk[i-1]==='cột'||NOI.test(tk[i-1]||'')))continue;k='cot'}
+    if(k==='day'&&ctx==='sau')k='sau';
+    const a=giaTri(x,k);U[i]=true;
+    /* tìm cặp thay: A [cột / dây…] (thay | bằng | thành) [cột / dây…] B cùng loại */
+    let j=i+1,noi=false;while(j<tk.length&&!U[j]&&(BO.test(tk[j])||NOI.test(tk[j]))){if(NOI.test(tk[j]))noi=true;j++}
+    let kb=j<tk.length&&!U[j]?kOf(tk[j]):'';if(kb==='cotso')kb=k==='cot'?'cot':'';if(kb==='day'&&ctx==='sau')kb='sau';
+    if(noi&&kb===k&&k!=='sau'){vao(k,false,a);vao(k,true,giaTri(tk[j],k));for(let q=i+1;q<=j;q++)U[q]=true;thay=false;continue}
+    vao(k,thay&&k!=='sau',a);if(k!=='sau')thay=false;
+  }
+  /* bám danh sách chọn của app (đúng chữ hoa / dấu phẩy như nút bấm) */
+  const bam=(L,list)=>L.map(v=>(list||[]).find(x=>N(x)===N(v))||v);
+  for(const [k,l] of [['cotHT','cot'],['cotTT','cotTT'],['dayHT','day'],['dayTT','dayTT'],['sau','sau']])if(r[k])r[k]=bam(r[k],ds[l]);
+  if(dd.length)r.dd=dd;
+  if(gcTu)add(gc,gcTu.charAt(0).toUpperCase()+gcTu.slice(1));
+  if(gc.length)r.gc=gc;
+  /* đã hiểu → chữ đọc được để báo lại */
+  if(r.so!=null)H('Số '+r.so);
+  if(r.shape)H({tron:'Cột tròn',vuong:'Cột vuông',cs:'Cột CS',tba:'TBA'}[r.shape]);if(r.doi)H('Cột đôi');
+  for(const v of r.cotHT||[])H(v);for(const v of r.cotTT||[])H('thay cột '+v);
+  for(const v of r.dayHT||[])H(v);for(const v of r.dayTT||[])H('thay dây '+v);for(const v of r.sau||[])H('sau CT '+v);
+  if(r.kc!=null)H(String(r.kc).replace('.',',')+' m');
+  for(const [k,l] of [['h1','H1'],['h2','H2'],['h4','H4'],['p3','3 pha'],['tuMoi','Tủ'],['tuCu','Tủ cũ']])if(r[k])H(l+'×'+r[k]);
+  for(const v of dd.concat(gc))H(v);
+  r.con=tk.filter((x,i)=>!U[i]&&!FIL.test(x)&&!NOI.test(x)&&!BO.test(x)&&!/^(#\w+|và|với|rồi|thì|ở|của|này|đó|ạ|nhé|nha|mét|m|trên|ngay|đây|cũng|đi|cho|số|khoảng|cách|cột|tiếp)$/.test(x)).join(' ');
+  return r;
+}
 /* === HẾT HÀM THUẦN === */
 /* kinh tuyến trục đang dùng (cài đặt chung của máy, mặc định Thanh Hoá 105°00′) */
 function ktt(){return DB.ktt!=null&&isFinite(DB.ktt)?+DB.ktt:105}
