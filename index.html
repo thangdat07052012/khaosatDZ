@@ -2024,7 +2024,7 @@ function buildDxf(that){
   a(0,'SECTION',2,'HEADER',9,'$ACADVER',1,'AC1009',0,'ENDSEC');
   a(0,'SECTION',2,'TABLES');
   a(0,'TABLE',2,'LTYPE',70,1,0,'LTYPE',2,'CONTINUOUS',70,0,3,'Solid line',72,65,73,0,40,'0.0',0,'ENDTAB');
-  const LY=[['KS_COT',1],['KS_DAY',5],['KS_CHU',7],['KS_KHOANG',3],['KS_DUONG',8],['KS_MOC',6]].concat(that?[['KS_COT_KHONG_GPS',30],['KS_MOC_HIEU_CHINH',6]]:[]);
+  const LY=[['KS_DIEM',7],['KS_COT',1],['KS_DAY',5],['KS_CHU',7],['KS_KHOANG',3],['KS_DUONG',8],['KS_MOC',6]].concat(that?[['KS_COT_KHONG_GPS',30],['KS_MOC_HIEU_CHINH',6]]:[]);
   a(0,'TABLE',2,'LAYER',70,LY.length);for(const [n,c] of LY)a(0,'LAYER',2,n,70,0,62,c,6,'CONTINUOUS');a(0,'ENDTAB');
   a(0,'TABLE',2,'STYLE',70,1,0,'STYLE',2,'KS',70,0,40,'0.0',41,'1.0',50,'0.0',71,0,42,'1.0',3,'arial.ttf',4,'',0,'ENDTAB');
   const line=(x1,y1,x2,y2,ly)=>a(0,'LINE',8,ly,10,f(x1),20,f(y1),30,'0.0',11,f(x2),21,f(y2),31,'0.0');
@@ -2061,6 +2061,7 @@ function buildDxf(that){
     let w=R;
     if(p.shape==='tba'){ins('KS_TBA',x,y,LC);w=R*1.5}
     else if(doi){ins('KS_COT_DOI_'+kieu,x,y,LC);w=R*2}else ins('KS_COT_'+kieu,x,y,LC);
+    if(p.shape!=='tba')a(0,'POINT',8,'KS_DIEM',10,f(x),20,f(y),30,'0.0');   /* POINT tâm cột: VVETUYENTUCOT chỉ lấy POINT (không nhầm mốc / TBA làm cột), tên = số cột gần nhất */
     txt(x+w+0.4,y+0.9,'1.5',r.so||(p.shape==='tba'?'TBA':'?'),'KS_CHU');
     if(LC!=='KS_COT')txt(x+w+0.4,y+2.6,'1.0','(cột không có GPS - vị trí phác)',LC);
     let yy=y-1.1;for(const l of labelLines(p,r)){txt(x+w+0.4,yy,'1.0',l,'KS_CHU');yy-=1.4}}
