@@ -1,5 +1,5 @@
 // Đổi PHIEN mỗi lần cập nhật app để máy tải bản mới.
-const PHIEN = 'kstuyen-22';
+const PHIEN = 'kstuyen-23';
 const FILES = ['./', './index.html', './xlsx.full.min.js', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -15,10 +15,11 @@ self.addEventListener('fetch', e => {
   // Ảnh nền vệ tinh (máy chủ ngoài): để trình duyệt tự tải, không lưu vào bộ nhớ app.
   if (new URL(e.request.url).origin !== location.origin) return;
   // Trang chính: có mạng thì lấy bản mới, mất mạng thì dùng bản đã lưu.
+  // cache:'no-cache' = hỏi lại máy chủ mỗi lần mở, không dùng bản HTTP cache 10 phút của GitHub Pages.
   if (e.request.mode === 'navigate') {
-    e.respondWith(fetch(e.request).then(r => {
-      const copy = r.clone();
-      caches.open(PHIEN).then(c => c.put('./index.html', copy));
+    let q; try { q = new Request(e.request, {cache: 'no-cache'}); } catch (_) { q = e.request; }
+    e.respondWith(fetch(q).then(r => {
+      if (r.ok) { const copy = r.clone(); caches.open(PHIEN).then(c => c.put('./index.html', copy)); }
       return r;
     }).catch(() => caches.match('./index.html')));
     return;

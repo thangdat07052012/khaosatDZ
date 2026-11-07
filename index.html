@@ -1072,12 +1072,19 @@ function giongTat(){giongNghe=false;giongChot=false;clearTimeout(giongHen);clear
   if(GHE){const g=GHE;GHE=null;try{g.abort()}catch(e){}}const b=$('#sh-mic');if(b)b.classList.remove('on')}
 function giongBat(){clearTimeout(giongHen);if(!giongNghe||!editId||!SR||GHE)return;
   const o=$('#o-noi'),g=new SR(),t0=Date.now();g.lang='vi-VN';g.interimResults=true;g.continuous=false;g.maxAlternatives=1;
-  let fin='',loi='';GHE=g;
+  let fin='',tam='',loi='',cu='';GHE=g;
+  /* câu đang nghe kết thúc bằng khẩu lệnh → làm luôn, KHÔNG chờ máy «chốt» câu hay tắt phiên (iPhone, vài máy Android
+     không bao giờ chốt): chữ đã chốt thì sau 0,15 s, còn chữ tạm thì đứng yên 0,9 s ⚑ (nói tiếp «tiếp địa» là thôi) */
+  const lam=()=>{if(GHE!==g)return;GHE=null;try{g.abort()}catch(e){}
+    const v=o.value.trim();giongDem=v;giongHong=0;giongLuc=Date.now();if(!giongLam(v))giongMoi()};
   g.onresult=e=>{let f='',t='';for(let i=0;i<e.results.length;i++){const r=e.results[i];if(r.isFinal)f+=r[0].transcript;else t+=r[0].transcript}
-    fin=f;giongLuc=Date.now();o.value=(giongDem+' '+f+' '+t).replace(/\s+/g,' ').trim()};
+    fin=giongChuan(f);tam=t;giongLuc=Date.now();
+    const v=(giongDem+' '+giongChuan(f+' '+t)).replace(/\s+/g,' ').trim();o.value=v;
+    if(v===cu)return;cu=v;clearTimeout(giongGo);
+    if(giongLenh(v).lenh)giongGo=setTimeout(lam,t.trim()?900:150)};
   g.onerror=e=>{loi=e.error||'loi'};
-  g.onend=()=>{if(GHE!==g)return;GHE=null;   /* đã bị huỷ (✕, Điền, đổi cột, đóng ô nhập) → bỏ */
-    const s=fin.trim();
+  g.onend=()=>{if(GHE!==g)return;GHE=null;clearTimeout(giongGo);   /* đã bị huỷ (✕, Điền, đổi cột, đóng ô nhập) → bỏ */
+    const s=fin.trim()||giongChuan(tam);   /* máy tắt phiên mà chưa chốt câu → lấy chữ tạm, không để mất */
     if(s){giongDem=(giongDem+' '+s).replace(/\s+/g,' ').trim();giongHong=0}
     if(giongChot){giongChot=false;if(s)o.value=giongDem;giongTat();giongXong();return}   /* bấm 🎤 lần 2: không có kết quả chốt thì lấy cả chữ tạm trong ô */
     o.value=giongDem;
@@ -1242,7 +1249,8 @@ function openSheet(p){
     if(moved)persistView();
     draw()}));
 }
-function closeSheet(){if(!editId)return;giongTat();editId=null;F=null;sheet.hidden=true;if(document.activeElement)document.activeElement.blur();draw()}
+function closeSheet(){if(!editId)return;giongTat();editId=null;F=null;sheet.hidden=true;if(document.activeElement)document.activeElement.blur();draw();
+  if(banMoi)setTimeout(()=>{if(banMoi&&rong())taiLai()},400)}
 /* chốt cột đang mở: chuẩn hoá mã, bỏ cột tự đặt chưa dùng */
 function finishSheet(){
   if(!editId)return;
@@ -1769,21 +1777,29 @@ function giongGop(list,them,ghiDe){
 /* 🎤 KHẨU LỆNH ở CUỐI câu nói (07/11): «điền» · «tiếp» (= Tiếp ▸) · «dừng» (= Dừng) · «đoạn mới» · «nói lại» / «xoá câu»
    → {lenh:'dien'|'tiep'|'dung'|'doan'|'xoa'|null, con: phần câu trước lệnh}. Chỉ nhận ở CUỐI câu, có chốt chặn:
    «tiếp địa», «nối tiếp», «trạm dừng», «xã Quảng Điền» không thành lệnh */
+const GIONG_TEN=/^(?:Quảng|Phong|Phú|Hải|Văn|Tân|Thanh|Mỹ|Long|Vĩnh|Hưng|Gia|Ngọc|Kim)$/;
 function giongLenh(text){
   const t=String(text||'').normalize('NFC').replace(/\s+/g,' ').replace(/[\s.,!?;:…]+$/,'').trim(),lo=t.toLowerCase();
   const L=[['dien',/(?:^| )(?:ok |oke |xong )?điền(?: vào| đi| luôn| nhé)?$/],
-    ['tiep',/(?:^| )(?:sang |qua |chuyển )?(?:cột )?(?:kế )?tiếp(?: theo)?$/],
-    ['dung',/(?:^| )(?:tạm )?dừng(?: lại)?$/],
+    ['tiep',/(?:^| )(?:sang |qua |chuyển )?(?:cột )?(?:kế )?tiếp(?: theo| tục)?$/],
+    ['dung',/(?:^| )(?:tạm )?(?:dừng|ngừng)(?: lại)?$/],
     ['doan',/(?:^| )(?:bắt đầu |sang |qua |làm )?đoạn mới$/],
     ['xoa',/(?:^| )(?:(?:xoá|xóa) (?:câu|hết)|nói lại)$/]];
   for(const [k,re] of L){const m=lo.match(re);if(!m)continue;
     let con=t.slice(0,m.index).trim();const cl=con.toLowerCase(),w=con.split(' ').pop()||'';
     if(k==='tiep'&&/(?:^| )nối$/.test(cl))continue;
     if(k==='dung'&&/(?:^| )(?:trạm|điểm|bến)$/.test(cl))continue;
-    if(k==='dien'&&/Điền$/.test(t)&&/^\p{Lu}/u.test(w)&&!/[.,!?;:…]$/.test(w))continue;   /* tên riêng «Quảng Điền» */
+    if(k==='dien'&&/Điền$/.test(t)&&GIONG_TEN.test(w))continue;   /* tên riêng «Quảng Điền» — chỉ chặn tên đất hay gặp, «hòm H4 Điền» vẫn là lệnh */
     con=con.replace(/(^| )điền(?= |$)/g,'$1').replace(/ {2,}/g,' ').replace(/[\s.,!?;:…]+$/,'').trim();
     return {lenh:k,con}}
   return {lenh:null,con:t}}
+/* một lượt nói CHỈ có từ lệnh mà máy nghe nhầm (vd «Điện.», «Rừng», «Tiết») → đổi về đúng từ lệnh ⚑; câu khác giữ nguyên */
+const GIONG_NHAM={'điện':'điền','điên':'điền','điển':'điền','diền':'điền','diện':'điền','đền':'điền',
+  'rừng':'dừng','giừng':'dừng','rừng lại':'dừng','giừng lại':'dừng','tiết':'tiếp','tiếc':'tiếp','cột sau':'tiếp',
+  'đoạn mời':'đoạn mới','đoạn với':'đoạn mới','đoàn mới':'đoạn mới','đoán mới':'đoạn mới','loạn mới':'đoạn mới',
+  'xoá':'nói lại','xóa':'nói lại'};
+function giongChuan(s){s=String(s||'').normalize('NFC').replace(/\s+/g,' ').trim();
+  return GIONG_NHAM[s.replace(/^[.,!?;:…\s]+|[.,!?;:…\s]+$/g,'').toLowerCase()]||s}
 /* === HẾT HÀM THUẦN === */
 /* kinh tuyến trục đang dùng (cài đặt chung của máy, mặc định Thanh Hoá 105°00′) */
 function ktt(){return DB.ktt!=null&&isFinite(DB.ktt)?+DB.ktt:105}
@@ -2168,8 +2184,10 @@ function showList(){
     ${ds.map(d=>`<div class="card${d.id===D.id?' cur':''}"><button class="tx" data-a="open" data-id="${d.id}"><b>${esc(d.ten)}</b>
       <span>${esc(d.ngay||'')} · ${d.poles.length} cột</span></button><button class="btn danger" data-a="del" data-id="${d.id}">Xoá</button></div>`).join('')}
     <p class="note">Bản vẽ lưu ngay trên điện thoại này, không cần mạng. Xoá dữ liệu trình duyệt hoặc gỡ app là mất — xuất file gửi đi trước.</p>
+    <p class="note" id="ban-app"></p>
   </div>`;
   panel.hidden=false;
+  if(window.caches)caches.keys().then(ks=>{const k=ks.filter(k=>/^kstuyen-\d+$/.test(k)).pop(),e=$('#ban-app');if(k&&e)e.textContent='Bản app: '+k}).catch(()=>{});
 }
 function showExport(){
   finishSheet();closeRoad();
@@ -2262,7 +2280,15 @@ async function keepAwake(){try{if('wakeLock' in navigator&&!document.hidden)awai
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)keepAwake()});
 new ResizeObserver(()=>{sizeUp();if(!V)V=fitView(W,H,40);draw()}).observe(stage);
 sizeUp();if(!V)V=fitView(W,H,40);title();draw();keepAwake();
-if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
+/* bản app mới (sw.js đổi PHIEN): máy tự tải lại, khỏi phải tắt hẳn app; đang mở ô nhập / bảng / đo GPS thì chờ xong ⚑ */
+var banMoi=false,swDk=null;
+function rong(){return !editId&&!gpsM&&rsheet.hidden&&panel.hidden}
+function taiLai(){try{saveNow()}catch(e){}location.reload()}
+if('serviceWorker' in navigator&&location.protocol==='https:'){const coSan=!!navigator.serviceWorker.controller;
+  navigator.serviceWorker.register('sw.js').then(r=>{swDk=r}).catch(()=>{});
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!coSan||banMoi)return;banMoi=true;
+    if(rong())taiLai();else toast('⟳ Có bản app mới — xong việc đang làm là app tự tải lại')});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)return;if(swDk)swDk.update().catch(()=>{});if(banMoi&&rong())taiLai()})}
 </script>
 </body>
 </html>

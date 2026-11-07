@@ -4,7 +4,7 @@ const fs=require('fs'),path=require('path');
 const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
 const a=html.indexOf('const VN=(()=>{'),b=html.indexOf('/* === HẾT HÀM THUẦN === */');
 if(a<0||b<0)throw new Error('Không thấy đoạn hàm thuần');
-const T=new Function(html.slice(a,b)+';return {VN,haversine,gpsLoc,gpsXongSom,gpsMau,hcTinh,docSo,mocNhap,nanTuyen,GPS_CHE_DO,NEN,chuSo,giongMa,giongDay,giongKhoa,giongGop,giongLenh};')();
+const T=new Function(html.slice(a,b)+';return {VN,haversine,gpsLoc,gpsXongSom,gpsMau,hcTinh,docSo,mocNhap,nanTuyen,GPS_CHE_DO,NEN,chuSo,giongMa,giongDay,giongKhoa,giongGop,giongLenh,giongChuan};')();
 let nOk=0,nSai=0;
 const ok=(c,m)=>{if(c){nOk++;console.log('  ✓ '+m)}else{nSai++;console.log('  ✗ '+m)}};
 // số ngẫu nhiên có hạt giống (kết quả lặp lại được)
@@ -213,5 +213,29 @@ console.log('14. (07/11) Khẩu lệnh cuối câu: giongLenh');
   let r=Lh('nhớ cột cao là ly tâm 12 điền'),d=Dy(r.con);ok(r.lenh==='dien'&&d&&d.noi==='cột cao','«nhớ … là … điền» → dạy cụm, bỏ «điền» → '+JSON.stringify(d));
   r=Lh('cột số 7 ly tâm 12 tiếp');const g=G(r.con);ok(r.lenh==='tiep'&&g.so==='7'&&!g.con,'«… tiếp» → phần trước lệnh điền đủ: '+g.hieu.join(' · '));
   r=Lh('  cột   số 5   điền  ');ok(r.lenh==='dien'&&r.con==='cột số 5','khoảng trắng thừa → «cột số 5»');
+}
+console.log('15. (07/11) Lệnh nghe nhầm + làm khi máy chưa chốt câu: giongChuan, bản app tự tải');
+{const {giongLenh:Lh,giongChuan:C}=T;
+  const n=(s,v)=>ok(C(s)===v,`giongChuan «${s}» → «${C(s)}» (cần «${v}»)`);
+  n('Điện.','điền');n(' điện ','điền');n('Đền','điền');n('Rừng lại','dừng');n('giừng','dừng');n('Tiết.','tiếp');
+  n('đoàn mới','đoạn mới');n('Đoạn với','đoạn mới');n('xoá','nói lại');
+  n('cột số 5 điện','cột số 5 điện');n('trạm điện','trạm điện');n('rừng cao su','rừng cao su');n('','');
+  const c=(s,k,con)=>{const r=Lh(s);ok(r.lenh===k&&(con===undefined||r.con===con),`«${s}» → ${r.lenh}${r.lenh?' | '+r.con:''} (cần ${k}${con!==undefined?' | '+con:''})`)};
+  c('cột số 5 '+C('Điện.'),'dien','cột số 5');
+  c('hòm H4 Điền','dien','hòm H4');
+  c('Cột số 5 Điền','dien','Cột số 5');
+  c('ghi chú gần xã Quảng Điền',null);
+  c('đường Phong Điền',null);
+  c('cột số 6 tiếp tục','tiep','cột số 6');
+  c('ngừng lại','dung','');
+  c('cột số 9 ngừng','dung','cột số 9');
+  c('cột số 5 '+C('Rừng'),'dung','cột số 5');
+  c('cột số 5 '+C('đoán mới'),'doan','cột số 5');
+  /* chốt trong code: nghe chữ tạm (chưa chốt) cũng làm lệnh; trang tự tải bản mới */
+  const gb=html.slice(html.indexOf('function giongBat'),html.indexOf('function giongMoi'));
+  ok(/giongLenh\(v\)\.lenh\)giongGo=setTimeout\(lam,/.test(gb),'giongBat: câu (cả chữ tạm) kết thúc bằng lệnh → hẹn làm, không chờ máy chốt');
+  ok(/fin\.trim\(\)\|\|giongChuan\(tam\)/.test(gb),'giongBat: máy tắt phiên chưa chốt → giữ chữ tạm');
+  ok(/controllerchange/.test(html)&&/function taiLai\(\)\{try\{saveNow\(\)\}/.test(html),'có bản app mới → lưu rồi tự tải lại');
+  ok(/id="ban-app"/.test(html),'☰ hiện «Bản app: kstuyen-…»');
 }
 console.log(`\n${nOk} đạt, ${nSai} sai`);process.exit(nSai?1:0);
