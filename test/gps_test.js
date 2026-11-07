@@ -4,7 +4,7 @@ const fs=require('fs'),path=require('path');
 const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
 const a=html.indexOf('const VN=(()=>{'),b=html.indexOf('/* === HẾT HÀM THUẦN === */');
 if(a<0||b<0)throw new Error('Không thấy đoạn hàm thuần');
-const T=new Function(html.slice(a,b)+';return {VN,haversine,gpsLoc,gpsXongSom,gpsMau,hcTinh,docSo,mocNhap,nanTuyen,GPS_CHE_DO,NEN,chuSo,giongMa,giongDay,giongKhoa,giongGop,giongLenh,giongChuan,giongCho,GIONG_CHO};')();
+const T=new Function(html.slice(a,b)+';return {VN,haversine,gpsLoc,gpsXongSom,gpsMau,hcTinh,docSo,mocNhap,nanTuyen,GPS_CHE_DO,NEN,chuSo,giongMa,giongDay,giongKhoa,giongGop,giongLenh,giongChuan,giongCho,GIONG_CHO,giongSua,GIONG_SAI,giongLaTu,giongSuaCu,giongLaLenh};')();
 let nOk=0,nSai=0;
 const ok=(c,m)=>{if(c){nOk++;console.log('  ✓ '+m)}else{nSai++;console.log('  ✗ '+m)}};
 // số ngẫu nhiên có hạt giống (kết quả lặp lại được)
@@ -236,7 +236,7 @@ console.log('15. (07/11) Lệnh nghe nhầm + làm khi máy chưa chốt câu: g
   c('cột số 5 '+C('đoán mới'),'doan','cột số 5');
   /* chốt trong code: nghe chữ tạm (chưa chốt) cũng làm lệnh; trang tự tải bản mới */
   const gb=html.slice(html.indexOf('function giongBat'),html.indexOf('function giongMoi'));
-  ok(/const k=giongLenh\(v\)\.lenh;[^\n]*if\(k\)giongGo=setTimeout\(lam,giongCho\(k,/.test(gb),'giongBat: câu (cả chữ tạm) kết thúc bằng lệnh → hẹn làm theo giongCho, không chờ máy chốt');
+  ok(/const k=giongLenh\(v,DB\.giongTu\)\.lenh;[^\n]*if\(k\)giongGo=setTimeout\(lam,giongCho\(k,/.test(gb),'giongBat: câu (cả chữ tạm) kết thúc bằng lệnh → hẹn làm theo giongCho, không chờ máy chốt');
   /* 07/11 tốc độ: chốt câu làm gần như ngay, chữ tạm chờ ngắn, «tiếp»/«dừng» chờ lâu hơn «điền»; mở phiên nghe mới nhanh */
   const {giongCho,GIONG_CHO}=T;
   ok(giongCho('dien',false)<=50&&giongCho('tiep',false)<=50,'giongCho: máy đã chốt câu → làm ngay (≤ 50 ms)');
@@ -247,11 +247,52 @@ console.log('15. (07/11) Lệnh nghe nhầm + làm khi máy chưa chốt câu: g
   ok(/catch\(e\)\{GHE=null;if\(!thu\)\{giongHen=setTimeout\(\(\)=>giongBat\(1\),/.test(gb),'giongBat: mở micro lỗi (mở lại sớm quá) → thử lại 1 lần rồi mới báo');
   ok(/function hocDoc\(code\)/.test(html)&&/vals=hocDoc\(p\.code\)\[kind\]/.test(html),'learned đọc mã qua hocDoc (nhớ theo chuỗi mã), không parse lại mọi cột mỗi lần');
   ok(!/<script src="xlsx\.full\.min\.js"/.test(html)&&/function napXlsx\(\)/.test(html)&&/async function xuatXlsx\(\)\{\s*if\(!window\.XLSX\)\{try\{await napXlsx\(\)\}/.test(html),'xlsx.full.min.js chỉ nạp khi xuất Excel (napXlsx), không nạp lúc mở app');
-  ok(/fin\.trim\(\)\|\|giongChuan\(tam\)/.test(gb),'giongBat: máy tắt phiên chưa chốt → giữ chữ tạm');
+  ok(/fin\.trim\(\)\|\|giongChuan\(tam,DB\.giongBo\)/.test(gb),'giongBat: máy tắt phiên chưa chốt → giữ chữ tạm');
   ok(/controllerchange/.test(html)&&/function taiLai\(\)\{try\{saveNow\(\)\}/.test(html),'có bản app mới → lưu rồi tự tải lại');
   ok(/id="ban-app">Bản app: \$\{BAN_APP\}/.test(html),'☰ luôn hiện «Bản app: …» (lấy từ BAN_APP, không cần bộ nhớ đệm)');
   const sw=fs.readFileSync(path.join(__dirname,'..','sw.js'),'utf8'),ph=(sw.match(/const PHIEN = '([^']+)'/)||[])[1],ba=(html.match(/const BAN_APP='([^']+)'/)||[])[1];
   ok(ph&&ph===ba,`BAN_APP (${ba}) trùng PHIEN sw.js (${ph}) — đổi bản thì đổi cả hai`);
   ok(/'\.\/xlsx\.full\.min\.js'/.test(sw),'sw.js vẫn lưu sẵn xlsx.full.min.js (xuất Excel khi mất mạng)');
+}
+console.log('16. (07/11) Cụm hay nghe sai có sẵn, khẩu lệnh nghe nhầm cuối câu, cụm dạy thay chữ');
+{const {giongSua:S,GIONG_SAI,giongChuan:C,giongLenh:Lh,giongLaTu,giongSuaCu,giongLaLenh,giongMa}=T;
+  const s=(x,v,bo)=>{const r=S(x,bo);ok(r===v,`giongSua «${x}»${bo?' (tắt '+bo.join(',')+')':''} → «${r}» (cần «${v}»)`)};
+  s('cuộc số 5 lý tâm 12','cột số 5 ly tâm 12');s('Cuộc số 5','Cột số 5');
+  s('giây ABC 4x95 rẻ nhánh','dây ABC 4x95 rẽ nhánh');s('hòn công to số 3','hòm công tơ số 3');
+  s('cột tép 8m tiếp đĩa','cột thép 8m tiếp địa');s('khoản 30 mết','khoảng 30 mét');s('ghi trú gần cổng','ghi chú gần cổng');
+  s('gốc cây to','gốc cây to');s('gốc đường','góc đường');s('cốt thép','cốt thép');s('cốt số 5','cột số 5');
+  s('cuộc, cuộc.','cột, cột.');s('khoảng 30m','khoảng 30m');s('trong rừng','trong rừng');s('bê-tông','bê tông');
+  s('cuộc số 5','cuộc số 5',['cuộc']);s('','');
+  ok(new Set(GIONG_SAI.map(x=>x[0])).size===GIONG_SAI.length&&GIONG_SAI.length>=60,`GIONG_SAI: ${GIONG_SAI.length} cụm, không trùng «nghe sai»`);
+  ok(GIONG_SAI.every(([a,b])=>S(b)===b),'giongSua: chữ đúng của mọi cụm sửa lại vẫn y nguyên (không sửa vòng)');
+  ok(GIONG_SAI.every(([a])=>S(a)!==a),'giongSua: mọi «nghe sai» đều được sửa');
+  ok(C('nhớ cuộc là cột')==='nhớ cuộc là cột'&&C('quên giây')==='quên giây','giongChuan: câu dạy / quên giữ nguyên chữ máy nghe');
+  ok(C('cuộc số 5 lý tâm')==='cột số 5 ly tâm'&&C('cuộc số 5',['cuộc'])==='cuộc số 5'&&C('Điện.')==='điền','giongChuan: sửa cụm hay nghe sai (tắt được), lệnh nghe nhầm cả câu vẫn đổi');
+  const c=(x,k,con,tu)=>{const r=Lh(x,tu);ok(r.lenh===k&&(con===undefined||r.con===con),`«${x}»${tu?' (cụm dạy)':''} → ${r.lenh}${r.lenh?' | '+r.con:''} (cần ${k}${con!==undefined?' | '+con:''})`)};
+  c('cột BTLT điên','dien','cột BTLT');c('cột số 5 diễn','dien','cột số 5');c('cột số 5 điện','dien','cột số 5');
+  c('tủ điện',null);c('cột điện',null);c('trạm biến áp điện',null);c('hòm công tơ điện',null);c('ghi chú mất điện',null);
+  c('cột số 5 tiết','tiep','cột số 5');c('bản vẽ chi tiết',null);c('thời tiết',null);c('cột số 9 tiếp địa',null);
+  c('cột số 9 giừng','dung','cột số 9');c('đoàn mới','doan','');c('cột 3 đoạn mời','doan','cột 3');c('cột số 5 lói lại','xoa','cột số 5');
+  const tu=[{noi:'chốt',la:'điền'},{noi:'ok em',la:'Điền.'}];
+  c('cột số 5 chốt','dien','cột số 5',tu);c('cột số 5 ok em','dien','cột số 5',tu);c('chốt','dien','',tu);c('cột số 5 chốt',null);
+  ok(giongLaLenh('điền')==='dien'&&giongLaLenh('Tiếp.')==='tiep'&&giongLaLenh('cột')===null&&giongLaLenh('cột số 5 điền')===null,'giongLaLenh: chỉ cụm đúng một khẩu lệnh');
+  ok(giongLaTu('cột')&&giongLaTu('Công tơ')&&giongLaTu('điền')&&giongLaTu('ly tâm 12')&&giongLaTu('H4')&&!giongLaTu('gần cổng trường')&&!giongLaTu(''),'giongLaTu: chữ app biết / số / mã / khẩu lệnh → thay chữ; câu khác → ghi chú');
+  const cu=[{noi:'cuộc',la:'ghi chú Cột'},{noi:'điên',la:'ghi chú Điền'},{noi:'cổng',la:'ghi chú gần cổng trường'},{noi:'a b c',la:'ghi chú cột'}],m=giongSuaCu(cu);
+  ok(m!==cu&&m[0].la==='cột'&&m[1].la==='điền'&&m[2]===cu[2]&&m[3]===cu[3],'giongSuaCu: «cuộc» → «ghi chú Cột» (bản cũ lưu nhầm) thành thay chữ, «điên» thành khẩu lệnh; ghi chú thật / cụm dài giữ nguyên → '+JSON.stringify(m));
+  const sach=[{noi:'cuộc',la:'cột'}];ok(giongSuaCu(sach)===sach&&giongSuaCu(undefined)===undefined,'giongSuaCu: không có gì đổi → trả lại đúng danh sách cũ');
+  const H=(x,tu,bo)=>JSON.stringify(giongMa(x,{},tu,bo).hieu),dung=H('cột số 5 ly tâm 12');
+  ok(dung!=='[]'&&H('cuộc số 5 lý tâm 12')===dung,'giongMa: «cuộc số 5 lý tâm 12» đọc như «cột số 5 ly tâm 12» → '+dung);
+  ok(H('cuộc số 5 lý tâm 12',[{noi:'cuộc',la:'cột'},{noi:'lý tâm',la:'ly tâm'}],['cuộc','lý tâm'])===dung,'giongMa: tắt cụm có sẵn mà có cụm tự dạy cùng chữ → theo cụm dạy');
+  ok(H('cột số 5 ly tâm 12',[{noi:'cột',la:'điền'}])===dung,'giongMa: cụm dạy là khẩu lệnh không thay chữ trong câu');
+  /* chốt trong code */
+  const ngoai=html.slice(0,a)+html.slice(b),nL=(ngoai.match(/giongLenh\(/g)||[]).length,nLt=(ngoai.match(/giongLenh\([^;]{0,40}?,DB\.giongTu\)/g)||[]).length;
+  ok(nL>=6&&nL===nLt,`mọi lời gọi giongLenh ngoài khối thuần đều đưa DB.giongTu (${nLt}/${nL}) — khẩu lệnh Truong dạy dùng được ở mọi chỗ`);
+  ok(!/giongMa\([^;]{0,40}?,DB\.giongTu\)/.test(ngoai)&&/giongMa\(text,giongDs\(\),DB\.giongTu,DB\.giongBo\)/.test(ngoai),'giongMa ngoài khối thuần đưa cả DB.giongBo (cụm Truong tắt)');
+  const gb=html.slice(html.indexOf('function giongBat'),html.indexOf('function giongMoi'));
+  ok(/fin=giongChuan\(f,DB\.giongBo\)/.test(gb)&&/giongChuan\(f\+' '\+t,DB\.giongBo\)/.test(gb),'giongBat: câu máy nghe qua giongChuan có cụm hay nghe sai (trừ cụm đã tắt)');
+  ok(/function giongLuu\(noi,la\)\{const ds=giongDs\(\);if\(!giongMa\(la,ds\)\.hieu\.length&&!giongLaTu\(la\)\)la='ghi chú '\+la/.test(html),'giongLuu: «hiểu là» toàn chữ app biết / khẩu lệnh → thay chữ, không lưu thành ghi chú');
+  ok(/HẾT HÀM THUẦN === \*\/\r?\n[^\n]*\r?\n\{const L=giongSuaCu\(DB\.giongTu\);if\(L!==DB\.giongTu\)DB\.giongTu=L\}/.test(html)&&/function giongNhap\(L\)\{[^\n]*L=giongSuaCu\(L\)/.test(html),'mở app / mở file .json: cụm dạy bản cũ lưu nhầm ghi chú tự nâng cấp (giongSuaCu)');
+  ok(/data-a="gs-bat"/.test(html)&&/a==='gs-bat'/.test(html)&&/GIONG_SAI\.map\(/.test(ngoai),'📖 hiện danh sách cụm có sẵn, bấm tắt / bật từng cụm (DB.giongBo)');
+  ok(!/giongBo/.test(html.slice(html.indexOf('function xuatJson'),html.indexOf('function xuatJson')+1500)),'giongBo (cụm tắt) chỉ lưu trên máy, không đi kèm file .json');
 }
 console.log(`\n${nOk} đạt, ${nSai} sai`);process.exit(nSai?1:0);

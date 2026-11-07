@@ -156,7 +156,11 @@ button{font:inherit;color:inherit;cursor:pointer}
 .o.on{background:var(--hi);border-color:var(--hi);color:var(--hi-fg)}
 .typ{display:flex;gap:4px}
 .typ .inp{flex:1;min-width:0;height:34px;border-radius:7px;border:1.5px solid var(--line);background:var(--paper);color:var(--fg);font:600 15px var(--mono);padding:0 8px}
-#sh-noi{flex:0 0 auto}#o-noi{font:500 14px var(--f)}#o-noi.lenh{border-color:var(--hi);box-shadow:0 0 0 2px var(--hi-soft)}#o-noi-x{padding:0 9px}
+#sh-noi{flex:0 0 auto}#o-noi{font:500 14px var(--f)}#o-noi.lenh{border-color:var(--hi);box-shadow:0 0 0 2px var(--hi-soft)}
+.gs summary{cursor:pointer;font-weight:600;font-size:14.5px;padding:8px 0}.gs-ds{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.gs-i{font:13px var(--f);color:inherit;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:5px 10px}.gs-i small{color:var(--muted)}
+.gs-i.tat{text-decoration:line-through;opacity:.45}
+#o-noi-x{padding:0 9px}
 .sl.vn input.gt{font:600 15.5px var(--f);border:0;background:transparent;color:var(--fg);padding:4px 0;width:100%;outline:none}
 #sh-mic.on{background:var(--warn);border-color:var(--warn);color:#fff;animation:nhay 1s ease-in-out infinite}
 @keyframes nhay{50%{opacity:.6}}
@@ -1084,13 +1088,13 @@ function giongBat(thu){clearTimeout(giongHen);if(!giongNghe||!editId||!SR||GHE)r
   const lam=()=>{if(GHE!==g)return;GHE=null;try{g.abort()}catch(e){}
     const v=o.value.trim();giongDem=v;giongHong=0;giongLuc=Date.now();if(!giongLam(v))giongMoi()};
   g.onresult=e=>{let f='',t='';for(let i=0;i<e.results.length;i++){const r=e.results[i];if(r.isFinal)f+=r[0].transcript;else t+=r[0].transcript}
-    fin=giongChuan(f);tam=t;giongLuc=Date.now();
-    const v=(giongDem+' '+giongChuan(f+' '+t)).replace(/\s+/g,' ').trim();o.value=v;
+    fin=giongChuan(f,DB.giongBo);tam=t;giongLuc=Date.now();
+    const v=(giongDem+' '+giongChuan(f+' '+t,DB.giongBo)).replace(/\s+/g,' ').trim();o.value=v;
     if(v===cu)return;cu=v;clearTimeout(giongGo);
-    const k=giongLenh(v).lenh;o.classList.toggle('lenh',!!k);if(k)giongGo=setTimeout(lam,giongCho(k,!!t.trim()))};
+    const k=giongLenh(v,DB.giongTu).lenh;o.classList.toggle('lenh',!!k);if(k)giongGo=setTimeout(lam,giongCho(k,!!t.trim()))};
   g.onerror=e=>{loi=e.error||'loi'};
   g.onend=()=>{if(GHE!==g)return;GHE=null;clearTimeout(giongGo);   /* đã bị huỷ (✕, Điền, đổi cột, đóng ô nhập) → bỏ */
-    const s=fin.trim()||giongChuan(tam);   /* máy tắt phiên mà chưa chốt câu → lấy chữ tạm, không để mất */
+    const s=fin.trim()||giongChuan(tam,DB.giongBo);   /* máy tắt phiên mà chưa chốt câu → lấy chữ tạm, không để mất */
     if(s){giongDem=(giongDem+' '+s).replace(/\s+/g,' ').trim();giongHong=0}
     if(giongChot){giongChot=false;if(s)o.value=giongDem;giongTat();giongXong();return}   /* bấm 🎤 lần 2: không có kết quả chốt thì lấy cả chữ tạm trong ô */
     o.value=giongDem;
@@ -1106,7 +1110,7 @@ function giongBat(thu){clearTimeout(giongHen);if(!giongNghe||!editId||!SR||GHE)r
 function giongMoi(){if(!giongNghe)return;if(GHE){const g=GHE;GHE=null;try{g.abort()}catch(e){}}clearTimeout(giongHen);giongHen=setTimeout(giongBat,GIONG_CHO.lai)}
 function giongXoa(){const o=$('#o-noi');o.value='';o.classList.remove('lenh');giongDem='';clearTimeout(giongGo)}
 /* câu có khẩu lệnh ở cuối → làm; trả false nếu không có lệnh */
-function giongLam(s){const l=giongLenh(s);if(!l.lenh)return false;
+function giongLam(s){const l=giongLenh(s,DB.giongTu);if(!l.lenh)return false;
   if(l.lenh==='xoa'){giongXoa();giongMoi();toast('Đã xoá câu — nói lại');return true}
   if(l.lenh==='dien'){giongXoa();if(l.con)apGiong(l.con);else toast('Chưa có câu để điền');giongMoi();return true}
   giongNut(l.lenh,l.con);return true}
@@ -1115,7 +1119,7 @@ function giongXong(){const s=$('#o-noi').value.trim();if(!s||giongLam(s))return;
 /* Tiếp ▸ / Dừng / Đoạn mới — bấm tay hay nói: câu còn trong ô được điền trước ⚑, rồi làm như nút */
 function giongNut(lenh,con){
   if(!editId)return;const o=$('#o-noi'),nghe=giongNghe,hien=!$('#sh-noi').hidden,foc=document.activeElement===o;
-  if(con==null)con=giongLenh(o.value).con;con=String(con||'').trim();
+  if(con==null)con=giongLenh(o.value,DB.giongTu).con;con=String(con||'').trim();
   giongTat();giongXoa();
   const g=con?apGiong(con):null,ghi=g?(g.hieu.length?'🎤 '+g.hieu.join(' · '):'🎤 Chưa hiểu «'+con+'»')+' — ':'';
   if(lenh==='tiep'){const truoc=editId;xong();
@@ -1129,14 +1133,19 @@ function giongMoLai(hien,nghe,foc){if(hien||nghe)$('#sh-noi').hidden=false;
   if(nghe&&SR){giongNghe=true;giongLuc=Date.now();giongHong=0;$('#sh-mic').classList.add('on');giongBat()}else if(foc)$('#o-noi').focus()}
 var giongCon='',giongCau='';   /* câu vừa nói + phần chưa hiểu của nó — 📖 điền sẵn phần chưa hiểu vào ô «Khi nói» */
 const giongDs=()=>({cot:learned('cot'),cotTT:learned('cotTT'),day:learned('day'),dayTT:learned('dayTT'),sau:learned('sau')});
-/* lưu một cụm dạy; câu «hiểu là» app không hiểu gì → ⚑ lưu thành Ghi chú */
-function giongLuu(noi,la){const ds=giongDs();if(!giongMa(la,ds).hieu.length)la='ghi chú '+la;
-  const r=giongGop(DB.giongTu||[],[{noi,la}],true);DB.giongTu=r.list;saveNow();return {sua:r.sua>0,t:giongMa(la,ds)}}
+/* lưu một cụm dạy; «hiểu là» là khẩu lệnh hoặc toàn chữ app biết («cột», «công tơ») → thay chữ; app không hiểu gì → ⚑ lưu thành Ghi chú */
+function giongLuu(noi,la){const ds=giongDs();if(!giongMa(la,ds).hieu.length&&!giongLaTu(la))la='ghi chú '+la;
+  const r=giongGop(DB.giongTu||[],[{noi,la}],true);DB.giongTu=r.list;saveNow();return {sua:r.sua>0,t:giongMa(la,ds),mo:giongMoTa(la,ds)}}
+const GIONG_LENH_TEN={dien:'điền',tiep:'tiếp',dung:'dừng',doan:'đoạn mới',xoa:'nói lại'};
+/* một cụm dạy «hiểu là» la → chữ hiện cho Truong xem */
+function giongMoTa(la,ds){const l=giongLaLenh(la);if(l)return 'khẩu lệnh «'+GIONG_LENH_TEN[l]+'»';
+  const h=giongMa(la,ds||giongDs()).hieu.join(' · '),tu=giongLaTu(la);
+  return h?(tu?'thay chữ «'+String(la).trim()+'» ('+h+')':h):tu?'thay chữ «'+String(la).trim()+'»':la}
 /* cụm nhớ đi kèm file .json mở / gộp từ máy khác: thêm cụm chưa có, cụm trùng giữ bản của máy này */
-function giongNhap(L){if(!Array.isArray(L)||!L.length)return 0;const r=giongGop(DB.giongTu||[],L,false);if(r.them){DB.giongTu=r.list;saveNow()}return r.them}
+function giongNhap(L){if(!Array.isArray(L)||!L.length)return 0;L=giongSuaCu(L);const r=giongGop(DB.giongTu||[],L,false);if(r.them){DB.giongTu=r.list;saveNow()}return r.them}
 /* 📖 bảng bộ nhớ giọng nói — mở đè lên ô nhập cột (không đóng ô nhập): Đóng là về lại cột đang sửa */
 function showGiong(pre){
-  const L=DB.giongTu||[],ds=giongDs();
+  const L=DB.giongTu||[],ds=giongDs(),bo=DB.giongBo||[];
   panel.innerHTML=`<div class="pin">
     <div class="row" style="align-items:center"><h2 style="flex:1 1 auto">📖 Bộ nhớ giọng nói</h2><button class="btn" data-a="close" style="flex:0 0 auto">Đóng</button></div>
     <p class="note">Dạy app cách anh nói. Bấm 🎤 rồi nói <b>«nhớ cột cao là ly tâm 12»</b> — lần sau nói «cột cao» app điền LT12. Muốn thành ghi chú: «nhớ cạnh trường là ghi chú gần trường học». Xoá: nói <b>«quên cột cao»</b>. Hoặc gõ ở dưới.</p>
@@ -1147,22 +1156,32 @@ function showGiong(pre){
     <p class="note" id="gt-thu"></p>
     <button class="btn pri" data-a="gt-luu">Lưu cụm</button>
     <div class="h3">Đã nhớ ${L.length} cụm</div>
-    ${L.map((e,i)=>`<div class="card"><button class="tx" data-a="gt-sua" data-i="${i}"><b>«${esc(e.noi)}»</b><span>→ ${esc(giongMa(e.la,ds).hieu.join(' · ')||e.la)}</span></button><button class="btn danger" data-a="gt-xoa" data-i="${i}">Xoá</button></div>`).join('')||'<p class="note">Chưa có cụm nào.</p>'}
+    ${L.map((e,i)=>`<div class="card"><button class="tx" data-a="gt-sua" data-i="${i}"><b>«${esc(e.noi)}»</b><span>→ ${esc(giongMoTa(e.la,ds))}</span></button><button class="btn danger" data-a="gt-xoa" data-i="${i}">Xoá</button></div>`).join('')||'<p class="note">Chưa có cụm nào.</p>'}
+    <details class="gs"><summary>Có sẵn ${GIONG_SAI.length} cụm hay nghe sai — app tự sửa${bo.length?` (đang tắt ${bo.length})`:''}</summary>
+      <p class="note">Máy nghe ra chữ bên trái → app tự đổi thành chữ đậm bên phải rồi mới điền. Bấm một cụm để tắt / bật (gạch ngang = đang tắt). Cụm anh tự dạy cùng chữ thì theo cụm anh dạy.</p>
+      <div class="gs-ds">${GIONG_SAI.map(([s,d,tru])=>`<button class="gs-i${bo.includes(s)?' tat':''}" data-a="gs-bat" data-k="${esc(s)}">${esc(s)} → <b>${esc(d)}</b>${tru?` <small>(trừ «${esc(s)} ${esc(tru.split(' ')[0])}…»)</small>`:''}</button>`).join('')}</div>
+      <p class="note">Khẩu lệnh nghe nhầm ở cuối câu app cũng nhận: <b>điên, điển, diễn, điện</b> = điền (trừ «cột điện», «tủ điện», «trạm điện»…) · <b>tiết, tiếc</b> = tiếp · <b>giừng</b> = dừng · <b>đoàn / đoán mới, đoạn mời / với</b> = đoạn mới · <b>lói lại</b> = nói lại.</p>
+    </details>
     <p class="note">Lưu trên máy này, đi kèm file .json khi xuất. Mở / gộp file đó trên máy khác là máy đó nhớ luôn (cụm trùng giữ bản của máy đang dùng).</p>
   </div>`;
   panel.hidden=false;if(pre)$('#gt-la').focus();
 }
 function giongThu(){const k=$('#gt-thu'),i=$('#gt-la');if(!k||!i)return;const v=i.value.trim();if(!v){k.textContent='';return}
-  const t=giongMa(v,giongDs());
+  const t=giongMa(v,giongDs(),null,DB.giongBo),l=giongLaLenh(v);
+  if(l){k.textContent='→ nói cụm này ở cuối câu = khẩu lệnh «'+GIONG_LENH_TEN[l]+'»';return}
+  if(!t.hieu.length&&giongLaTu(v)){k.textContent='→ app thay bằng chữ «'+v+'» rồi đọc tiếp câu';return}
   k.textContent=t.hieu.length?'→ app sẽ điền: '+t.hieu.join(' · ')+(t.con?' — chưa hiểu: '+t.con:''):'⚑ App chưa hiểu câu này — sẽ lưu thành Ghi chú «'+v+'»'}
 function apGiong(text){const p=curP();if(!p||!F)return null;
   text=String(text||'').trim();if(!text)return null;
   const d=giongDay(text);
   if(d&&d.quen){const k=giongKhoa(d.quen),L=DB.giongTu||[],M=L.filter(e=>giongKhoa(e.noi)!==k);
-    if(M.length===L.length)toast('📖 Chưa nhớ cụm «'+d.quen+'»');else{DB.giongTu=M;saveNow();toast('📖 Đã quên «'+d.quen+'»')}return null}
+    const s=String(d.quen).normalize('NFC').toLowerCase().trim(),co=GIONG_SAI.some(x=>x[0]===s);
+    if(co){const B=DB.giongBo||(DB.giongBo=[]);if(!B.includes(s))B.push(s)}   /* «quên giây» = tắt luôn cụm có sẵn «giây → dây» */
+    if(M.length===L.length&&!co)toast('📖 Chưa nhớ cụm «'+d.quen+'»');
+    else{DB.giongTu=M;saveNow();toast(co?'📖 Đã tắt cụm có sẵn «'+s+'» — bật lại trong 📖':'📖 Đã quên «'+d.quen+'»')}return null}
   if(d){const r=giongLuu(d.noi,d.la);giongCon='';
-    toast('📖 '+(r.sua?'Đã sửa':'Đã nhớ')+': nói «'+d.noi+'» → '+r.t.hieu.join(' · ')+(r.t.con?' — chưa hiểu: '+r.t.con:''));return null}
-  const g=giongMa(text,giongDs(),DB.giongTu);
+    toast('📖 '+(r.sua?'Đã sửa':'Đã nhớ')+': nói «'+d.noi+'» → '+r.mo+(r.t.hieu.length&&r.t.con?' — chưa hiểu: '+r.t.con:''));return null}
+  const g=giongMa(text,giongDs(),DB.giongTu,DB.giongBo);
   giongCau=text;giongCon=g.hieu.length?g.con||'':text;
   if(!g.hieu.length){toast('🎤 Chưa hiểu: «'+text+'» — bấm 📖 để dạy app');return g}
   if(g.shape||g.doi){if(!sheetSnap){snap();sheetSnap=true}
@@ -1186,18 +1205,18 @@ $('#sh-mic').addEventListener('click',()=>{
 /* ✕ xoá nhanh câu đang nói — pointerdown giữ ô nhập không mất focus (bàn phím không sập) */
 $('#o-noi-x').addEventListener('pointerdown',e=>e.preventDefault());
 $('#o-noi-x').addEventListener('click',()=>{const o=$('#o-noi'),f=document.activeElement===o;giongXoa();giongMoi();if(f||!SR)o.focus()});
-function giongDien(){const o=$('#o-noi'),l=giongLenh(o.value);clearTimeout(giongGo);
+function giongDien(){const o=$('#o-noi'),l=giongLenh(o.value,DB.giongTu);clearTimeout(giongGo);
   if(l.lenh&&l.lenh!=='dien'){giongLam(o.value);return}
   giongXoa();if(l.con)apGiong(l.con);giongMoi()}
 $('#o-noi-ok').addEventListener('click',giongDien);
-$('#o-noi-nho').addEventListener('click',()=>{const v=giongLenh($('#o-noi').value).con;
-  if(v){const g=giongMa(v,giongDs(),DB.giongTu);giongCau=v;giongCon=g.hieu.length?g.con||'':v}
+$('#o-noi-nho').addEventListener('click',()=>{const v=giongLenh($('#o-noi').value,DB.giongTu).con;
+  if(v){const g=giongMa(v,giongDs(),DB.giongTu,DB.giongBo);giongCau=v;giongCon=g.hieu.length?g.con||'':v}
   giongTat();showGiong(giongCon)});
 $('#o-noi').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();giongDien()}});
 /* gõ tay / 🎤 bàn phím: câu kết thúc bằng khẩu lệnh → chờ 0,8 s ⚑ (còn gõ tiếp, vd «tiếp địa», thì thôi) rồi làm */
 $('#o-noi').addEventListener('input',e=>{giongDem=e.target.value.trim();if(GHE)giongMoi();
-  clearTimeout(giongGo);const k=giongLenh(e.target.value).lenh;e.target.classList.toggle('lenh',!!k);
-  if(k)giongGo=setTimeout(()=>{const v=$('#o-noi').value;if(editId&&giongLenh(v).lenh)giongLam(v)},GIONG_CHO.go)});
+  clearTimeout(giongGo);const k=giongLenh(e.target.value,DB.giongTu).lenh;e.target.classList.toggle('lenh',!!k);
+  if(k)giongGo=setTimeout(()=>{const v=$('#o-noi').value;if(editId&&giongLenh(v,DB.giongTu).lenh)giongLam(v)},GIONG_CHO.go)});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&giongNghe)giongTat()});
 $('#anh-in').addEventListener('change',async e=>{
   const f=e.target.files&&e.target.files[0],id=editId;if(!f||!id||!D)return;
@@ -1635,12 +1654,12 @@ function chuSo(s){
   R(/(\d) (mét|m) rưỡi(?= )/g,'$1,5m');R(/(\d) (mét|m)(?= )/g,'$1m');
   return t.trim();
 }
-function giongMa(text,ds,tu){
+function giongMa(text,ds,tu,bo){
   ds=ds||{};
   const N=v=>String(v).toUpperCase().replace(/\s+/g,'');
   const HOA=v=>v.replace(/[a-zA-ZđĐ]+/g,(m,o,s)=>/^x$/i.test(m)&&/\d/.test(s[o-1]||'')&&/\d/.test(s[o+1]||'')?'x':m.toUpperCase());
   const r={hieu:[]},H=x=>r.hieu.push(x);
-  let src=String(text||'').normalize('NFC').trim(),gcTu='';
+  let src=giongSua(String(text||'').normalize('NFC').trim(),bo),gcTu='';   /* cụm hay nghe sai có sẵn (GIONG_SAI) sửa trước */
   /* "… ghi chú <câu tự do>" → phần sau vào Ghi chú nguyên văn */
   const g=src.search(/ghi chú|ghi chu/i);
   if(g>=0){gcTu=src.slice(g).replace(/^ghi ch[uú]/i,'').replace(/^[\s:,.-]+/,'').replace(/[\s.]+$/,'');src=src.slice(0,g)}
@@ -1651,13 +1670,13 @@ function giongMa(text,ds,tu){
      vào Ghi chú nguyên văn. Thay qua dấu giữ chỗ để cụm ngắn không ăn vào chữ vừa thay. */
   r.nho=[];
   if(tu&&tu.length){const vs=[];
-    for(const x of tu.map(e=>({e,k:e?giongKhoa(e.noi):''})).filter(x=>x.k).sort((a,b)=>b.k.length-a.k.length)){
+    for(const x of tu.map(e=>({e,k:e?giongKhoa(giongSua(e.noi,bo)):''})).filter(x=>x.k&&!giongLaLenh(x.e.la)&&giongKhoa(giongSua(x.e.la,bo))!==x.k).sort((a,b)=>b.k.length-a.k.length)){
       const kk=' '+x.k+' ';if(c.indexOf(kk)<0)continue;
       let la=String(x.e.la||'').normalize('NFC');const q=la.search(/ghi chú|ghi chu/i);
       if(q>=0){const t=la.slice(q).replace(/^ghi ch[uú]/i,'').replace(/^[\s:,.-]+/,'').replace(/[\s.]+$/,'');if(t)add(gc,t.charAt(0).toUpperCase()+t.slice(1));la=la.slice(0,q)}
-      vs.push(chuSo(la));while(c.indexOf(kk)>=0)c=c.replace(kk,' \u0003'+(vs.length-1)+' ');
+      vs.push(la);while(c.indexOf(kk)>=0)c=c.replace(kk,' \u0003'+(vs.length-1)+' ');
       r.nho.push(String(x.e.noi).trim())}
-    c=c.replace(/\u0003(\d+)/g,(m,i)=>vs[+i]).replace(/ {2,}/g,' ')}
+    c=' '+chuSo(c.replace(/\u0003(\d+)/g,(m,i)=>vs[+i]).trim()).replace(/ {2,}/g,' ')+' '}   /* chuSo lại cả câu: «lý tâm»→«ly tâm» dính số sau thành lt12 */
   const X=(re,f)=>{c=c.replace(re,(...a)=>' '+(f(...a)||'')).replace(/ {2,}/g,' ')};
   /* thiết bị trên cột → Ghi chú */
   X(/ tủ (bù|tụ bù)(?= )/g,()=>{add(gc,'Tủ bù')});
@@ -1785,23 +1804,35 @@ function giongGop(list,them,ghiDe){
 /* 🎤 KHẨU LỆNH ở CUỐI câu nói (07/11): «điền» · «tiếp» (= Tiếp ▸) · «dừng» (= Dừng) · «đoạn mới» · «nói lại» / «xoá câu»
    → {lenh:'dien'|'tiep'|'dung'|'doan'|'xoa'|null, con: phần câu trước lệnh}. Chỉ nhận ở CUỐI câu, có chốt chặn:
    «tiếp địa», «nối tiếp», «trạm dừng», «xã Quảng Điền» không thành lệnh */
-const BAN_APP='kstuyen-25';
+const BAN_APP='kstuyen-26';
 /* 🎤 chờ bao lâu (ms) rồi mới làm khẩu lệnh cuối câu (07/11 rút ngắn ⚑): máy đã chốt câu → làm gần như ngay;
    còn chữ tạm → chờ ngắn xem có nói tiếp không («tiếp», «dừng» chờ lâu hơn chút vì hay đi tiếp chữ, vd «tiếp địa»);
    gõ tay / 🎤 bàn phím chờ lâu nhất; lai = nghỉ trước khi mở phiên nghe mới */
 const GIONG_CHO={chot:30,tam:{dien:450,xoa:450,doan:450,tiep:700,dung:700},go:800,lai:60};
 function giongCho(lenh,tam){return tam?(GIONG_CHO.tam[lenh]||700):GIONG_CHO.chot}
 const GIONG_TEN=/^(?:Quảng|Phong|Phú|Hải|Văn|Tân|Thanh|Mỹ|Long|Vĩnh|Hưng|Gia|Ngọc|Kim)$/;
-function giongLenh(text){
-  const t=String(text||'').normalize('NFC').replace(/\s+/g,' ').replace(/[\s.,!?;:…]+$/,'').trim(),lo=t.toLowerCase();
-  const L=[['dien',/(?:^| )(?:ok |oke |xong )?điền(?: vào| đi| luôn| nhé)?$/],
-    ['tiep',/(?:^| )(?:sang |qua |chuyển )?(?:cột )?(?:kế )?tiếp(?: theo| tục)?$/],
-    ['dung',/(?:^| )(?:tạm )?(?:dừng|ngừng)(?: lại)?$/],
-    ['doan',/(?:^| )(?:bắt đầu |sang |qua |làm )?đoạn mới$/],
-    ['xoa',/(?:^| )(?:(?:xoá|xóa) (?:câu|hết)|nói lại)$/]];
+/* tu = cụm Truong dạy (DB.giongTu): cụm «hiểu là» một khẩu lệnh (vd «điên» là «điền») nói ở cuối câu = nói lệnh đó.
+   Từ lệnh máy hay nghe nhầm cũng nhận ở cuối câu (07/11 ⚑): điên / điển / diền / diễn / điềm / điện = điền («cột điện», «tủ điện»,
+   «trạm điện»… không phải lệnh) · tiết / tiếc / tiệp = tiếp («chi tiết», «thời tiết» không phải) · giừng = dừng ·
+   đoạn / đoàn / đoán / loạn + mới / mời / với = đoạn mới · lói lại = nói lại */
+const GIONG_DIEN_KHONG=/(?:^| )(?:cột|tủ|dây|cáp|đường|trạm|lưới|hòm|hộp|ct|đèn|nhà|cấp|mất|có|nguồn|sáng|tơ|bảng|ổ|ống|hồ|kiệm|câu|kéo|nối|dùng|xài|mua|bán|phát|thủy|thuỷ|năng|áp|thống|bị|dòng)$/;
+function giongLenh(text,tu){
+  let t=String(text||'').normalize('NFC').replace(/\s+/g,' ').replace(/[\s.,!?;:…]+$/,'').trim(),lo=t.toLowerCase();
+  if(tu&&tu.length){let bk='',bl='';
+    for(const e of tu){if(!e||!giongLaLenh(e.la))continue;
+      const k=String(e.noi||'').normalize('NFC').replace(/\s+/g,' ').replace(/[.,!?;:…]+$/,'').trim().toLowerCase();
+      if(k&&k.length>bk.length&&(lo===k||lo.endsWith(' '+k))){bk=k;bl=String(e.la).normalize('NFC').replace(/\s+/g,' ').replace(/[\s.,!?;:…]+$/,'').trim().toLowerCase()}}
+    if(bk){t=t.slice(0,t.length-bk.length)+bl;lo=t.toLowerCase()}}
+  const L=[['dien',/(?:^| )(?:ok |oke |xong )?(điền|điên|điển|diền|diễn|điềm|điện)(?: vào| đi| luôn| nhé)?$/],
+    ['tiep',/(?:^| )(?:sang |qua |chuyển )?(?:cột )?(?:kế )?(tiếp|tiết|tiếc|tiệp)(?: theo| tục)?$/],
+    ['dung',/(?:^| )(?:tạm )?(dừng|ngừng|giừng)(?: lại)?$/],
+    ['doan',/(?:^| )(?:bắt đầu |sang |qua |làm )?(?:đoạn|đoàn|đoán|loạn) (?:mới|mời|với)$/],
+    ['xoa',/(?:^| )(?:(?:xoá|xóa) (?:câu|hết)|(?:nói|lói) lại)$/]];
   for(const [k,re] of L){const m=lo.match(re);if(!m)continue;
     let con=t.slice(0,m.index).trim();const cl=con.toLowerCase(),w=con.split(' ').pop()||'';
     if(k==='tiep'&&/(?:^| )nối$/.test(cl))continue;
+    if(k==='dien'&&m[1]==='điện'&&GIONG_DIEN_KHONG.test(cl))continue;
+    if(k==='tiep'&&m[1]!=='tiếp'&&/(?:^| )(?:chi|thời|đáng)$/.test(cl))continue;
     if(k==='dung'&&/(?:^| )(?:trạm|điểm|bến)$/.test(cl))continue;
     if(k==='dien'&&/Điền$/.test(t)&&GIONG_TEN.test(w))continue;   /* tên riêng «Quảng Điền» — chỉ chặn tên đất hay gặp, «hòm H4 Điền» vẫn là lệnh */
     con=con.replace(/(^| )điền(?= |$)/g,'$1').replace(/ {2,}/g,' ').replace(/[\s.,!?;:…]+$/,'').trim();
@@ -1812,9 +1843,72 @@ const GIONG_NHAM={'điện':'điền','điên':'điền','điển':'điền','di
   'rừng':'dừng','giừng':'dừng','rừng lại':'dừng','giừng lại':'dừng','tiết':'tiếp','tiếc':'tiếp','cột sau':'tiếp',
   'đoạn mời':'đoạn mới','đoạn với':'đoạn mới','đoàn mới':'đoạn mới','đoán mới':'đoạn mới','loạn mới':'đoạn mới',
   'xoá':'nói lại','xóa':'nói lại'};
-function giongChuan(s){s=String(s||'').normalize('NFC').replace(/\s+/g,' ').trim();
-  return GIONG_NHAM[s.replace(/^[.,!?;:…\s]+|[.,!?;:…\s]+$/g,'').toLowerCase()]||s}
+function giongChuan(s,bo){s=String(s||'').normalize('NFC').replace(/\s+/g,' ').trim();
+  const n=GIONG_NHAM[s.replace(/^[.,!?;:…\s]+|[.,!?;:…\s]+$/g,'').toLowerCase()];if(n)return n;
+  return GIONG_DAY_DAU.test(s)?s:giongSua(s,bo)}   /* câu dạy «nhớ cuộc là cột» giữ nguyên chữ máy nghe — đang tả chính chữ nghe sai */
+const GIONG_DAY_DAU=/^(?:hãy )?(?:ghi nhớ|nhớ|dạy|quên|xoá nhớ|xóa nhớ|bỏ nhớ)(?= |$)/i;
+/* 🎤 CỤM HAY NGHE SAI có sẵn (07/11 ⚑ — nhận giọng nói tiếng Việt hay nghe nhầm chữ ngành điện): app tự sửa trước khi đọc câu.
+   [nghe sai, đúng là, (các chữ đứng NGAY SAU mà gặp thì không sửa)] — khớp nguyên từ, hoa / thường như nhau, chữ hoa đầu giữ hoa.
+   Truong tắt từng cụm trong 📖 (DB.giongBo = danh sách «nghe sai» đã tắt); cụm Truong tự dạy cùng chữ thì theo cụm dạy.
+   «rừng» (= dừng) chỉ đổi khi nói riêng một chữ (GIONG_NHAM) — «trong rừng» là chữ thật. */
+const GIONG_SAI=[
+  ['cuộc','cột'],['cuốc','cột'],['cộc','cột'],['cốt','cột','thép nền đất mặt sàn cao đai'],
+  ['giây','dây'],
+  ['lý tâm','ly tâm'],['lí tâm','ly tâm'],['ly tầm','ly tâm'],['li tầm','ly tâm'],['di tâm','ly tâm'],['ly tam','ly tâm'],
+  ['bê-tông','bê tông'],['bê tôn','bê tông'],['bê tê lờ tờ','btlt'],['bê tê lê tê','btlt'],
+  ['hồm','hòm'],['hơm','hòm'],['hòn công tơ','hòm công tơ'],
+  ['công tờ','công tơ'],['công tở','công tơ'],['công to','công tơ'],['cổng tơ','công tơ'],['công thơ','công tơ'],
+  ['tụ công tơ','tủ công tơ'],['tù công tơ','tủ công tơ'],
+  ['nẻo','néo'],['nẹo','néo'],['nèo','néo'],
+  ['gốc','góc','cây tre đa'],
+  ['rẻ nhánh','rẽ nhánh'],['dẽ nhánh','rẽ nhánh'],['dễ nhánh','rẽ nhánh'],['giẽ nhánh','rẽ nhánh'],['rẽ nhanh','rẽ nhánh'],['rẻ nhanh','rẽ nhánh'],
+  ['đầu tuyển','đầu tuyến'],['cuối tuyển','cuối tuyến'],['cuối tiến','cuối tuyến'],['đầu nguồng','đầu nguồn'],
+  ['cột tép','cột thép'],['cột thếp','cột thép'],['cột gổ','cột gỗ'],['cột gộ','cột gỗ'],
+  ['cột đen','cột đèn'],['cột đối','cột đôi'],['cột kẹp','cột kép'],
+  ['cột nghiên','cột nghiêng'],['cột nức','cột nứt'],['nức chân','nứt chân'],['gẫy','gãy'],
+  ['chiếu xáng','chiếu sáng'],['chiếu sang','chiếu sáng'],
+  ['tiếp đĩa','tiếp địa'],['tiếp đại','tiếp địa'],['tiếp đía','tiếp địa'],['tiếp đỉa','tiếp địa'],
+  ['chống sắt','chống sét'],['chống xét','chống sét'],['chống séc','chống sét'],['trống sét','chống sét'],
+  ['thu hội','thu hồi'],['thu hối','thu hồi'],['nhỏ bỏ','nhổ bỏ'],['nhỏ cột','nhổ cột'],
+  ['chạm biến áp','trạm biến áp'],['biến ấp','biến áp'],
+  ['vặn soắn','vặn xoắn'],['văn xoắn','vặn xoắn'],['vạn xoắn','vặn xoắn'],['vặn xoăn','vặn xoắn'],['vặn soăn','vặn xoắn'],
+  ['ây bi xi','abc'],['ây bi si','abc'],['a bê si','abc'],['ba phà','ba pha'],
+  ['ghi trú','ghi chú'],['ghi chủ','ghi chú'],['gi chú','ghi chú'],['ghi chụ','ghi chú'],
+  ['mết','mét'],['khoản','khoảng']];
+const GS_BIEN='\\s.,!?;:…"“”«»()';
+let gsRe=null;
+function giongSuaDs(){return gsRe||(gsRe=GIONG_SAI.map(([sai,dung,tru])=>({sai,dung,tru:tru?new Set(tru.split(' ')):null,
+  re:new RegExp('(^|['+GS_BIEN+'])('+sai.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')(?=$|['+GS_BIEN+'])','giu')})).sort((a,b)=>b.sai.length-a.sai.length))}
+/* sửa các cụm hay nghe sai trong câu; bo = các «nghe sai» Truong đã tắt */
+function giongSua(s,bo){s=String(s||'').normalize('NFC');if(!s.trim())return s;
+  const tat=Array.isArray(bo)&&bo.length?new Set(bo.map(k=>String(k).normalize('NFC').toLowerCase().trim())):null;
+  for(let n=0;n<3;n++){let doi=false;
+    for(const x of giongSuaDs()){if(tat&&tat.has(x.sai))continue;
+      s=s.replace(x.re,(m,a,b,o,all)=>{
+        if(x.tru){const sau=(all.slice(o+m.length).match(/^[\s.,]*([^\s.,!?;:…"“”«»()]+)/u)||[])[1];if(sau&&x.tru.has(sau.toLowerCase()))return m}
+        doi=true;return a+(b.charAt(0)!==b.charAt(0).toLowerCase()?x.dung.charAt(0).toUpperCase()+x.dung.slice(1):x.dung)})}
+    if(!doi)break}
+  return s}
+/* cụm «hiểu là» chỉ là một khẩu lệnh → mã lệnh, không thì null */
+function giongLaLenh(la){const q=giongLenh(la);return q.lenh&&!q.con?q.lenh:null}
+/* «hiểu là» chỉ gồm chữ app biết (cột, dây, công tơ, néo, ly tâm, số, mã…) hoặc là khẩu lệnh → cụm dạy là THAY CHỮ, không phải ghi chú */
+const GIONG_TU_BIET=new Set(('cột dây cáp hòm hộp công tơ tủ trạm đèn néo góc cuối rẽ nhánh đầu nguồn tuyến thu hồi nhổ bỏ tháo thay sau số '+
+  'khoảng mét cách thép sắt gỗ đôi kép vuông tròn chiếu sáng pha ly li tâm bê tông lt btlt abc av cxv h1 h2 h4 3p cũ mới vào nhà tiếp địa '+
+  'nối đất chống sét nghiêng nứt chân gãy biến áp tba điều khiển đkcs bù điện m x ba').split(' '));
+function giongLaTu(la){const s=String(la||'').normalize('NFC').toLowerCase().replace(/[\s.,!?;:…]+$/,'').replace(/\s+/g,' ').trim();
+  if(!s)return false;if(giongLaLenh(s))return true;
+  return s.split(' ').every(w=>GIONG_TU_BIET.has(w)||/^\d+([.,x+]\d+)*m?$/.test(w)||/^[a-zđ]{1,5}\d[\dx.,+]*$/.test(w))}
+/* nâng cấp cụm dạy bản cũ (07/11): «cuộc» là «cột», «điên» là «điền» lỡ lưu thành «ghi chú cột» / «ghi chú điền» → thay chữ / khẩu lệnh ⚑.
+   Chỉ đổi khi «khi nói» ≤ 2 chữ và phần sau «ghi chú» toàn chữ app biết. Không đổi gì thì trả lại đúng danh sách cũ. */
+function giongSuaCu(list){if(!Array.isArray(list))return list;let doi=false;
+  const L=list.map(e=>{if(!e||typeof e.la!=='string'||typeof e.noi!=='string')return e;
+    const m=e.la.normalize('NFC').trim().match(/^ghi ch[uú][\s:,.-]*(.+?)[\s.]*$/i);
+    if(!m||e.noi.trim().split(/\s+/).length>2||!giongLaTu(m[1]))return e;
+    doi=true;return {noi:e.noi,la:m[1].toLowerCase()}});
+  return doi?L:list}
 /* === HẾT HÀM THUẦN === */
+/* 📖 nâng cấp một lần lúc mở app: cụm dạy bản cũ «cuộc» → «ghi chú cột» thành thay chữ (giongSuaCu) — lưu ở lần lưu sau */
+{const L=giongSuaCu(DB.giongTu);if(L!==DB.giongTu)DB.giongTu=L}
 /* kinh tuyến trục đang dùng (cài đặt chung của máy, mặc định Thanh Hoá 105°00′) */
 function ktt(){return DB.ktt!=null&&isFinite(DB.ktt)?+DB.ktt:105}
 function kttTen(v){const d=Math.floor(v+1e-9),m=Math.round((v-d)*60);return `${d}°${String(m).padStart(2,'0')}′`}
@@ -2257,7 +2351,9 @@ panel.addEventListener('click',e=>{
   else if(a==='nen-0'){const l=nenLech();l[0]=0;l[1]=0;save();showNen();nenVe();toast('Ảnh nền về chỗ cũ')}
   else if(a==='gt-luu'){const n=$('#gt-noi').value.trim(),la=$('#gt-la').value.trim();
     if(!giongKhoa(n)||!la){toast('Gõ đủ «Khi nói» và «Hiểu là»');return}
-    const r=giongLuu(n,la);giongCon='';showGiong();toast('📖 '+(r.sua?'Đã sửa':'Đã nhớ')+' «'+n+'» → '+(r.t.hieu.join(' · ')||la))}
+    const r=giongLuu(n,la);giongCon='';showGiong();toast('📖 '+(r.sua?'Đã sửa':'Đã nhớ')+' «'+n+'» → '+r.mo)}
+  else if(a==='gs-bat'){const k=b.dataset.k,B=DB.giongBo||(DB.giongBo=[]),i=B.indexOf(k);if(i<0)B.push(k);else B.splice(i,1);
+    if(!B.length)delete DB.giongBo;saveNow();b.classList.toggle('tat',i<0);toast(i<0?'Tắt: «'+k+'» không tự sửa nữa':'Bật lại: «'+k+'» tự sửa')}
   else if(a==='gt-xoa'){const L=(DB.giongTu||[]).slice(),x=L.splice(+b.dataset.i,1)[0];DB.giongTu=L;saveNow();showGiong();if(x)toast('📖 Đã quên «'+x.noi+'»')}
   else if(a==='gt-sua'){const x=(DB.giongTu||[])[+b.dataset.i];if(!x)return;$('#gt-noi').value=x.noi;$('#gt-la').value=x.la;giongThu();$('#gt-noi').scrollIntoView({block:'center'})}
   else if(a==='xlsx')xuatXlsx();else if(a==='dxf')xuatDxf();else if(a==='dxfvn')xuatDxf(true);else if(a==='json')xuatJson();else if(a==='anh')guiAnhCot();else if(a==='png')guiAnh();
