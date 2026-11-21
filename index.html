@@ -68,7 +68,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .pole{fill:var(--paper);stroke:var(--fg);stroke-width:2.2}
 .pole.act{stroke:var(--hi);stroke-width:3.5}
 /* thẻ đèn cạnh cột (21/11 Truong «các loại đèn cần phân biệt rõ hơn, không phải chấm nhỏ»): màu + chữ 60 / 100 / 150 / SĐ */
-.db{stroke:var(--paper);stroke-width:1.5}.db-L60{fill:#8E44AD}.db-L100{fill:#2E9E5B}.db-L150{fill:#2F6FD0}.db-SD{fill:#F0A30A}.db-x{fill:#7A8580}
+.db{stroke:var(--paper);stroke-width:1.5}.db-L60{fill:#8E44AD}.db-L100{fill:#2E9E5B}.db-L150{fill:#2F6FD0}.db-SD{fill:#F0A30A}.db-x{fill:#7A8580}.db-L200{fill:#8D5524}
 .db.dbh{stroke:#E0412F;stroke-width:3}
 .dbt{font:800 11px var(--f);fill:#fff;pointer-events:none}.dbt.dk{fill:#2A1A00}
 /* đèn hỏng: vòng đỏ nét đứt quanh cột (21/11 Truong: gạch chéo là ký hiệu bóng thu hồi) */
@@ -116,9 +116,9 @@ button{font:inherit;color:inherit;cursor:pointer}
 .tools [data-den]{display:none}.tools.che-cs [data-den]{display:flex}.tools.che-cs .ha{display:none}
 .ic-den{display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:21px;padding:0 4px;border-radius:6px;
   font:800 11.5px var(--f);color:#fff;border:1.5px solid var(--paper);box-shadow:0 0 0 1px rgba(0,0,0,.28)}
-.ic-den.L60{background:#8E44AD}.ic-den.L100{background:#2E9E5B}.ic-den.L150{background:#2F6FD0}.ic-den.SD{background:#F0A30A;color:#2A1A00}
+.ic-den.L60{background:#8E44AD}.ic-den.L100{background:#2E9E5B}.ic-den.L150{background:#2F6FD0}.ic-den.SD{background:#F0A30A;color:#2A1A00}.ic-den.L200{background:#8D5524}
 .ic-den.hong{background:var(--paper);color:#E0412F;border:2.5px dashed #E0412F;border-radius:50%;min-width:24px;width:24px;height:24px;padding:0;box-shadow:none}
-.tools.che-cs{grid-template-columns:repeat(7,minmax(0,1fr))}.tools.che-cs button{font-size:10.5px;white-space:nowrap}
+.tools.che-cs{grid-template-columns:repeat(8,minmax(0,1fr))}.tools.che-cs button{font-size:10px;white-space:nowrap}.tools.che-cs .ic-den{min-width:0;padding:0 3px;font-size:10.5px}
 .ic-tron{display:inline-block;width:17px;height:17px;border-radius:50%;border:2.5px solid currentColor}
 .ic-vuong{display:inline-block;width:15px;height:15px;border:2.5px solid currentColor}
 .ic-road{display:inline-block;width:22px;height:9px;border-radius:5px;background:var(--road-c)}
@@ -234,6 +234,7 @@ label.btn{display:flex;align-items:center;justify-content:center}
   <button data-tool="den" data-den="L60" aria-label="Đèn LED 60W"><i><span class="ic-den L60">60W</span></i>LED</button>
   <button data-tool="den" data-den="L100" aria-label="Đèn LED 100W"><i><span class="ic-den L100">100W</span></i>LED</button>
   <button data-tool="den" data-den="L150" aria-label="Đèn LED 150W"><i><span class="ic-den L150">150W</span></i>LED</button>
+  <button data-tool="den" data-den="L200" aria-label="Đèn LED 200W"><i><span class="ic-den L200">200W</span></i>LED</button>
   <button data-tool="den" data-den="SD" aria-label="Đèn sợi đốt"><i><span class="ic-den SD">SĐ</span></i>Sợi đốt</button>
   <button data-tool="den" data-den="hong" aria-label="Đèn hỏng"><i><span class="ic-den hong">!</span></i>Hỏng</button>
   <button data-tool="cot" class="on ha"><i><span class="ic-tron"></span></i>Cột</button>
@@ -654,7 +655,7 @@ function status(){
       :selRoad?`<span class="pill solo">Kéo chấm vàng để sửa · chạm chỗ trống để bỏ chọn</span>`
       :`<span class="pill solo">Chạm điểm đầu rồi điểm cuối · chạm vào đường để sửa</span>`;
   else if(tool==='den'){const c=denDem(D.poles),k=DB.denBut||'L100';
-    h=`<span class="pill solo">${k==='hong'?'Chạm đèn: đánh / bỏ hỏng':'Chạm trống: thêm đèn · chạm cột: đổi đèn'} · ${c.tong} đèn${c.tong?` (60W ${c.L60} · 100W ${c.L100} · 150W ${c.L150} · SĐ ${c.SD} · hỏng ${c.hong})`:''}</span>`}
+    h=`<span class="pill solo">${k==='hong'?'Chạm đèn: đánh / bỏ hỏng':'Chạm trống: thêm đèn · chạm cột: đổi đèn'} · ${c.tong} đèn${c.tong?` (60W ${c.L60} · 100W ${c.L100} · 150W ${c.L150} · 200W ${c.L200} · SĐ ${c.SD} · hỏng ${c.hong})`:''}</span>`}
   else if(ed&&ed.auto)h=`<span class="pill solo">Cột tự đặt thẳng tuyến — chạm chỗ khác để dời tới đó</span>`;
   else if(a){const so=parse(a.code).so;h=`<span class="pill solo">${so?'Vẽ tiếp từ '+esc(so):'Vẽ tiếp từ cột chưa đánh số'}</span>`}
   else h=`<span class="pill solo">${D.poles.length?'Đoạn mới — cột sau không nối':'Chạm lên bảng để đặt cột đầu tiên'}</span>`;
@@ -2060,7 +2061,7 @@ function giongGop(list,them,ghiDe){
 /* 🎤 KHẨU LỆNH ở CUỐI câu nói (07/11): «điền» · «tiếp» (= Tiếp ▸) · «dừng» (= Dừng) · «đoạn mới» · «nói lại» / «xoá câu»
    → {lenh:'dien'|'tiep'|'dung'|'doan'|'xoa'|null, con: phần câu trước lệnh}. Chỉ nhận ở CUỐI câu, có chốt chặn:
    «tiếp địa», «nối tiếp», «trạm dừng», «xã Quảng Điền» không thành lệnh */
-const BAN_APP='kstuyen-32';
+const BAN_APP='kstuyen-33';
 /* 🎤 chờ bao lâu (ms) rồi mới làm khẩu lệnh cuối câu (07/11 rút ngắn ⚑): máy đã chốt câu → làm gần như ngay;
    còn chữ tạm → chờ ngắn xem có nói tiếp không («tiếp», «dừng» chờ lâu hơn chút vì hay đi tiếp chữ, vd «tiếp địa»);
    gõ tay / 🎤 bàn phím chờ lâu nhất; lai = nghỉ trước khi mở phiên nghe mới */
@@ -2331,19 +2332,19 @@ function dxfDoc(s,o){
   return {ly:LY.map(L=>({n:L.n,c:L.c,an:!!L.an})),ins,xy:XY,st:ST,li:LI,co:CO,kin:KIN,tx:TX,bb:[x0,y0,x1,y1],giua:[tv(mx),tv(my)],dem,cat};
 }
 /* đèn chiếu sáng trong mã cột: «Đèn LED 100W» / «Đèn LED 150W» / «Đèn sợi đốt» + «Đèn hỏng» (ô ghi chú, mỗi cột tối đa một loại đèn) */
-const DEN={L60:'Đèn LED 60W',L100:'Đèn LED 100W',L150:'Đèn LED 150W',SD:'Đèn sợi đốt'},DEN_HONG='Đèn hỏng',
-  DEN_NGAN={L60:'LED 60W',L100:'LED 100W',L150:'LED 150W',SD:'Sợi đốt',hong:'Đèn hỏng'},DEN_SO={L60:'60',L100:'100',L150:'150',SD:'SĐ'};
+const DEN={L60:'Đèn LED 60W',L100:'Đèn LED 100W',L150:'Đèn LED 150W',L200:'Đèn LED 200W',SD:'Đèn sợi đốt'},DEN_HONG='Đèn hỏng',
+  DEN_NGAN={L60:'LED 60W',L100:'LED 100W',L150:'LED 150W',L200:'LED 200W',SD:'Sợi đốt',hong:'Đèn hỏng'},DEN_SO={L60:'60',L100:'100',L150:'150',L200:'200',SD:'SĐ'};
 function denLoai(t){const u=String(t).normalize('NFC').toUpperCase().replace(/\s+/g,'');
-  if(/^ĐÈNLED60W?$/.test(u))return 'L60';if(/^ĐÈNLED100W?$/.test(u))return 'L100';if(/^ĐÈNLED150W?$/.test(u))return 'L150';if(/^ĐÈNSỢIĐỐT/.test(u))return 'SD';
+  if(/^ĐÈNLED60W?$/.test(u))return 'L60';if(/^ĐÈNLED100W?$/.test(u))return 'L100';if(/^ĐÈNLED150W?$/.test(u))return 'L150';if(/^ĐÈNLED200W?$/.test(u))return 'L200';if(/^ĐÈNSỢIĐỐT/.test(u))return 'SD';
   if(/^(ĐÈNHỎNG|ĐÈNCHÁY|HỎNGĐÈN|CHÁYĐÈN)$/.test(u))return 'hong';return ''}
 function denDoc(code){let loai='',hong=false;
   for(const x of String(code||'').split(';').slice(1)){const k=denLoai(x.trim());if(k==='hong')hong=true;else if(k)loai=k}return {loai,hong}}
-/* k = L60 / L100 / L150 / SD: thay loại đèn (giữ dấu hỏng); k = hong: bật / tắt dấu hỏng */
+/* k = L60 / L100 / L150 / L200 / SD: thay loại đèn (giữ dấu hỏng); k = hong: bật / tắt dấu hỏng */
 function denDat(code,k){code=String(code||'');const a=code.split(';').map(x=>x.trim()),so=a[0]||'';let t=a.slice(1).filter(Boolean);
   if(k==='hong'){t=t.some(x=>denLoai(x)==='hong')?t.filter(x=>denLoai(x)!=='hong'):t.concat(DEN_HONG)}
   else if(DEN[k]){t=t.filter(x=>{const q=denLoai(x);return !q||q==='hong'});const i=t.findIndex(x=>denLoai(x)==='hong');if(i>=0)t.splice(i,0,DEN[k]);else t.push(DEN[k])}
   return t.length||code.includes(';')?[so,...t].join(';')+';':so}
-function denDem(ps){const c={L60:0,L100:0,L150:0,SD:0,hong:0,tong:0};
+function denDem(ps){const c={L60:0,L100:0,L150:0,L200:0,SD:0,hong:0,tong:0};
   for(const p of ps||[]){const d=denDoc(p.code);if(d.loai)c[d.loai]++;if(d.hong)c.hong++;if(d.loai||d.hong)c.tong++}return c}
 /* === HẾT HÀM THUẦN === */
 /* 📖 nâng cấp một lần lúc mở app: cụm dạy bản cũ «cuộc» → «ghi chú cột» thành thay chữ (giongSuaCu) — lưu ở lần lưu sau */
@@ -2584,7 +2585,7 @@ async function xuatXlsx(){
     const ws4=XLSX.utils.aoa_to_sheet([[`ĐÈN CHIẾU SÁNG: ${D.ten}`],['STT','Số cột','Loại đèn','Tình trạng','Ký hiệu cột','Vĩ độ','Kinh độ','X_VN2000 (Bắc)','Y_VN2000 (Đông)'],
       ...dsDen.map((p,i)=>{const d=denDoc(p.code),v=vnOf(p,tb);return [i+1,parse(p.code).so,d.loai?DEN_NGAN[d.loai]:'(chưa rõ loại)',d.hong?'Hỏng':'',
         SHAPE_NAME[p.shape||'tron'],p.lat??'',p.lon??'',v?v.x:'',v?v.y:'']}),
-      [],['','Cộng',`LED 60W: ${c.L60}`,`LED 100W: ${c.L100}`,`LED 150W: ${c.L150}`,`Sợi đốt: ${c.SD}`,`Hỏng: ${c.hong}/${c.tong}`]]);
+      [],['','Cộng',`LED 60W: ${c.L60}`,`LED 100W: ${c.L100}`,`LED 150W: ${c.L150}`,`LED 200W: ${c.L200}`,`Sợi đốt: ${c.SD}`,`Hỏng: ${c.hong}/${c.tong}`]]);
     ws4['!cols']=[5,10,16,10,12,12,12,14,14].map(w=>({wch:w}));XLSX.utils.book_append_sheet(wb,ws4,'Chieu sang')}
   giao(new Blob([XLSX.write(wb,{bookType:'xlsx',type:'array'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),fname('.xlsx'));
 }
@@ -2604,7 +2605,7 @@ function buildDxf(that){
     0,'LTYPE',2,'DASHED',70,0,3,'__ __ __',72,65,73,2,40,'1.2',49,'0.8',49,'-0.4',0,'ENDTAB');
   /* đèn chiếu sáng (21/11 Truong «xuất ra AutoCAD dễ dùng trên máy tính»): mỗi loại một lớp + block thẻ có thuộc tính SO_COT / LOAI_DEN / TINH_TRANG
      → QSELECT / LAYISO theo lớp, BCOUNT đếm, DATAEXTRACTION / ATTOUT ra bảng; hỏng thêm vòng nét đứt lớp KS_DEN_HONG; bảng thống kê đèn cạnh bản vẽ */
-  const DL={L60:['KS_DEN_LED60',6],L100:['KS_DEN_LED100',3],L150:['KS_DEN_LED150',5],SD:['KS_DEN_SOIDOT',30],x:['KS_DEN_CHUA_RO',8]};
+  const DL={L60:['KS_DEN_LED60',6],L100:['KS_DEN_LED100',3],L150:['KS_DEN_LED150',5],L200:['KS_DEN_LED200',34],SD:['KS_DEN_SOIDOT',30],x:['KS_DEN_CHUA_RO',8]};
   const dsDen=sorted().map(p=>({p,d:denDoc(p.code)})).filter(o=>o.d.loai||o.d.hong);
   const LY=[['KS_DIEM',7],['KS_COT',1],['KS_DAY',5],['KS_CHU',7],['KS_KHOANG',3],['KS_DUONG',8],['KS_MOC',6]].concat(that?[['KS_COT_KHONG_GPS',30],['KS_MOC_HIEU_CHINH',6]]:[])
     .concat(dsDen.length?[...Object.values(DL),['KS_DEN_HONG',1],['KS_DEN_THONG_KE',7]]:[]);
@@ -2660,7 +2661,7 @@ function buildDxf(that){
     for(const {p,d} of dsDen){const k=d.loai||'x',[ly]=DL[k],[x,y]=XY[p.id];c[k].n++;if(d.hong)c[k].h++;
       a(0,'INSERT',8,ly,66,1,2,ly,10,f(x),20,f(y),30,'0.0',41,'1.0',42,'1.0',50,'0.0');
       /* thuộc tính để trích bảng (ATTOUT / DATAEXTRACTION): chữ KHÔNG DẤU — DXF R12 giữ chữ có dấu dạng mã \U+…, xuất bảng ra mã khó đọc */
-      [parse(p.code).so||'',{L60:'LED 60W',L100:'LED 100W',L150:'LED 150W',SD:'SOI DOT'}[d.loai]||'CHUA RO',d.hong?'HONG':'TOT'].forEach((v,i)=>
+      [parse(p.code).so||'',{L60:'LED 60W',L100:'LED 100W',L150:'LED 150W',L200:'LED 200W',SD:'SOI DOT'}[d.loai]||'CHUA RO',d.hong?'HONG':'TOT'].forEach((v,i)=>
         a(0,'ATTRIB',8,ly,10,f(x-3),20,f(y+0.3-i*0.7),30,'0.0',40,'0.5',1,dxfTxt(v),2,['SO_COT','LOAI_DEN','TINH_TRANG'][i],70,1,7,'KS'));
       a(0,'SEQEND',8,ly);
       if(d.hong)ins('KS_DEN_HONG',x,y,'KS_DEN_HONG')}
