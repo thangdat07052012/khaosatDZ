@@ -616,7 +616,9 @@ function status(){
   else if(ed&&ed.auto)h=`<span class="pill solo">Cột tự đặt thẳng tuyến — chạm chỗ khác để dời tới đó</span>`;
   else if(a){const so=parse(a.code).so;h=`<span class="pill solo">${so?'Vẽ tiếp từ '+esc(so):'Vẽ tiếp từ cột chưa đánh số'}</span>`}
   else h=`<span class="pill solo">${D.poles.length?'Đoạn mới — cột sau không nối':'Chạm lên bảng để đặt cột đầu tiên'}</span>`;
-  if(nenDoi){const l=nenLech(),m=v=>vn1(Math.abs(v));
+  if(cadDoi&&cadMuc(cadDoi)){const c=cadMuc(cadDoi),l=c.lech||[0,0],m=v=>vn1(Math.abs(v));
+    h=`<span class="pill">Dời CAD: ${m(l[0])} m ${l[0]<0?'Tây':'Đông'}, ${m(l[1])} m ${l[1]<0?'Bắc':'Nam'}${c.kieu==='rieng'?'<button data-st="cq-">⟲ 1°</button><button data-st="cq+">⟳ 1°</button>':''}<button data-st="cdx">Xong</button><button data-st="cd0">Bỏ dời</button></span>`}
+  else if(nenDoi){const l=nenLech(),m=v=>vn1(Math.abs(v));
     h=`<span class="pill">Dời ảnh: kéo cho khớp cột GPS · ${m(l[0])} m ${l[0]<0?'Tây':'Đông'}, ${m(l[1])} m ${l[1]<0?'Bắc':'Nam'}<button data-st="ndx">Xong</button><button data-st="nd0">Bỏ dời</button></span>`}
   gpsMCu=null;
   if(gpsM){const g=gpsTxt();gpsMCu=g.m;h+=`<span class="pill" id="gps-pill">${g.m?`<span class="qdot q-${g.m}"></span>`:''}<span id="gps-t">${esc(g.h)}</span><button data-st="gstop">${gpsM.ds.length?'Dừng sớm':'Huỷ'}</button></span>`;
@@ -668,6 +670,13 @@ function ggCr(z,n,s,e,w){
     fetch(`https://tile.googleapis.com/tile/v1/viewport?session=${encodeURIComponent(GG.s)}&key=${encodeURIComponent(DB.ggKey)}&zoom=${z}&north=${n}&south=${s}&east=${e}&west=${w}`)
       .then(r=>r.ok?r.json():null).then(j=>{if(j&&j.copyright!=null){GG.cr=String(j.copyright);nenHen()}}).catch(()=>{})},700);
 }
+/* ngày chụp ảnh Esri ở giữa khung nhìn (dịch vụ identify của World Imagery, hỏi lại khi dời > ~1 km hoặc đổi mức phóng) */
+const EN={t:'',k:'',T:null};
+function esriNgay(lat,lon,z){const k=[lat.toFixed(2),lon.toFixed(2),Math.min(z,15)].join();if(k===EN.k)return;clearTimeout(EN.T);
+  EN.T=setTimeout(()=>{EN.k=k;const d=0.002;
+    fetch(`https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/identify?geometry=${lon},${lat}&geometryType=esriGeometryPoint&sr=4326&layers=all:0&tolerance=1&mapExtent=${lon-d},${lat-d},${lon+d},${lat+d}&imageDisplay=256,256,96&returnGeometry=false&f=json`)
+      .then(r=>r.ok?r.json():null).then(j=>{const a=j&&j.results&&j.results[0]&&j.results[0].attributes;if(!a)return;
+        const s=String(a['DATE (YYYYMMDD)']||''),t=/^\d{8}$/.test(s)?s.slice(6,8)+'/'+s.slice(4,6)+'/'+s.slice(0,4):'';if(t!==EN.t){EN.t=t;nenHen()}}).catch(()=>{})},900)}
 function nenLech(){const k=nenNguon();D.nenLech=D.nenLech||{};return D.nenLech[k]||(D.nenLech[k]=[0,0])}
 function nenHen(){if(nenRaf)return;nenRaf=true;requestAnimationFrame(()=>{nenRaf=false;nenVe()})}
 function taiAnh(url,cors){return new Promise((ok,loi)=>{const im=new Image();im.decoding='async';if(cors)im.crossOrigin='anonymous';im.onload=()=>ok(im);im.onerror=loi;im.src=url})}
@@ -694,7 +703,7 @@ function ocTai(src,z,x,y){
   if(ocDang>=8)return;
   if(!o){o={bm:null,dang:false,hong:0,luot:nenLuot};OC.set(k,o)}
   o.dang=true;ocDang++;const url=NGUON[src].url(z,x,y);
-  taiAnh(url,true).then(im=>[im,true],e=>src==='esri'?taiAnh(url,false).then(im=>[im,false]):Promise.reject(e))
+  taiAnh(url,true).then(im=>[im,true],()=>taiAnh(url,false).then(im=>[im,false]))
     .then(([im,cors])=>{o.bm=im;o.w=im.naturalWidth||256;o.hong=0;ocMoi++;if(src==='gg')GG.hong=0;
       if(cors)lamRo(im).then(b=>{if(!b)return;if(OC.get(k)===o){o.bm=b;o.ro=1;ocMoi++;nenHen()}else b.close()})})
     .catch(()=>{o.hong=Date.now();
@@ -705,10 +714,135 @@ function ocCo(src,z,x,y){const k=src+'/'+z+'/'+x+'/'+y,o=OC.get(k);if(!o)return 
 let mauLuoi=null;
 try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{mauLuoi=null;nenHen()})}catch(e){}
 function nenChu(t){if(nenAttr.textContent===t&&nenAttr.hidden===!t)return;nenAttr.textContent=t;nenAttr.hidden=!t}
-function nenVe(){
+/* ================= bản vẽ CAD phủ lên bản đồ (21/11) =================
+   Truong: "up bản vẽ cad lên app ks vì sẽ rất dễ nhìn quy hoạch". File .dxf đọc trên máy (dxfDoc), nét lưu IndexedDB 'kstuyen_cad'
+   (không vào localStorage); bản vẽ đang mở chỉ giữ danh sách D.cad = [{id, ten, bat, kieu 'vn'|'rieng', an:[lớp ẩn], lech:[Đông, Nam m], goc}].
+   VN-2000: nằm đúng chỗ theo kinh tuyến trục đang chọn (ktt()); toạ độ riêng: đặt giữa màn hình, 1 đơn vị theo $INSUNITS, dời / xoay tay.
+   Vẽ trên canvas #nen (trên ảnh vệ tinh, dưới cột): nét chia ô lưới, mỗi ô một Path2D theo lớp + màu, ngoài khung nhìn thì bỏ. */
+const CADDB={db:null,
+  mo(){return this.db?Promise.resolve(this.db):new Promise((ok,loi)=>{const r=indexedDB.open('kstuyen_cad',1);
+    r.onupgradeneeded=()=>r.result.createObjectStore('ve',{keyPath:'id'});r.onsuccess=()=>{this.db=r.result;ok(this.db)};r.onerror=()=>loi(r.error)})},
+  async tx(mode,fn){const db=await this.mo();return new Promise((ok,loi)=>{const t=db.transaction('ve',mode),st=t.objectStore('ve');let kq;
+    Promise.resolve(fn(st)).then(v=>kq=v);t.oncomplete=()=>ok(kq);t.onerror=()=>loi(t.error)})},
+  luu(r){return this.tx('readwrite',st=>{st.put(r)})},
+  xoa(id){return this.tx('readwrite',st=>{st.delete(id)})},
+  lay(id){return this.tx('readonly',st=>new Promise(ok=>{const q=st.get(id);q.onsuccess=()=>ok(q.result||null);q.onerror=()=>ok(null)}))}};
+const CR=new Map();   /* id → {dang} | {mat} | {r, o (ô lưới), aff, affK} */
+let cadDoi=null;      /* id bản vẽ CAD đang kéo cho khớp */
+function cadDs(){return D.cad||(D.cad=[])}
+function cadMuc(id){return (D.cad||[]).find(m=>m.id===id)}
+/* dựng ô lưới + Path2D từ bản ghi (toạ độ tương đối so với r.O) */
+function cadDung(r){
+  const n=r.st.length-1,b=r.bb,G=Math.max(1,Math.min(32,Math.ceil(Math.sqrt(n/300)))),w=(b[2]-b[0])/G||1,h=(b[3]-b[1])/G||1,o=new Map(),xy=r.xy;
+  for(let i=0;i<n;i++){const a=r.st[i],e=r.st[i+1];let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+    for(let j=a;j<e;j++){const x=xy[2*j],y=xy[2*j+1];if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y}
+    const gx=Math.max(0,Math.min(G-1,Math.floor(((x0+x1)/2-b[0])/w))),gy=Math.max(0,Math.min(G-1,Math.floor(((y0+y1)/2-b[1])/h))),k=gy*G+gx;
+    let C=o.get(k);if(!C){C={bb:[x0,y0,x1,y1],p:new Map()};o.set(k,C)}else{const q=C.bb;if(x0<q[0])q[0]=x0;if(y0<q[1])q[1]=y0;if(x1>q[2])q[2]=x1;if(y1>q[3])q[3]=y1}
+    const pk=r.li[i]+'|'+r.co[i];let P=C.p.get(pk);if(!P){P={li:r.li[i],co:r.co[i],path:new Path2D()};C.p.set(pk,P)}
+    P.path.moveTo(xy[2*a],xy[2*a+1]);for(let j=a+1;j<e;j++)P.path.lineTo(xy[2*j],xy[2*j+1]);if(r.kin[i])P.path.closePath()}
+  return {r,o:[...o.values()],aff:null,affK:''};
+}
+/* phép đổi (x, y tương đối của bản vẽ) → toạ độ sơ đồ app: [a,b,c,d,e,f] (X = a·x + c·y + e, Y = b·x + d·y + f) */
+function cadAff(m,R){
+  const l=m.lech||[0,0],g=D.geo;
+  if(m.kieu==='vn'){if(!g)return null;const kt=ktt(),k=[g.lat0,g.lon0,g.x0,g.y0,kt,l[0],l[1]].join();if(R.affK===k)return R.aff;
+    const O=R.r.O,P=(dx,dy)=>{const q=vnVe84(O[1]+dy,O[0]+dx,kt);return geoToXY(q[0],q[1],false)},q0=P(0,0),q1=P(1000,0),q2=P(0,1000);
+    R.aff=[(q1.x-q0.x)/1000,(q1.y-q0.y)/1000,(q2.x-q0.x)/1000,(q2.y-q0.y)/1000,q0.x+l[0],q0.y+l[1]];R.affK=k;return R.aff}
+  const G=m.goc||{x:0,y:0,s:1,q:0},s=G.s||1,c=Math.cos(G.q||0),si=Math.sin(G.q||0);   /* trục y bản vẽ hướng lên, sơ đồ app hướng xuống */
+  return [s*c,s*si,s*si,-s*c,G.x+l[0],G.y+l[1]];
+}
+function cadMauCss(co,sat){if(DB.cadMau==='vang')return '#FFD400';if(co==null||co<0)return sat||matchMedia('(prefers-color-scheme: dark)').matches?'#FFFFFF':'#1E2522';return '#'+(co>>>0).toString(16).padStart(6,'0')}
+function cadVe(c,k){
+  const ds=D&&D.cad;if(!ds||!ds.length||!V)return;
+  const sat=!!(DB.nen&&D.geo),cw=nenCv.width,ch=nenCv.height;
+  for(const m of ds){if(!m.bat)continue;let R=CR.get(m.id);
+    if(!R){CR.set(m.id,{dang:true});CADDB.lay(m.id).then(r=>{CR.set(m.id,r?cadDung(r):{mat:true});nenHen()},()=>CR.set(m.id,{mat:true}));continue}
+    if(!R.o)continue;const A=cadAff(m,R);if(!A)continue;
+    const T=[k*V.s*A[0],k*V.s*A[1],k*V.s*A[2],k*V.s*A[3],k*(V.s*A[4]+V.tx),k*(V.s*A[5]+V.ty)],det=T[0]*T[3]-T[1]*T[2];if(!det)continue;
+    const sc=Math.sqrt(Math.abs(det)),inv=(X,Y)=>{const x=X-T[4],y=Y-T[5];return [(T[3]*x-T[2]*y)/det,(-T[1]*x+T[0]*y)/det]};
+    let vx0=Infinity,vy0=Infinity,vx1=-Infinity,vy1=-Infinity;
+    for(const [X,Y] of [[0,0],[cw,0],[0,ch],[cw,ch]]){const p=inv(X,Y);vx0=Math.min(vx0,p[0]);vx1=Math.max(vx1,p[0]);vy0=Math.min(vy0,p[1]);vy1=Math.max(vy1,p[1])}
+    const an=new Set(m.an||[]);
+    c.save();c.globalAlpha=DB.cadMo||1;c.setTransform(T[0],T[1],T[2],T[3],T[4],T[5]);c.lineWidth=(DB.cadNet||1)*Math.max(1,k*0.8)/sc;c.lineJoin='round';c.lineCap='round';
+    for(const C of R.o){if(C.bb[2]<vx0||C.bb[0]>vx1||C.bb[3]<vy0||C.bb[1]>vy1)continue;
+      for(const P of C.p.values()){if(an.has(P.li))continue;c.strokeStyle=cadMauCss(P.co,sat);c.stroke(P.path)}}
+    /* chữ: chỉ khi cao ≥ 5 px màn hình, tối đa 900 chữ một lần vẽ */
+    c.setTransform(1,0,0,1,0,0);let nv=0;const lw=Math.max(2,2*k);
+    for(const t of R.r.tx){if(an.has(t.li)||t.x<vx0||t.x>vx1||t.y<vy0||t.y>vy1)continue;const hp=t.h*sc;if(hp<5*k||hp>500*k)continue;if(++nv>900)break;
+      const X=T[0]*t.x+T[2]*t.y+T[4],Y=T[1]*t.x+T[3]*t.y+T[5],cs=Math.cos(t.r),sn=Math.sin(t.r),ang=Math.atan2(T[1]*cs+T[3]*sn,T[0]*cs+T[2]*sn);
+      c.setTransform(1,0,0,1,X,Y);c.rotate(ang);c.font=`${hp.toFixed(1)}px Arial,sans-serif`;c.textAlign=['left','center','right'][t.ax]||'left';
+      c.textBaseline=['alphabetic','bottom','middle','top'][t.ay]||'alphabetic';
+      const L=t.s.split('\n'),lh=hp*1.4,dy=t.ay===1||t.ay===0?-(L.length-1)*lh:t.ay===2?-(L.length-1)*lh/2:0;
+      c.fillStyle=cadMauCss(t.co,sat);if(sat){c.strokeStyle='rgba(0,0,0,.55)';c.lineWidth=lw}
+      L.forEach((s,j)=>{if(sat)c.strokeText(s,0,dy+j*lh);c.fillText(s,0,dy+j*lh)})}
+    c.restore();
+  }
+}
+/* nạp file .dxf: đọc chữ (UTF-8, không được thì cp1258), dxfDoc, lưu IndexedDB, thêm vào D.cad, đưa khung nhìn về bản vẽ */
+async function cadNap(f){
+  if(!/\.dxf$/i.test(f.name)){toast(/\.dwg$/i.test(f.name)?'App chưa đọc được .dwg — trong AutoCAD lưu ra .dxf (SAVEAS → DXF) rồi nạp file .dxf':'Chỉ nạp được file .dxf');return}
+  toast(`Đang đọc ${f.name} (${(f.size/1048576).toFixed(1)} MB)…`);await new Promise(r=>setTimeout(r,80));
+  let k;
+  try{const buf=await f.arrayBuffer();let s;try{s=new TextDecoder('utf-8',{fatal:true}).decode(buf)}catch(e){try{s=new TextDecoder('windows-1258').decode(buf)}catch(e2){s=new TextDecoder().decode(buf)}}
+    k=dxfDoc(s)}catch(e){toast('Không đọc được file DXF: '+String(e&&e.message||e).slice(0,80));return}
+  const nNet=k.st.length-1;if(!nNet&&!k.tx.length){toast('File DXF không có nét / chữ nào ở Model');return}
+  const O=k.giua,xy=new Float32Array(k.xy.length);for(let i=0;i<k.xy.length;i+=2){xy[i]=k.xy[i]-O[0];xy[i+1]=k.xy[i+1]-O[1]}
+  const kieu=cadKieu(O),id=uid(),ten=f.name.replace(/\.dxf$/i,'');
+  const r={id,ten,t:Date.now(),O,xy,st:Uint32Array.from(k.st),li:Uint16Array.from(k.li),co:Int32Array.from(k.co),kin:Uint8Array.from(k.kin),
+    tx:k.tx.map(t=>({...t,x:t.x-O[0],y:t.y-O[1]})),ly:k.ly,bb:[k.bb[0]-O[0],k.bb[1]-O[1],k.bb[2]-O[0],k.bb[3]-O[1]],ins:k.ins};
+  try{await CADDB.luu(r)}catch(e){toast('Máy không lưu được bản vẽ (bộ nhớ trình duyệt đầy?)');return}
+  snap();
+  const m={id,ten,bat:true,kieu,an:k.ly.map((L,i)=>L.an?i:-1).filter(i=>i>=0),lech:[0,0],nNet,nChu:k.tx.length,nLop:k.ly.length};
+  if(kieu==='rieng')m.goc={x:(W/2-V.tx)/V.s,y:(H/2-V.ty)/V.s,s:cadDonVi(k.ins),q:0};
+  else if(!D.geo){const q=vnVe84(O[1],O[0],ktt());geoToXY(q[0],q[1],true)}
+  let xa=0;if(kieu==='vn'&&D.geo){const q=vnVe84(O[1],O[0],ktt());xa=Math.hypot((q[0]-D.geo.lat0)*110574,(q[1]-D.geo.lon0)*111320*Math.cos(q[0]*Math.PI/180))/1000}
+  cadDs().push(m);CR.set(id,cadDung(r));
+  /* khung nhìn vừa bản vẽ (bỏ 2 % vật lạc mỗi phía) */
+  const A=cadAff(m,CR.get(id));if(A){const xs=[],ys=[],bu=Math.max(1,Math.floor(xy.length/2/4000));
+    for(let i=0;i<xy.length/2;i+=bu){xs.push(A[0]*xy[2*i]+A[2]*xy[2*i+1]+A[4]);ys.push(A[1]*xy[2*i]+A[3]*xy[2*i+1]+A[5])}
+    if(xs.length>1){xs.sort((a,b)=>a-b);ys.sort((a,b)=>a-b);const q=a=>[a[Math.floor(a.length*0.02)],a[Math.ceil(a.length*0.98)-1]],[x0,x1]=q(xs),[y0,y1]=q(ys);
+      const s=Math.min(Math.max(Math.min(W*0.9/Math.max(x1-x0,1),H*0.8/Math.max(y1-y0,1)),0.05),60);V={s,tx:W/2-(x0+x1)/2*s,ty:H/2-(y0+y1)/2*s};persistView()}}
+  save();draw();
+  toast(`Đã nạp ${ten}: ${nNet} nét, ${k.tx.length} chữ, ${k.ly.length} lớp${k.cat?' (file lớn — chỉ lấy phần đầu)':''} · `+
+    (kieu==='vn'?`toạ độ VN-2000, kinh tuyến trục ${kttTen(ktt())}`:'toạ độ riêng — giữ lâu 🛰 → Dời cho khớp')+
+    (xa>20?` · ⚠ cách tuyến ${vn1(xa)} km: nếu bản vẽ không phải VN-2000, mở 🛰 bấm «Coi là toạ độ riêng»`:''));
+}
+function cadXoa(id){snap();D.cad=cadDs().filter(m=>m.id!==id);if(cadDoi===id)cadDoi=null;save();
+  const conDung=Object.values(DB.ds).some(d=>(d.cad||[]).some(m=>m.id===id));if(!conDung){CADDB.xoa(id).catch(()=>{});CR.delete(id)}draw()}
+function cadDong(m){
+  const R=CR.get(m.id),mat=R&&R.mat;
+  const tt=mat?'Máy này chưa có nét của bản vẽ (file .json mở từ máy khác) — nạp lại file .dxf':
+    (m.kieu==='vn'?`VN-2000 · kinh tuyến trục ${kttTen(ktt())}`:`Toạ độ riêng · 1 đơn vị = ${vn3((m.goc||{}).s||1)} m`)+` · ${m.nNet||0} nét, ${m.nChu||0} chữ, ${m.nLop||0} lớp${(m.an||[]).length?` (ẩn ${m.an.length})`:''}`+
+    ((m.lech||[0,0]).some(v=>v)?' · đã dời':'');
+  return `<div style="border:1.5px solid var(--line);border-radius:7px;padding:6px 8px;display:flex;flex-direction:column;gap:6px">
+    <b style="word-break:break-all">${esc(m.ten)}</b><span class="note">${tt}</span>
+    <div class="seg" style="grid-template-columns:repeat(4,minmax(0,1fr))"><button class="btn${m.bat?' pri':''}" data-a="cad-bat" data-id="${m.id}">${m.bat?'Đang hiện':'Đang ẩn'}</button>
+    <button class="btn" data-a="cad-lop" data-id="${m.id}">Lớp</button><button class="btn" data-a="cad-doi" data-id="${m.id}">Dời</button><button class="btn" data-a="cad-xoa" data-id="${m.id}">Xoá</button></div>
+    ${mat?'':`<button class="btn" data-a="cad-kieu" data-id="${m.id}">${m.kieu==='vn'?'Không đúng chỗ? Coi là toạ độ riêng (đặt giữa màn hình)':'Coi là toạ độ VN-2000 (tự nằm đúng chỗ)'}</button>`}</div>`}
+function cadPhan(){
+  const ds=cadDs(),mo=DB.cadMo||1;
+  return `<div class="h3">Bản vẽ CAD phủ lên (quy hoạch, mặt bằng)</div>
+    ${ds.map(cadDong).join('')}
+    <label class="big" style="cursor:pointer"><b>+ Nạp bản vẽ .dxf</b><span>Trong AutoCAD: SAVEAS → kiểu DXF, gửi file .dxf vào máy. Nên xoá bớt lớp không cần (hatch, khung tên) cho file nhẹ. Bản vẽ toạ độ VN-2000 tự nằm đúng chỗ; toạ độ riêng thì đặt giữa màn hình, bấm Dời kéo cho khớp.</span><input id="cad-in" type="file" hidden></label>
+    ${ds.length?`<label class="sl vn"><span class="k">Kinh tuyến trục VN-2000 của bản vẽ</span><select id="cad-ktt">${VN.TINH.map(([t,v])=>`<option value="${v}"${Math.abs(v-ktt())<1e-9&&t===(DB.tinh||'Thanh Hoá')?' selected':''}>${t} — ${kttTen(v)}</option>`).join('')}<option value="khac">Khác…</option></select></label>
+    <div class="seg">${[[1,'Đậm 100%'],[0.75,'75%'],[0.5,'50%']].map(([v,t])=>`<button class="btn${Math.abs(mo-v)<1e-6?' pri':''}" data-a="cad-mo" data-m="${v}">${t}</button>`).join('')}</div>
+    <div class="seg" style="grid-template-columns:repeat(2,minmax(0,1fr))"><button class="btn${DB.cadMau==='vang'?'':' pri'}" data-a="cad-mau" data-m="cad">Màu theo CAD</button><button class="btn${DB.cadMau==='vang'?' pri':''}" data-a="cad-mau" data-m="vang">Một màu vàng</button></div>
+    <p class="note">Bản vẽ CAD chỉ để nhìn, không đổi toạ độ cột. Nét lưu trong máy này; file .json xuất ra không mang theo nét CAD.</p>`:''}`}
+async function showCadLop(id){
+  const m=cadMuc(id);if(!m)return;let R=CR.get(id);
+  if(!R||!R.r){const r=await CADDB.lay(id).catch(()=>null);if(!r){toast('Máy này chưa có nét của bản vẽ — nạp lại file .dxf');return}R=cadDung(r);CR.set(id,R)}
+  const an=new Set(m.an||[]),L=R.r.ly.map((l,i)=>({...l,i})).sort((a,b)=>a.n.localeCompare(b.n,'vi'));
+  panel.innerHTML=`<div class="pin">
+    <div class="row" style="align-items:center"><h2 style="flex:1 1 auto">Lớp — ${esc(m.ten)}</h2><button class="btn" data-a="cad-lop-xong" style="flex:0 0 auto">Xong</button></div>
+    <div class="seg" style="grid-template-columns:repeat(2,minmax(0,1fr))"><button class="btn" data-a="cad-ly-het" data-id="${id}" data-m="1">Hiện hết</button><button class="btn" data-a="cad-ly-het" data-id="${id}" data-m="0">Ẩn hết</button></div>
+    ${L.map(l=>`<button class="btn${an.has(l.i)?'':' pri'}" data-a="cad-ly" data-id="${id}" data-m="${l.i}" style="justify-content:flex-start;text-align:left">
+      <span style="display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;background:${cadMauCss(l.tc!=null?l.tc:aciRgb(l.c),false)}"></span>${an.has(l.i)?'Ẩn':'Hiện'} · ${esc(l.n)}</button>`).join('')}
+  </div>`;panel.hidden=false}
+function nenVe(){nenNen();if(D&&D.cad&&D.cad.length)try{cadVe(nenCx,nenCv.width/(W||1))}catch(e){console.error(e)}}
+function nenNen(){
   if(!V||!D)return;
   const c=nenCx,cw=nenCv.width,ch=nenCv.height,k=cw/(W||1);nenLuot++;
-  c.setTransform(1,0,0,1,0,0);c.clearRect(0,0,cw,ch);
+  c.setTransform(1,0,0,1,0,0);c.globalAlpha=1;c.clearRect(0,0,cw,ch);
   if(!DB.nen||!D.geo){   /* lưới ô 10 / 50 / 250 m … như bản cũ */
     nenCv.style.opacity='';nenChu('');
     let st=10;while(st*V.s<18)st*=5;const p=st*V.s*k;if(!(p>2))return;
@@ -719,7 +853,7 @@ function nenVe(){
     c.stroke();return;
   }
   const src=nenNguon(),N=NGUON[src],g=D.geo,kx=111320*Math.cos(g.lat0*Math.PI/180),ky=110574,l=D.nenLech&&D.nenLech[src]||[0,0];
-  nenCv.style.opacity=String(DB.nenMo||1);
+  nenCv.style.opacity='';c.globalAlpha=DB.nenMo||1;
   c.fillStyle='#5f6663';c.fillRect(0,0,cw,ch);
   /* khung nhìn ra kinh / vĩ độ (đã trừ độ lệch ảnh) */
   const lonOf=x=>g.lon0+(x-l[0]-g.x0)/kx,latOf=y=>g.lat0-(y-l[1]-g.y0)/ky;
@@ -758,8 +892,9 @@ function nenVe(){
   if(z>=3)for(let y=y0>>3;y<=y1>>3;y++)for(let x=x0>>3;x<=x1>>3;x++)if(!ocCo(src,z-3,x,y))ocTai(src,z-3,x,y);
   if(!keo){can.sort((a,b)=>a[2]-b[2]);for(const t of can)ocTai(src,z,t[0],t[1]);
     if(ocDang<4)for(let y=y0-1;y<=y1+1;y++)for(let x=x0-1;x<=x1+1;x++)if((y<y0||y>y1||x<x0||x>x1)&&x>=0&&y>=0&&x<n&&y<n&&!ocCo(src,z,x,y))ocTai(src,z,x,y)}
+  c.globalAlpha=1;
   if(src==='gg'){nenChu('Google'+(GG.cr?' · '+GG.cr:''));ggCr(z,latN,latS,lonE,lonW)}
-  else nenChu('Ảnh nền: Esri, Maxar, Earthstar Geographics');
+  else{nenChu('Ảnh nền: Esri, Maxar, Earthstar Geographics'+(EN.t?' · ảnh chụp '+EN.t:''));esriNgay((latN+latS)/2,(lonE+lonW)/2,z)}
 }
 
 /* ================= chạm / kéo / thu phóng ================= */
@@ -785,12 +920,14 @@ stage.addEventListener('pointermove',e=>{
   if(!ptrs.has(e.pointerId)||!G)return;const pt=loc(e);ptrs.set(e.pointerId,pt);
   if(G.type==='tap'){if(Math.hypot(pt.x-G.p0.x,pt.y-G.p0.y)>8){
       if(G.lp)clearTimeout(G.lp);
-      if(nenDoi){G.type='lech';G.l0=nenLech().slice()}
+      if(cadDoi&&cadMuc(cadDoi)){const m=cadMuc(cadDoi);m.lech=m.lech||[0,0];G.type='cadlech';G.l0=m.lech.slice()}
+      else if(nenDoi){G.type='lech';G.l0=nenLech().slice()}
       else if(G.hh){snap();G.type='rdrag';G.vi=G.hh.kind==='m'?(G.hh.r.pts.splice(G.hh.i+1,0,toW(pt)),G.hh.i+1):G.hh.i}
       else if(G.hit&&(tool==='chon'||G.hit.id===editId)){snap();G.type='drag'}
       else if(tool==='duong'){G.type='road';roadStart=null;tmpRoad=[toW(G.p0),toW(pt)]}
       else G.type='pan'}else return}
   if(G.type==='pan'){V.tx=G.v0.tx+pt.x-G.p0.x;V.ty=G.v0.ty+pt.y-G.p0.y;nhanh()}
+  else if(G.type==='cadlech'){const m=cadMuc(cadDoi);if(m){m.lech=[G.l0[0]+(pt.x-G.p0.x)/V.s,G.l0[1]+(pt.y-G.p0.y)/V.s];nenHen();status()}}
   else if(G.type==='lech'){const l=nenLech();l[0]=G.l0[0]+(pt.x-G.p0.x)/V.s;l[1]=G.l0[1]+(pt.y-G.p0.y)/V.s;nenHen();status()}
   else if(G.type==='drag'){const [x,y]=toW(pt);G.hit.x=x;G.hit.y=y;if(G.hit.auto)G.hit.auto=false;draw()}
   else if(G.type==='road'){tmpRoad[1]=toW(pt);draw()}
@@ -805,7 +942,7 @@ function pEnd(e){
   if(!ptrs.has(e.pointerId))return;ptrs.delete(e.pointerId);
   if(!G)return;
   if(G.lp)clearTimeout(G.lp);
-  if(G.type==='tap'&&ptrs.size===0){if(nenDoi)toast('Đang dời ảnh nền: kéo ảnh cho khớp cột GPS rồi bấm Xong');else if(G.hh)draw();else onTap(G.p0,G.hit)}
+  if(G.type==='tap'&&ptrs.size===0){if(cadDoi)toast('Đang dời bản vẽ CAD: kéo cho khớp rồi bấm Xong');else if(nenDoi)toast('Đang dời ảnh nền: kéo ảnh cho khớp cột GPS rồi bấm Xong');else if(G.hh)draw();else onTap(G.p0,G.hit)}
   if(G.type==='lech'&&ptrs.size===0){const l=nenLech();l[0]=+l[0].toFixed(2);l[1]=+l[1].toFixed(2);save();status()}
   if(G.type==='rdrag'){const r=G.hh.r,L=r.pts.length;
     if(G.vi===0||G.vi===L-1){const sp=snapRoadPt(r.pts[G.vi],r);r.pts[G.vi]=[+sp.pt[0].toFixed(3),+sp.pt[1].toFixed(3)]}
@@ -1370,6 +1507,9 @@ $('#status').addEventListener('click',e=>{
   else if(s==='rx'){roadStart=null;draw()}
   else if(s==='gstop'){if(gpsM&&gpsM.ds.length)gpsXong();else{gpsDung();toast('Đã huỷ đo GPS')}}
   else if(s==='ndx'){nenDoi=false;save();status();const l=nenLech();toast(l[0]||l[1]?'Đã lưu độ dời ảnh nền cho bản vẽ này':'Ảnh nền giữ nguyên chỗ')}
+  else if(s==='cdx'){cadDoi=null;save();status();toast('Đã lưu chỗ đặt bản vẽ CAD')}
+  else if(s==='cd0'){const c=cadMuc(cadDoi);if(c)c.lech=[0,0];cadDoi=null;save();nenVe();status();toast('Bản vẽ CAD về chỗ cũ')}
+  else if(s==='cq-'||s==='cq+'){const c=cadMuc(cadDoi);if(c&&c.goc){c.goc.q=(c.goc.q||0)+(s==='cq+'?1:-1)*Math.PI/180;save();nenVe()}}
   else if(s==='nd0'){const l=nenLech();l[0]=0;l[1]=0;nenDoi=false;save();nenVe();status();toast('Ảnh nền về chỗ cũ')}
 });
 $('#b-undo').addEventListener('click',()=>{const s=undoSt.pop();if(!s){toast('Không còn gì để hoàn tác');return}
@@ -1388,7 +1528,7 @@ function showNen(){
   finishSheet();closeRoad();
   const gg=DB.nenNguon==='gg',mo=DB.nenMo||1,l=nenLech(),dl=l[0]||l[1],m=v=>vn1(Math.abs(v));
   panel.innerHTML=`<div class="pin">
-    <div class="row" style="align-items:center"><h2 style="flex:1 1 auto">Ảnh nền vệ tinh</h2><button class="btn" data-a="close" style="flex:0 0 auto">Đóng</button></div>
+    <div class="row" style="align-items:center"><h2 style="flex:1 1 auto">Ảnh nền & bản vẽ CAD</h2><button class="btn" data-a="close" style="flex:0 0 auto">Đóng</button></div>
     <button class="big${DB.nen?' pri':''}" data-a="nen-bat"><b>${DB.nen?'Đang bật — bấm để tắt':'Đang tắt — bấm để bật'}</b><span>${D.geo?'Ảnh nằm dưới sơ đồ, cần mạng. Ô đã tải giữ trong bộ nhớ, kéo / phóng lại không tải lại.':'Bản vẽ chưa có cột nào lấy GPS — lấy GPS một cột thì ảnh mới hiện.'}</span></button>
     <div class="h3">Nguồn ảnh</div>
     <div class="seg" style="grid-template-columns:repeat(2,minmax(0,1fr))"><button class="btn${gg?'':' pri'}" data-a="nen-src" data-m="esri">Esri (miễn phí)</button><button class="btn${gg?' pri':''}" data-a="nen-src" data-m="gg">Google (cần khoá)</button></div>
@@ -1399,7 +1539,8 @@ function showNen(){
     <div class="h3">Cho ảnh khớp GPS</div>
     <button class="big" data-a="nen-doi"><b>Dời ảnh cho khớp cột GPS</b><span>${dl?`Đang dời ${m(l[0])} m ${l[0]<0?'Tây':'Đông'}, ${m(l[1])} m ${l[1]<0?'Bắc':'Nam'}. `:''}Kéo ảnh cho chân cột / góc nhà trên ảnh trùng cột đã đo GPS. Độ dời lưu riêng cho bản vẽ này và nguồn ảnh này.</span></button>
     ${dl?`<button class="btn" data-a="nen-0">Đưa ảnh về chỗ cũ (bỏ dời)</button>`:''}
-    <p class="note">Ảnh vệ tinh tự nó lệch vài mét so với GPS. Toạ độ cột, khoảng cột, file CAD vẫn lấy theo GPS — dời ảnh chỉ để nhìn cho khớp.</p>
+    <p class="note">Ảnh vệ tinh tự nó lệch vài mét so với GPS. Toạ độ cột, khoảng cột, file CAD vẫn lấy theo GPS — dời ảnh chỉ để nhìn cho khớp.${!gg&&EN.t?` Ảnh Esri chỗ giữa màn hình chụp ngày ${EN.t}; ảnh Google thường mới hơn (cần khoá).`:''}</p>
+    ${cadPhan()}
   </div>`;
   panel.hidden=false;
 }
@@ -1804,7 +1945,7 @@ function giongGop(list,them,ghiDe){
 /* 🎤 KHẨU LỆNH ở CUỐI câu nói (07/11): «điền» · «tiếp» (= Tiếp ▸) · «dừng» (= Dừng) · «đoạn mới» · «nói lại» / «xoá câu»
    → {lenh:'dien'|'tiep'|'dung'|'doan'|'xoa'|null, con: phần câu trước lệnh}. Chỉ nhận ở CUỐI câu, có chốt chặn:
    «tiếp địa», «nối tiếp», «trạm dừng», «xã Quảng Điền» không thành lệnh */
-const BAN_APP='kstuyen-26';
+const BAN_APP='kstuyen-27';
 /* 🎤 chờ bao lâu (ms) rồi mới làm khẩu lệnh cuối câu (07/11 rút ngắn ⚑): máy đã chốt câu → làm gần như ngay;
    còn chữ tạm → chờ ngắn xem có nói tiếp không («tiếp», «dừng» chờ lâu hơn chút vì hay đi tiếp chữ, vd «tiếp địa»);
    gõ tay / 🎤 bàn phím chờ lâu nhất; lai = nghỉ trước khi mở phiên nghe mới */
@@ -1906,6 +2047,174 @@ function giongSuaCu(list){if(!Array.isArray(list))return list;let doi=false;
     if(!m||e.noi.trim().split(/\s+/).length>2||!giongLaTu(m[1]))return e;
     doi=true;return {noi:e.noi,la:m[1].toLowerCase()}});
   return doi?L:list}
+/* ===== BẢN VẼ CAD PHỦ LÊN BẢN ĐỒ (21/11) — đọc file .dxf ngay trên máy, không gửi đi đâu (DWG phải lưu ra DXF trước) =====
+   vnVe84: VN-2000 → WGS-84 (lặp Newton trên VN.tu84 — đúng nghịch đảo phép thuận app đang dùng cho cột GPS).
+   dxfDoc(chuỗi) → {ly:[{n,c,an}], ins, xy:[x,y,…], st:[đầu mỗi nét…, cuối], li, co, kin, tx:[{x,y,h,r,s,li,co,ax,ay}], bb, giua, dem, cat}
+     co: màu RGB 0xRRGGBB; -1 = màu 7 (trắng trên ảnh vệ tinh, đen trên lưới). Nổ block (INSERT, MINSERT, DIMENSION) tới 8 tầng.
+     Bỏ: HATCH, POINT, IMAGE, nét 3D, paper space, lớp tắt / đóng băng thì vẫn đọc nhưng để ẩn (an). */
+function vnVe84(xb,yd,kt=105){
+  let la=xb/110574,lo=kt+(yd-500000)/(111320*Math.cos(la*Math.PI/180));const h=1e-6;
+  for(let k=0;k<8;k++){const f=VN.tu84(la,lo,kt),dx=xb-f[0],dy=yd-f[1];if(Math.abs(dx)+Math.abs(dy)<1e-5)break;
+    const a=VN.tu84(la+h,lo,kt),b=VN.tu84(la,lo+h,kt),j00=(a[0]-f[0])/h,j01=(b[0]-f[0])/h,j10=(a[1]-f[1])/h,j11=(b[1]-f[1])/h,d=j00*j11-j01*j10;
+    la+=(j11*dx-j01*dy)/d;lo+=(-j10*dx+j00*dy)/d}
+  return [la,lo]}
+/* toạ độ giữa bản vẽ (trung vị) trông như VN-2000 múi 3° ở Việt Nam: Đông 150–850 nghìn m, Bắc 0,9–2,7 triệu m */
+function cadKieu(g){return g&&g[0]>=150000&&g[0]<=850000&&g[1]>=900000&&g[1]<=2700000?'vn':'rieng'}
+/* $INSUNITS → mét / đơn vị (0 không ghi đơn vị: ⚑ hiểu là mét) */
+function cadDonVi(u){return {1:0.0254,2:0.3048,4:0.001,5:0.01,6:1,7:1000,14:0.1}[u]||1}
+const ACI=[0,0xFF0000,0xFFFF00,0x00FF00,0x00FFFF,0x0000FF,0xFF00FF,-1,0x808080,0xC0C0C0];
+function aciRgb(i){i=Math.abs(i|0);if(i<10)return i===0?-1:ACI[i];
+  if(i>=250){const v=Math.round(51+(i-250)*40.8);return v*65793}
+  const hue=Math.floor((i-10)/10)*15,k=(i-10)%10,V=[1,1,.8,.8,.6,.6,.5,.5,.3,.3][k],S=k%2?.5:1;
+  const f=(n)=>{const q=(n+hue/60)%6;return V-V*S*Math.max(0,Math.min(q,4-q,1))};
+  return (Math.round(f(5)*255)<<16)|(Math.round(f(3)*255)<<8)|Math.round(f(1)*255)}
+/* chữ trong DXF: \U+XXXX, %%c %%d %%p, mã định dạng MTEXT */
+function cadChu(s,mt){s=String(s||'').replace(/\\U\+([0-9A-Fa-f]{4})/g,(_,h)=>String.fromCharCode(parseInt(h,16)))
+    .replace(/%%[cC]/g,'Ø').replace(/%%[dD]/g,'°').replace(/%%[pP]/g,'±').replace(/%%[uUoOkK]/g,'').replace(/%%%/g,'%');
+  if(mt)s=s.replace(/\\\\/g,'\u0001').replace(/\\[Pp]/g,'\n').replace(/\\S([^;^#/]*)[\^#/]([^;]*);/g,'$1/$2')
+    .replace(/\\[ACcFfHhQTWp][^;\\{}]*;/g,'').replace(/\\[LlOoKkNX]/g,'').replace(/\\~/g,' ').replace(/[{}]/g,'').replace(/\u0001/g,'\\');
+  return s.trim()}
+/* chữ TCVN3 (ABC, font .Vn… / vnromanc.shx): DXF UTF-8 mang byte TCVN3 qua bảng 1252 (U+00A1–U+00FE); DXF ANSI đọc bằng 1258 thì vài byte
+   thành Ă Đ Ơ Ư ă đ ơ ư hoặc dấu ghép — gom cả hai. Font …H là font chữ hoa: đổi xong viết hoa. Chữ đã có dấu Unicode thì giữ nguyên. */
+const TC3=(()=>{const m=new Map(),d=(a,b)=>{for(let k=0;k<b.length;k++)m.set(String.fromCharCode(a+k),b[k])};
+  d(0xA1,'ĂÂÊÔƠƯĐăâêôơưđ');d(0xB5,'àảãáạ');d(0xBB,'ằẳẵắ');d(0xC6,'ặầẩẫấậè');d(0xCE,'ẻẽéẹềểễếệìỉ');d(0xDC,'ĩíịò');d(0xE1,'ỏõóọồổỗốộờởỡớợù');
+  d(0xF1,'ủũúụừửữứựỳỷỹýỵ');
+  for(const [u,c] of [['Ă',0xC3],['̀',0xCC],['Đ',0xD0],['̉',0xD2],['Ơ',0xD5],['Ư',0xDD],['̃',0xDE],['ă',0xE3],
+    ['́',0xEC],['đ',0xF0],['̣',0xF2],['ơ',0xF5],['ư',0xFD]])m.set(u,m.get(String.fromCharCode(c)));return m})();
+function tcvn3(s,hoa){s=String(s||'');if(/[Ạ-ỹ]/.test(s))return s;let r='';for(const ch of s)r+=TC3.get(ch)||ch;return hoa?r.toUpperCase():r}
+function fontTC(f){f=String(f||'').trim().replace(/\.(shx|ttf|ttc|otf)$/i,'').trim();const tc=/^(\.vn|vn(?!i)|tv)/i.test(f);return {tc,hoa:tc&&/h$/i.test(f)}}
+function dxfDoc(s,o){
+  o=o||{};const MAXV=o.maxV||4e6,MAXT=o.maxT||30000;
+  if(/^AutoCAD Binary DXF/.test(s.slice(0,22)))throw new Error('DXF nhị phân — lưu lại dạng DXF chữ (ASCII)');
+  let i=s.charCodeAt(0)===0xFEFF?1:0,gc=0,gv='',have=false;const n=s.length;
+  function doc(){if(i>=n)return false;let j=s.indexOf('\n',i);if(j<0)j=n;gc=parseInt(s.slice(i,j),10);i=j+1;
+    j=s.indexOf('\n',i);if(j<0)j=n;gv=s.slice(i,j);if(gv.charCodeAt(gv.length-1)===13)gv=gv.slice(0,-1);i=j+1;return !isNaN(gc)||doc()}
+  function ent(){const e={t:gv.trim().toUpperCase(),a:Object.create(null)};
+    while((have=doc())&&gc!==0)(e.a[gc]||(e.a[gc]=[])).push(gv);return e}
+  const g=(e,c,d)=>{const v=e.a[c];return v?v[0]:d},gn=(e,c,d)=>{const v=e.a[c];if(!v)return d;const x=parseFloat(v[0]);return isFinite(x)?x:d},
+    ga=(e,c)=>(e.a[c]||[]).map(Number);
+  /* lớp */
+  const LY=[],LYI=new Map();
+  function lop(nm){const k=String(nm||'0').trim().toUpperCase();let x=LYI.get(k);if(x==null){x=LY.length;LY.push({n:String(nm||'0').trim()||'0',c:7,an:false});LYI.set(k,x)}return x}
+  const BL=new Map();let ins=0;
+  /* đầu ra */
+  const XY=[],ST=[],LI=[],CO=[],KIN=[],TX=[];let cat=false;const dem={net:0,chu:0,block:0,bo:{}};
+  let cur=null;
+  function mo(li,co,kin){if(XY.length/2>=MAXV){cat=true;cur=null;return false}cur={li,co,kin,a:XY.length};return true}
+  function dong(){if(!cur)return;const m=(XY.length-cur.a)/2;if(m>=2){ST.push(cur.a/2);LI.push(cur.li);CO.push(cur.co);KIN.push(cur.kin?1:0);dem.net++}else XY.length=cur.a;cur=null}
+  const ap=(M,x,y)=>[M[0]*x+M[2]*y+M[4],M[1]*x+M[3]*y+M[5]];
+  const mul=(A,B)=>[A[0]*B[0]+A[2]*B[1],A[1]*B[0]+A[3]*B[1],A[0]*B[2]+A[2]*B[3],A[1]*B[2]+A[3]*B[3],A[0]*B[4]+A[2]*B[5]+A[4],A[1]*B[4]+A[3]*B[5]+A[5]];
+  const KC=new Map(),tcv=(e,t,raw)=>{const k=KC.get(g(e,7,'STANDARD').trim().toUpperCase());
+    return (k&&k.tc)||/\\f\.?vn(?!i)/i.test(raw||'')?tcvn3(t,k&&k.hoa):t};
+  const ID=[1,0,0,1,0,0],LAT=[-1,0,0,1,0,0];
+  function diem(M,x,y){if(!cur)return;const p=ap(M,x,y);if(isFinite(p[0])&&isFinite(p[1]))XY.push(p[0],p[1])}
+  /* cung theo độ phình (bulge) giữa 2 đỉnh: thêm các điểm giữa (không gồm 2 đầu) */
+  function phinh(M,x1,y1,x2,y2,b){if(!b||Math.abs(b)<1e-9)return;const c=Math.hypot(x2-x1,y2-y1);if(c<1e-12)return;
+    const th=4*Math.atan(b),r=c/(2*Math.sin(th/2)),d=r*Math.cos(th/2),ux=(x2-x1)/c,uy=(y2-y1)/c,cx=(x1+x2)/2-uy*d,cy=(y1+y2)/2+ux*d,
+      a1=Math.atan2(y1-cy,x1-cx),R=Math.abs(r),m=Math.max(2,Math.min(90,Math.ceil(Math.abs(th)/(Math.PI/36))));
+    for(let k=1;k<m;k++){const t=a1+th*k/m;diem(M,cx+R*Math.cos(t),cy+R*Math.sin(t))}}
+  function cungTron(M,cx,cy,r,a0,a1,li,co,kin){if(!(r>0))return;let sw=a1-a0;while(sw<=0)sw+=2*Math.PI;if(kin)sw=2*Math.PI;
+    const m=Math.max(8,Math.min(180,Math.ceil(sw/(Math.PI/36))));if(!mo(li,co,kin))return;
+    for(let k=0;k<=(kin?m-1:m);k++){const t=a0+sw*k/m;diem(M,cx+r*Math.cos(t),cy+r*Math.sin(t))}dong()}
+  function daDinh(M,V,kin,li,co){   /* V: [[x,y,bulge]…] */
+    if(V.length<2||!mo(li,co,kin))return;
+    for(let k=0;k<V.length;k++){const p=V[k];diem(M,p[0],p[1]);const q=V[k+1]||(kin?V[0]:null);if(q)phinh(M,p[0],p[1],q[0],q[1],p[2])}
+    dong()}
+  function bspline(M,p,U,P,W,li,co){const nc=P.length;if(!nc||!mo(li,co,false))return;
+    if(U.length!==nc+p+1||p<1){for(const q of P)diem(M,q[0],q[1]);dong();return}
+    const t0=U[p],t1=U[nc],ns=Math.min(400,Math.max(16,nc*10));
+    for(let k=0;k<=ns;k++){const t=t0+(t1-t0)*k/ns;let sp=p;while(sp<nc-1&&U[sp+1]<=t)sp++;
+      const d=[];for(let j=0;j<=p;j++){const q=P[sp-p+j],w=W[sp-p+j]||1;d.push([q[0]*w,q[1]*w,w])}
+      for(let r=1;r<=p;r++)for(let j=p;j>=r;j--){const ii=sp-p+j,den=U[ii+p-r+1]-U[ii],al=den?(t-U[ii])/den:0;
+        for(let c=0;c<3;c++)d[j][c]=(1-al)*d[j-1][c]+al*d[j][c]}
+      diem(M,d[p][0]/d[p][2],d[p][1]/d[p][2])}
+    dong()}
+  function chu(M,x,y,h,r,s,li,co,ax,ay){if(!s||!(h>0))return;if(TX.length>=MAXT){cat=true;return}
+    const p=ap(M,x,y),vx=M[0]*Math.cos(r)+M[2]*Math.sin(r),vy=M[1]*Math.cos(r)+M[3]*Math.sin(r),k=Math.sqrt(Math.abs(M[0]*M[3]-M[1]*M[2]));
+    if(!isFinite(p[0])||!isFinite(p[1]))return;
+    TX.push({x:p[0],y:p[1],h:h*k,r:Math.atan2(vy,vx),s,li,co,ax:ax||0,ay:ay||0});dem.chu++}
+  /* màu + lớp thật của đối tượng (lớp 0 / BYBLOCK trong block lấy theo INSERT cha) */
+  function mau(e,lk,ck){let L=g(e,8,'0').trim();if(L==='0'&&lk!=null)L=lk;const li=lop(L),ly=LY[li];
+    const tc=e.a[420];if(tc)return {L,li,co:(+tc[0])&0xFFFFFF};
+    const c=gn(e,62,256);let co;
+    if(c===256)co=ly.tc!=null?ly.tc:aciRgb(ly.c);else if(c===0)co=ck!=null?ck:(ly.tc!=null?ly.tc:aciRgb(ly.c));else co=aciRgb(c);
+    return {L,li,co}}
+  /* xử lý một dãy đối tượng (ENTITIES hoặc thân block) — giữ trạng thái POLYLINE … VERTEX … SEQEND */
+  function bo(M,lk,ck,sau){let pl=null;
+    return function(e){const t=e.t;
+      if(pl){if(t==='VERTEX'){const f=gn(e,70,0);if(!(f&16)&&!(f&128))pl.v.push([gn(e,10,0),gn(e,20,0),gn(e,42,0)]);return}
+        const P=pl;pl=null;if(!P.bo)daDinh(P.M,P.v,P.kin,P.m.li,P.m.co);if(t==='SEQEND')return}
+      if(gn(e,67,0)===1||gn(e,60,0)===1)return;
+      const az=gn(e,230,1),Mo=az<0?mul(M,LAT):M;
+      switch(t){
+        case 'LINE':{const m=mau(e,lk,ck);if(mo(m.li,m.co,false)){diem(M,gn(e,10,0),gn(e,20,0));diem(M,gn(e,11,0),gn(e,21,0));dong()}return}
+        case 'LWPOLYLINE':{const m=mau(e,lk,ck),X=ga(e,10),Y=ga(e,20),B=[];
+          /* độ phình 42 chỉ ghi khi ≠ 0: đọc lại theo thứ tự mã để gán đúng đỉnh */
+          let k=-1;const raw=e.raw;if(raw){for(const [c,v] of raw){if(c===10)k++;else if(c===42&&k>=0)B[k]=+v}}else{const b=ga(e,42);for(let q=0;q<b.length;q++)B[q]=b[q]}
+          const V=X.map((x,q)=>[x,Y[q]||0,B[q]||0]);daDinh(Mo,V,(gn(e,70,0)&1)===1,m.li,m.co);return}
+        case 'POLYLINE':{const f=gn(e,70,0);if(f&(16|64)){pl={M:Mo,v:[],kin:false,m:{li:-1},bo:true};return}
+          const m=mau(e,lk,ck);pl={M:(f&8)?M:Mo,v:[],kin:(f&1)===1,m};return}
+        case 'CIRCLE':{const m=mau(e,lk,ck);cungTron(Mo,gn(e,10,0),gn(e,20,0),gn(e,40,0),0,2*Math.PI,m.li,m.co,true);return}
+        case 'ARC':{const m=mau(e,lk,ck),r=Math.PI/180;cungTron(Mo,gn(e,10,0),gn(e,20,0),gn(e,40,0),gn(e,50,0)*r,gn(e,51,360)*r,m.li,m.co,false);return}
+        case 'ELLIPSE':{const m=mau(e,lk,ck),cx=gn(e,10,0),cy=gn(e,20,0),mx=gn(e,11,1),my=gn(e,21,0),q=gn(e,40,1);
+          let t0=gn(e,41,0),t1=gn(e,42,2*Math.PI);if(t1<=t0)t1+=2*Math.PI;const kin=Math.abs(t1-t0-2*Math.PI)<1e-6;
+          const nx=az<0?my*q:-my*q,ny=az<0?-mx*q:mx*q,ns=Math.max(16,Math.min(180,Math.ceil((t1-t0)/(Math.PI/36))));
+          if(mo(m.li,m.co,kin)){for(let k=0;k<=(kin?ns-1:ns);k++){const t=t0+(t1-t0)*k/ns;diem(M,cx+mx*Math.cos(t)+nx*Math.sin(t),cy+my*Math.cos(t)+ny*Math.sin(t))}dong()}return}
+        case 'SPLINE':{const m=mau(e,lk,ck),X=ga(e,10),Y=ga(e,20),FX=ga(e,11),FY=ga(e,21);
+          if(!X.length&&FX.length){daDinh(M,FX.map((x,q)=>[x,FY[q]||0,0]),false,m.li,m.co);return}
+          bspline(M,gn(e,71,3),ga(e,40),X.map((x,q)=>[x,Y[q]||0]),ga(e,41),m.li,m.co);return}
+        case 'LEADER':{const m=mau(e,lk,ck),X=ga(e,10),Y=ga(e,20);daDinh(M,X.map((x,q)=>[x,Y[q]||0,0]),false,m.li,m.co);return}
+        case 'SOLID':case 'TRACE':case '3DFACE':{const m=mau(e,lk,ck),MM=t==='3DFACE'?M:Mo,P=[[10,20],[11,21],[13,23],[12,22]].map(([a,b])=>[gn(e,a,NaN),gn(e,b,NaN),0]).filter(p=>isFinite(p[0])&&isFinite(p[1]));
+          if(t==='3DFACE'){const q=P[2];P[2]=P[3];P[3]=q}daDinh(MM,P.filter(Boolean),true,m.li,m.co);return}
+        case 'TEXT':case 'ATTRIB':{if(t==='ATTRIB'&&(gn(e,70,0)&1))return;const m=mau(e,lk,ck),ax=gn(e,72,0),ay=gn(e,t==='ATTRIB'?74:73,0),
+            dung=(ax||ay)&&e.a[11],x=dung?gn(e,11,0):gn(e,10,0),y=dung?gn(e,21,0):gn(e,20,0);
+          chu(Mo,x,y,gn(e,40,1),gn(e,50,0)*Math.PI/180,tcv(e,cadChu(g(e,1,''))),m.li,m.co,ax===2?2:(ax===1||ax===4||ax===3||ax===5)?1:0,ax===4?2:ay);return}
+        case 'MTEXT':{const m=mau(e,lk,ck),raw=(e.a[3]||[]).join('')+g(e,1,''),s=tcv(e,cadChu(raw,true),raw),at=gn(e,71,1),
+            r=e.a[11]?Math.atan2(gn(e,21,0),gn(e,11,1)):gn(e,50,0);
+          chu(M,gn(e,10,0),gn(e,20,0),gn(e,40,1),r,s,m.li,m.co,(at-1)%3,[3,2,1][Math.floor((at-1)/3)]||3);return}
+        case 'INSERT':{const nm=g(e,2,'').trim().toUpperCase(),b=BL.get(nm);if(!b||sau>=8)return;const m=mau(e,lk,ck);
+          const x=gn(e,10,0),y=gn(e,20,0),sx=gn(e,41,1),sy=gn(e,42,1),q=gn(e,50,0)*Math.PI/180,nc=Math.max(1,gn(e,70,1)),nr=Math.max(1,gn(e,71,1)),
+            dc=gn(e,44,0),dr=gn(e,45,0),c=Math.cos(q),sn=Math.sin(q);
+          if(nc*nr>10000)return;dem.block++;
+          for(let r=0;r<nr;r++)for(let k=0;k<nc;k++){
+            const L=[c*sx,sn*sx,-sn*sy,c*sy,0,0];L[4]=x+c*(k*dc)-sn*(r*dr)-(L[0]*b.bx+L[2]*b.by);L[5]=y+sn*(k*dc)+c*(r*dr)-(L[1]*b.bx+L[3]*b.by);
+            veBlock(b,mul(Mo,L),m.L,m.co,sau+1)}
+          return}
+        case 'DIMENSION':{const nm=g(e,2,'').trim().toUpperCase(),b=BL.get(nm);if(!b||sau>=8)return;const m=mau(e,lk,ck);veBlock(b,M,m.L,m.co,sau+1);return}
+        case 'SEQEND':case 'ATTDEF':case 'VIEWPORT':return;
+        default:dem.bo[t]=(dem.bo[t]||0)+1}
+    }}
+  function veBlock(b,M,lk,ck,sau){const f=bo(M,lk,ck,sau);for(const e of b.ents)f(e);f({t:'SEQEND',a:{}})}
+  /* ENTITIES / thân block: giữ cả thứ tự mã (độ phình LWPOLYLINE) */
+  function entR(){const e={t:gv.trim().toUpperCase(),a:Object.create(null),raw:null};let raw=null;
+    while((have=doc())&&gc!==0){(e.a[gc]||(e.a[gc]=[])).push(gv);if(e.t==='LWPOLYLINE'&&(gc===10||gc===42))(raw||(raw=[])).push([gc,gv])}
+    e.raw=raw;return e}
+  have=doc();
+  while(have){
+    if(gc===0&&gv.trim()==='SECTION'){have=doc();const sec=gc===2?gv.trim().toUpperCase():'';have=doc();
+      const het=()=>gc===0&&gv.trim()==='ENDSEC';
+      if(sec==='HEADER'){while(have&&!het()){if(gc===9&&gv.trim()==='$INSUNITS'){have=doc();if(gc===70)ins=+gv}else have=doc()}}
+      else if(sec==='TABLES'){while(have&&!het()){if(gc!==0){have=doc();continue}const e=ent();
+        if(e.t==='LAYER'){const li=lop(g(e,2,'0')),c=gn(e,62,7),f=gn(e,70,0),L=LY[li];L.c=Math.abs(c)||7;L.an=c<0||(f&1)===1;if(e.a[420])L.tc=(+e.a[420][0])&0xFFFFFF}
+        else if(e.t==='STYLE')KC.set(g(e,2,'').trim().toUpperCase(),fontTC(g(e,3,'')||(e.a[1000]||[])[0]||''))}}
+      else if(sec==='BLOCKS'){let b=null;while(have&&!het()){if(gc!==0){have=doc();continue}const e=entR();
+        if(e.t==='BLOCK'){const nm=g(e,2,'').trim().toUpperCase();b=/^\*(PAPER|MODEL)_SPACE/.test(nm)?null:{bx:gn(e,10,0),by:gn(e,20,0),ents:[]};if(b)BL.set(nm,b)}
+        else if(e.t==='ENDBLK')b=null;else if(b)b.ents.push(e)}}
+      else if(sec==='ENTITIES'){const f=bo(ID,null,null,0);while(have&&!het()){if(gc!==0){have=doc();continue}f(entR())}f({t:'SEQEND',a:{}})}
+      else while(have&&!het())have=doc();
+      continue}
+    have=doc()}
+  ST.push(XY.length/2);
+  /* hộp bao + điểm giữa (trung vị đầu mỗi nét — không bị vật lạc ở 0,0 kéo lệch) */
+  let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+  for(let k=0;k<XY.length;k+=2){const x=XY[k],y=XY[k+1];if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y}
+  for(const t of TX){if(t.x<x0)x0=t.x;if(t.x>x1)x1=t.x;if(t.y<y0)y0=t.y;if(t.y>y1)y1=t.y}
+  const mx=[],my=[],bu=Math.max(1,Math.floor((ST.length-1)/2000));
+  for(let k=0;k<ST.length-1;k+=bu){mx.push(XY[2*ST[k]]);my.push(XY[2*ST[k]+1])}
+  if(!mx.length)for(const t of TX){mx.push(t.x);my.push(t.y)}
+  const tv=a=>{const b=a.slice().sort((p,q)=>p-q);return b.length?b[b.length>>1]:0};
+  return {ly:LY.map(L=>({n:L.n,c:L.c,an:!!L.an})),ins,xy:XY,st:ST,li:LI,co:CO,kin:KIN,tx:TX,bb:[x0,y0,x1,y1],giua:[tv(mx),tv(my)],dem,cat};
+}
 /* === HẾT HÀM THUẦN === */
 /* 📖 nâng cấp một lần lúc mở app: cụm dạy bản cũ «cuộc» → «ghi chú cột» thành thay chữ (giongSuaCu) — lưu ở lần lưu sau */
 {const L=giongSuaCu(DB.giongTu);if(L!==DB.giongTu)DB.giongTu=L}
@@ -2348,6 +2657,19 @@ panel.addEventListener('click',e=>{
   else if(a==='nen-src'){DB.nenNguon=b.dataset.m;if(DB.nenNguon==='gg')ggDatLai();saveNow();showNen();draw()}
   else if(a==='nen-mo'){DB.nenMo=+b.dataset.m;saveNow();showNen();nenVe()}
   else if(a==='nen-doi'){closePanel();if(!D.geo){toast('Lấy GPS ít nhất một cột trước');return}if(!DB.nen)nenBat(true);nenDoi=true;draw();toast('Kéo ảnh cho khớp cột GPS, xong bấm Xong ở trên')}
+  else if(a==='cad-bat'){const m=cadMuc(id);if(m){m.bat=!m.bat;save();showNen();nenVe()}}
+  else if(a==='cad-lop')showCadLop(id);
+  else if(a==='cad-kieu'){const m=cadMuc(id),R=CR.get(id);if(!m||!R||!R.r)return;snap();m.lech=[0,0];
+    if(m.kieu==='vn'){m.kieu='rieng';m.goc={x:(W/2-V.tx)/V.s,y:(H/2-V.ty)/V.s,s:cadDonVi(R.r.ins),q:0};toast('Bản vẽ đặt giữa màn hình — bấm Dời kéo cho khớp')}
+    else{m.kieu='vn';delete m.goc;if(!D.geo){const q=vnVe84(R.r.O[1],R.r.O[0],ktt());geoToXY(q[0],q[1],true)}R.affK=null;toast('Bản vẽ theo toạ độ VN-2000')}
+    save();showNen();nenVe()}
+  else if(a==='cad-lop-xong'){showNen();nenVe()}
+  else if(a==='cad-ly'){const m=cadMuc(id),i=+b.dataset.m;if(m){const s=new Set(m.an||[]);s.has(i)?s.delete(i):s.add(i);m.an=[...s];save();nenVe();showCadLop(id)}}
+  else if(a==='cad-ly-het'){const m=cadMuc(id),R=CR.get(id);if(m&&R&&R.r){m.an=b.dataset.m==='1'?[]:R.r.ly.map((_,i)=>i);save();nenVe();showCadLop(id)}}
+  else if(a==='cad-doi'){const m=cadMuc(id);if(!m)return;if(m.kieu==='vn'&&!D.geo){toast('Bản vẽ chưa có chỗ trên bản đồ');return}m.bat=true;closePanel();nenDoi=false;cadDoi=id;draw();toast('Kéo bản vẽ CAD cho khớp, xong bấm Xong ở trên')}
+  else if(a==='cad-xoa'){const m=cadMuc(id);if(m&&confirm(`Bỏ bản vẽ CAD «${m.ten}» khỏi tuyến này?`)){cadXoa(id);showNen()}}
+  else if(a==='cad-mo'){DB.cadMo=+b.dataset.m;saveNow();showNen();nenVe()}
+  else if(a==='cad-mau'){DB.cadMau=b.dataset.m;saveNow();showNen();nenVe()}
   else if(a==='nen-0'){const l=nenLech();l[0]=0;l[1]=0;save();showNen();nenVe();toast('Ảnh nền về chỗ cũ')}
   else if(a==='gt-luu'){const n=$('#gt-noi').value.trim(),la=$('#gt-la').value.trim();
     if(!giongKhoa(n)||!la){toast('Gõ đủ «Khi nói» và «Hiểu là»');return}
@@ -2364,11 +2686,12 @@ panel.addEventListener('keydown',e=>{if(e.key!=='Enter')return;
 panel.addEventListener('change',async e=>{
   if(e.target.id==='gg-key'){DB.ggKey=e.target.value.trim();DB.ggPhien=null;ggDatLai();saveNow();draw();
     toast(DB.ggKey?'Đã lưu khoá Google — đang mở phiên ảnh':'Đã xoá khoá Google — dùng ảnh Esri');setTimeout(()=>{if(!panel.hidden&&$('#gg-key'))showNen()},2500);return}
-  if(e.target.id==='ex-ktt'){const o=e.target.selectedOptions[0];
+  if(e.target.id==='cad-in'){const f=e.target.files&&e.target.files[0];if(f){closePanel();await cadNap(f)}return}
+  if(e.target.id==='ex-ktt'||e.target.id==='cad-ktt'){const o=e.target.selectedOptions[0];
     if(e.target.value==='khac'){const t=prompt('Kinh tuyến trục (độ thập phân, vd 105 hoặc 104.75)',String(ktt()));const v=parseFloat(String(t||'').replace(',','.'));
       if(t!==null&&isFinite(v)&&v>=100&&v<=112){DB.ktt=v;DB.tinh=''}else if(t!==null)toast('Kinh tuyến trục phải trong khoảng 100–112°')}
     else{DB.ktt=+e.target.value;DB.tinh=o.textContent.split(' — ')[0]}
-    saveNow();showExport();toast(`VN-2000: kinh tuyến trục ${kttTen(ktt())}`);return}
+    saveNow();if(e.target.id==='cad-ktt'){showNen();nenVe()}else showExport();toast(`VN-2000: kinh tuyến trục ${kttTen(ktt())}`);return}
   const fl=e.target.files;if(!fl||!fl.length)return;
   if(e.target.id==='gop'){
     snap();const kq=[];
@@ -2386,7 +2709,7 @@ $('#b-list').addEventListener('click',showList);
 $('#b-export').addEventListener('click',showExport);
 $('#b-table').addEventListener('click',showTable);
 $('#b-gpsp').addEventListener('click',()=>{nanCho=null;showGps()});
-function switchTo(d){saveNow();D=d;D.poles=D.poles||[];D.roads=D.roads||[];D.mocs=D.mocs||[];D.edges=D.edges||[];D.mocDo=D.mocDo||[];mocCho=null;nanCho=null;DB.cur=d.id;undoSt=[];editId=null;F=null;noiA=null;selRoad=null;sheet.hidden=true;rsheet.hidden=true;V=D.view||fitView(W,H,40);saveNow();title();draw()}
+function switchTo(d){saveNow();cadDoi=null;D=d;D.poles=D.poles||[];D.roads=D.roads||[];D.mocs=D.mocs||[];D.edges=D.edges||[];D.mocDo=D.mocDo||[];mocCho=null;nanCho=null;DB.cur=d.id;undoSt=[];editId=null;F=null;noiA=null;selRoad=null;sheet.hidden=true;rsheet.hidden=true;V=D.view||fitView(W,H,40);saveNow();title();draw()}
 
 /* ================= toast / khởi động ================= */
 let toastT=null;

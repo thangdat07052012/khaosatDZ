@@ -4,7 +4,7 @@ const fs=require('fs'),path=require('path');
 const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
 const a=html.indexOf('const VN=(()=>{'),b=html.indexOf('/* === HẾT HÀM THUẦN === */');
 if(a<0||b<0)throw new Error('Không thấy đoạn hàm thuần');
-const T=new Function(html.slice(a,b)+';return {VN,haversine,gpsLoc,gpsXongSom,gpsMau,hcTinh,docSo,mocNhap,nanTuyen,GPS_CHE_DO,NEN,chuSo,giongMa,giongDay,giongKhoa,giongGop,giongLenh,giongChuan,giongCho,GIONG_CHO,giongSua,GIONG_SAI,giongLaTu,giongSuaCu,giongLaLenh};')();
+const T=new Function(html.slice(a,b)+';return {VN,haversine,gpsLoc,gpsXongSom,gpsMau,hcTinh,docSo,mocNhap,nanTuyen,GPS_CHE_DO,NEN,chuSo,giongMa,giongDay,giongKhoa,giongGop,giongLenh,giongChuan,giongCho,GIONG_CHO,giongSua,GIONG_SAI,giongLaTu,giongSuaCu,giongLaLenh,vnVe84,dxfDoc,cadKieu,cadDonVi,aciRgb,cadChu,tcvn3,fontTC};')();
 let nOk=0,nSai=0;
 const ok=(c,m)=>{if(c){nOk++;console.log('  ✓ '+m)}else{nSai++;console.log('  ✗ '+m)}};
 // số ngẫu nhiên có hạt giống (kết quả lặp lại được)
@@ -294,5 +294,55 @@ console.log('16. (07/11) Cụm hay nghe sai có sẵn, khẩu lệnh nghe nhầm
   ok(/HẾT HÀM THUẦN === \*\/\r?\n[^\n]*\r?\n\{const L=giongSuaCu\(DB\.giongTu\);if\(L!==DB\.giongTu\)DB\.giongTu=L\}/.test(html)&&/function giongNhap\(L\)\{[^\n]*L=giongSuaCu\(L\)/.test(html),'mở app / mở file .json: cụm dạy bản cũ lưu nhầm ghi chú tự nâng cấp (giongSuaCu)');
   ok(/data-a="gs-bat"/.test(html)&&/a==='gs-bat'/.test(html)&&/GIONG_SAI\.map\(/.test(ngoai),'📖 hiện danh sách cụm có sẵn, bấm tắt / bật từng cụm (DB.giongBo)');
   ok(!/giongBo/.test(html.slice(html.indexOf('function xuatJson'),html.indexOf('function xuatJson')+1500)),'giongBo (cụm tắt) chỉ lưu trên máy, không đi kèm file .json');
+}
+console.log('17. Bản vẽ CAD phủ lên: VN-2000 → WGS-84, đọc DXF');
+{let maxE=0;for(const [la,lo] of [[19.80,105.78],[20.35,105.20],[19.40,106.05]]){const v=T.VN.tu84(la,lo,105),q=T.vnVe84(v[0],v[1],105),w=T.VN.tu84(q[0],q[1],105);
+    maxE=Math.max(maxE,Math.hypot(w[0]-v[0],w[1]-v[1]),Math.abs(q[0]-la)*110574,Math.abs(q[1]-lo)*105000)}
+  ok(maxE<0.001,`vnVe84 ngược đúng VN.tu84 (sai lớn nhất ${(maxE*1000).toFixed(3)} mm)`);
+  ok(T.cadKieu([588000,2190000])==='vn'&&T.cadKieu([0,0])==='rieng'&&T.cadKieu([12000,5000])==='rieng','cadKieu: toạ độ VN-2000 / toạ độ riêng');
+  ok(T.cadDonVi(4)===0.001&&T.cadDonVi(6)===1&&T.cadDonVi(0)===1,'cadDonVi: mm → 0,001; m → 1; không ghi → 1');
+  ok(T.aciRgb(1)===0xFF0000&&T.aciRgb(7)===-1&&T.aciRgb(3)===0x00FF00&&T.aciRgb(250)===0x333333&&T.aciRgb(255)===0xFFFFFF&&T.aciRgb(10)===0xFF0000&&T.aciRgb(11)===0xFF8080,'aciRgb: bảng màu AutoCAD');
+  ok(T.cadChu('C\\U+1ED9t %%c12')==='Cột Ø12'&&T.cadChu('{\\fArial|b0;Đường}\\PQH 1/500',true)==='Đường\nQH 1/500','cadChu: \\U+, %%c, mã MTEXT');
+  const L=a=>a.map(x=>String(x)).join('\n')+'\n';
+  const dxf=L([0,'SECTION',2,'HEADER',9,'$INSUNITS',70,6,0,'ENDSEC',
+    0,'SECTION',2,'TABLES',0,'TABLE',2,'LAYER',0,'LAYER',2,'QH_DUONG',70,0,62,1,0,'LAYER',2,'AN',70,1,62,3,0,'LAYER',2,'TAT',70,0,62,-5,0,'ENDTAB',0,'ENDSEC',
+    0,'SECTION',2,'BLOCKS',0,'BLOCK',8,'0',2,'B1',70,0,10,0,20,0,0,'LINE',8,'0',62,0,10,0,20,0,11,1,21,0,0,'INSERT',8,'0',2,'B2',10,1,20,0,0,'ENDBLK',
+      0,'BLOCK',8,'0',2,'B2',70,0,10,0,20,0,0,'CIRCLE',8,'0',10,0,20,0,40,0.5,0,'ENDBLK',0,'ENDSEC',
+    0,'SECTION',2,'ENTITIES',
+      0,'LINE',8,'QH_DUONG',10,588000,20,2190000,11,588100,21,2190000,
+      0,'LWPOLYLINE',8,'AN',90,2,70,1,10,0,20,0,42,1,10,10,20,0,
+      0,'INSERT',8,'QH_DUONG',62,2,2,'B1',10,10,20,10,41,2,42,2,50,90,
+      0,'POLYLINE',8,'TAT',66,1,70,0,0,'VERTEX',8,'TAT',10,0,20,0,0,'VERTEX',8,'TAT',10,5,20,5,0,'SEQEND',
+      0,'TEXT',8,'QH_DUONG',10,5,20,5,40,2.5,1,'Đ\\U+01B0\\U+1EDDng',50,0,
+      0,'MTEXT',8,'QH_DUONG',10,0,20,0,40,3,71,1,1,'L\\U+00F4\\PA1',
+      0,'HATCH',8,'QH_DUONG',
+      0,'LINE',8,'QH_DUONG',67,1,10,0,20,0,11,9,21,9,
+    0,'ENDSEC',0,'EOF']);
+  const k=T.dxfDoc(dxf.replace(/\n/g,'\r\n')),ly=n=>k.ly.findIndex(l=>l.n===n);
+  ok(k.ins===6&&k.ly[ly('AN')].an&&k.ly[ly('TAT')].an&&!k.ly[ly('QH_DUONG')].an,'DXF: $INSUNITS, lớp đóng băng / tắt để ẩn');
+  ok(k.st.length-1===5,`DXF: 5 nét (LINE, LWPOLYLINE, LINE + CIRCLE trong block lồng, POLYLINE), bỏ HATCH và nét paper space (đếm ${k.st.length-1})`);
+  const net=i=>{const a=k.st[i],b=k.st[i+1],r=[];for(let j=a;j<b;j++)r.push([k.xy[2*j],k.xy[2*j+1]]);return r};
+  ok(net(0).length===2&&net(0)[1][0]===588100&&k.co[0]===0xFF0000,'DXF: LINE toạ độ thật, màu theo lớp (đỏ)');
+  const p1=net(1),cao=Math.min(...p1.map(p=>p[1]));
+  ok(k.kin[1]===1&&p1.length>10&&Math.abs(cao+5)<0.05,`DXF: LWPOLYLINE độ phình 1 = nửa vòng tròn bán kính 5 xuống dưới (thấp nhất ${cao.toFixed(3)})`);
+  const p2=net(2);
+  ok(Math.hypot(p2[0][0]-10,p2[0][1]-10)<1e-9&&Math.hypot(p2[1][0]-10,p2[1][1]-12)<1e-9&&k.co[2]===0xFFFF00,'DXF: INSERT xoay 90°, tỷ lệ 2 → nét (10,10)–(10,12), màu BYBLOCK theo INSERT (vàng)');
+  const p3=net(3),cx=p3.reduce((s,p)=>s+p[0],0)/p3.length,cy=p3.reduce((s,p)=>s+p[1],0)/p3.length;
+  ok(Math.hypot(cx-10,cy-12)<0.01&&Math.abs(Math.hypot(p3[0][0]-cx,p3[0][1]-cy)-1)<0.01&&k.li[3]===ly('QH_DUONG'),'DXF: block lồng 2 tầng: vòng tròn tâm (10,12) bán kính 1, lớp 0 lấy lớp INSERT');
+  ok(k.li[4]===ly('TAT')&&net(4).length===2,'DXF: POLYLINE + VERTEX + SEQEND');
+  ok(k.tx.length===2&&k.tx[0].s==='Đường'&&k.tx[0].h===2.5&&k.tx[1].s==='Lô\nA1'&&k.tx[1].ay===3,`DXF: TEXT \\U+ ra chữ có dấu, MTEXT \\P xuống dòng, gắn trên-trái (${JSON.stringify(k.tx.map(t=>t.s))})`);
+  ok(k.dem.bo.HATCH===1,'DXF: đếm loại bỏ qua (HATCH)');
+  let loi='';try{T.dxfDoc('AutoCAD Binary DXF\r\n\u001a')}catch(e){loi=e.message}
+  ok(/nhị phân/.test(loi),'DXF nhị phân: báo rõ');
+  ok(T.tcvn3('Céng hoµ x· héi chñ nghÜa ViÖt Nam')==='Cộng hoà xã hội chủ nghĩa Việt Nam'&&T.tcvn3('§­êng d©y',true)==='ĐƯỜNG DÂY'&&T.tcvn3('Đường')==='Đường','tcvn3: bảng TCVN3 → Unicode, font …H viết hoa, chữ Unicode giữ nguyên');
+  ok(T.fontTC('.VnTime').tc&&!T.fontTC('.VnTime').hoa&&T.fontTC('.VnArial NarrowH').hoa&&T.fontTC('vnromanc.shx').tc&&!T.fontTC('VNI-Times').tc&&!T.fontTC('arial.ttf').tc,'fontTC: nhận font TCVN3 (.Vn…, vnromanc), không nhầm VNI / Arial');
+  {const d2=L([0,'SECTION',2,'TABLES',0,'TABLE',2,'STYLE',0,'STYLE',2,'VN',70,0,3,'',1001,'ACAD',1000,'.VnTime',0,'STYLE',2,'VNH',70,0,3,'',1001,'ACAD',1000,'.VnArialH',0,'STYLE',2,'AR',70,0,3,'arial.ttf',0,'ENDTAB',0,'ENDSEC',
+      0,'SECTION',2,'ENTITIES',0,'TEXT',8,'0',10,0,20,0,40,1,1,'lo¹i 1 (QL1A míi)',7,'VN',0,'TEXT',8,'0',10,0,20,0,40,1,1,'tñ ®iÖn',7,'VNH',0,'TEXT',8,'0',10,0,20,0,40,1,1,'lo¹i',7,'AR',
+      0,'MTEXT',8,'0',10,0,20,0,40,1,1,'{\\f.VnTime|b0;§­êng}',7,'AR',0,'ENDSEC',0,'EOF']),k2=T.dxfDoc(d2);
+    ok(k2.tx.map(t=>t.s).join('|')==='loại 1 (QL1A mới)|TỦ ĐIỆN|lo¹i|Đường',`DXF: chữ kiểu font TCVN3 ra Unicode, kiểu Arial giữ nguyên (${k2.tx.map(t=>t.s).join('|')})`)}
+  /* chốt trong code */
+  ok(/function nenVe\(\)\{nenNen\(\);if\(D&&D\.cad&&D\.cad\.length\)try\{cadVe\(/.test(html),'nenVe vẽ thêm bản vẽ CAD sau ảnh nền');
+  ok(!/nenCv\.style\.opacity=String\(DB\.nenMo/.test(html),'độ đậm ảnh nền dùng globalAlpha (không làm mờ nét CAD)');
+  ok(/indexedDB\.open\('kstuyen_cad',1\)/.test(html)&&!/localStorage\.setItem\([^)]*cad/i.test(html),'nét CAD lưu IndexedDB, không vào localStorage');
 }
 console.log(`\n${nOk} đạt, ${nSai} sai`);process.exit(nSai?1:0);
