@@ -67,7 +67,10 @@ button{font:inherit;color:inherit;cursor:pointer}
 .ed{stroke:var(--wire);stroke-width:2.2}
 .pole{fill:var(--paper);stroke:var(--fg);stroke-width:2.2}
 .pole.act{stroke:var(--hi);stroke-width:3.5}
-.dn{stroke:var(--paper);stroke-width:1.5}.dn-L100{fill:#2E9E5B}.dn-L150{fill:#2F6FD0}.dn-SD{fill:#E39B12}
+/* thẻ đèn cạnh cột (21/11 Truong «các loại đèn cần phân biệt rõ hơn, không phải chấm nhỏ»): màu + chữ 60 / 100 / 150 / SĐ */
+.db{stroke:var(--paper);stroke-width:1.5}.db-L60{fill:#8E44AD}.db-L100{fill:#2E9E5B}.db-L150{fill:#2F6FD0}.db-SD{fill:#F0A30A}.db-x{fill:#7A8580}
+.db.dbh{stroke:#E0412F;stroke-width:3}
+.dbt{font:800 11px var(--f);fill:#fff;pointer-events:none}.dbt.dk{fill:#2A1A00}
 .dnh{stroke:#E0412F;stroke-width:3;stroke-linecap:round;fill:none}
 .fillk{fill:var(--fg)}
 .ring{fill:none;stroke:var(--hi);stroke-width:2;stroke-dasharray:4 3}
@@ -110,8 +113,11 @@ button{font:inherit;color:inherit;cursor:pointer}
 .tools .che button{height:32px;flex-direction:row;font-size:13px;border:1.5px solid var(--line);border-radius:9px;color:var(--fg)}
 .tools .che button.on{background:var(--ink);border-color:var(--ink);color:var(--ink-fg)}
 .tools [data-den]{display:none}.tools.che-cs [data-den]{display:flex}.tools.che-cs .ha{display:none}
-.ic-den{display:inline-block;width:17px;height:17px;border-radius:50%;border:2px solid var(--paper);box-shadow:0 0 0 1.5px var(--fg)}
-.ic-den.L100{background:#2E9E5B}.ic-den.L150{background:#2F6FD0}.ic-den.SD{background:#E39B12}
+.ic-den{display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:21px;padding:0 4px;border-radius:6px;
+  font:800 11.5px var(--f);color:#fff;border:1.5px solid var(--paper);box-shadow:0 0 0 1px rgba(0,0,0,.28)}
+.ic-den.L60{background:#8E44AD}.ic-den.L100{background:#2E9E5B}.ic-den.L150{background:#2F6FD0}.ic-den.SD{background:#F0A30A;color:#2A1A00}
+.ic-den.hong{background:var(--paper);color:#E0412F;border:2px solid #E0412F;box-shadow:none}
+.tools.che-cs{grid-template-columns:repeat(7,minmax(0,1fr))}.tools.che-cs button{font-size:10.5px;white-space:nowrap}
 .ic-tron{display:inline-block;width:17px;height:17px;border-radius:50%;border:2.5px solid currentColor}
 .ic-vuong{display:inline-block;width:15px;height:15px;border:2.5px solid currentColor}
 .ic-road{display:inline-block;width:22px;height:9px;border-radius:5px;background:var(--road-c)}
@@ -224,10 +230,11 @@ label.btn{display:flex;align-items:center;justify-content:center}
 <div id="stage"><canvas id="nen" aria-hidden="true"></canvas><svg id="cv" role="img" aria-label="Sơ đồ tuyến"></svg><div id="nenattr" hidden></div><div id="mapctl"><button id="b-nen" class="mb" aria-label="Ảnh vệ tinh: chạm bật / tắt, giữ lâu: nguồn ảnh, độ đậm, dời ảnh" aria-pressed="false"><span>🛰</span><small>Ảnh</small></button><button id="b-cad" class="mb" aria-label="Bản vẽ CAD .dxf: nạp, ẩn / hiện, lớp, dời"><span>📐</span><small>CAD</small></button><button id="b-fit" class="mb" aria-label="Xem toàn bộ tuyến"><span>⤢</span><small>Xem hết</small></button></div><div id="status"></div></div>
 <nav class="tools" aria-label="Công cụ">
   <div class="che" role="group" aria-label="Phần khảo sát"><button data-che="cs">💡 Chiếu sáng</button><button data-che="ha" class="on">Hạ áp</button><button data-che="tt">Trung thế</button></div>
-  <button data-tool="den" data-den="L100"><i><span class="ic-den L100"></span></i>LED 100W</button>
-  <button data-tool="den" data-den="L150"><i><span class="ic-den L150"></span></i>LED 150W</button>
-  <button data-tool="den" data-den="SD"><i><span class="ic-den SD"></span></i>Sợi đốt</button>
-  <button data-tool="den" data-den="hong"><i style="color:#E0412F">✕</i>Đèn hỏng</button>
+  <button data-tool="den" data-den="L60" aria-label="Đèn LED 60W"><i><span class="ic-den L60">60W</span></i>LED</button>
+  <button data-tool="den" data-den="L100" aria-label="Đèn LED 100W"><i><span class="ic-den L100">100W</span></i>LED</button>
+  <button data-tool="den" data-den="L150" aria-label="Đèn LED 150W"><i><span class="ic-den L150">150W</span></i>LED</button>
+  <button data-tool="den" data-den="SD" aria-label="Đèn sợi đốt"><i><span class="ic-den SD">SĐ</span></i>Sợi đốt</button>
+  <button data-tool="den" data-den="hong" aria-label="Đèn hỏng"><i><span class="ic-den hong">✕</span></i>Hỏng</button>
   <button data-tool="cot" class="on ha"><i><span class="ic-tron"></span></i>Cột</button>
   <button data-tool="duong" class="ha"><i><span class="ic-road"></span></i>Đường</button>
   <button data-tool="moc" class="ha"><i>⚑</i>Mốc</button>
@@ -355,10 +362,11 @@ function ctText(r){return [['H1',r.h1],['H2',r.h2],['H4',r.h4],['3P',r.p3]].filt
 function tuText(r){return [r.tuMoi?r.tuMoi+' tủ mới':'',r.tuCu?r.tuCu+' tủ cũ':''].filter(Boolean).join(', ')}
 function isDoi(p,r){return !!p.doi||/^2/.test((r||parse(p.code)).cotHT[0]||'')}
 function ddText(p,r){const a=[];if(p.shape==='tba'||p.shape==='cs')a.push(SHAPE_NAME[p.shape]);if(p.doi&&!/^2/.test(r.cotHT[0]||''))a.push('Cột đôi');return a.concat(r.dd)}
-function labelLines(p,r){
+/* boDen: màn hình đã có thẻ đèn nên nhãn bỏ chữ «Đèn LED …» / «Đèn hỏng» cho đỡ rối (ảnh xuất vẫn ghi) */
+function labelLines(p,r,boDen){
   return [[pair(r.cotHT,r.cotTT),pair(r.dayHT,r.dayTT)].filter(Boolean).join(' · '),
     [ctText(r),J(r.sau),tuText(r)].filter(Boolean).join(' · '),
-    r.dd.concat(r.gc).join('; ')].filter(Boolean);
+    r.dd.concat(boDen?r.gc.filter(t=>!denLoai(t)):r.gc).join('; ')].filter(Boolean);
 }
 function wrap(s,n){const out=[];let cur='';for(const w of s.split(' ')){if(cur&&(cur+' '+w).length>n){out.push(cur);cur=w}else cur=cur?cur+' '+w:w}if(cur)out.push(cur);return out}
 function parseSo(s){const m=String(s||'').trim().split(/\s+/)[0].match(/^(.*?)(\d+)$/);return m?{pre:m[1],num:+m[2],w:m[2].length}:null}
@@ -538,6 +546,7 @@ function layout(v,w,h,o,pr,JN,CL){
   /* chỗ đã bị chiếm: ký hiệu cột, nút đường, mốc, tên đường, số khoảng cột, dây.
      Cột đang sửa có vòng chọn vàng (R+7) nên vùng tránh lấy R+9 để số cột không đè lên vòng. */
   for(const q of P){const m=q.ed?9:3;add(q.x-q.Rw-m,q.y-q.Rh-m,q.x+q.Rw+m,q.y+q.Rh+m,4);
+    if(!o.print){const b=denKhung(denDoc(q.p.code),q.x,q.y,q.Rw,q.Rh);if(b)add(b.x-1,b.y-1,b.x+b.w+1,b.y+b.h+1,4)}
     if(!o.print&&(q.p.lat!=null||q.p.nan))add(q.x-q.Rw-9,q.y+q.Rh-3,q.x-q.Rw+3,q.y+q.Rh+9,3)}   /* chấm chất lượng GPS dưới-trái cột */
   JN=JN.filter(j=>inW(j.x,j.y));
   /* quá 300 cột trên màn hình (xem toàn tuyến): nhãn chỉ ghi số cột, ít chỗ thử — phóng gần mới hiện ký hiệu (⚑ 21/11) */
@@ -558,7 +567,7 @@ function layout(v,w,h,o,pr,JN,CL){
   /* nhãn cột, theo thứ tự đi tuyến */
   const PL=[],g5=5*k;
   for(const q of P){const {p,r}=q,so=r.so||(p.shape==='tba'?'TBA':'?');
-    const lines=[];if(!gon)for(const l of labelLines(p,r))lines.push(...wrap(l,o.print?34:28));
+    const lines=[];if(!gon)for(const l of labelLines(p,r,!o.print))lines.push(...wrap(l,o.print?34:28));
     const bw=Math.max(so.length*sz1*.62,...lines.map(l=>l.length*sz2*CW))+4,bh=sz1+2*k+lines.length*lh+3;
     const ty0=q.y-3*k-.85*sz1,g=q.ed?11*k:g5;   /* cột đang sửa: nhãn lùi ra ngoài vòng chọn */
     const cs=[[q.x+q.Rw+g,ty0],[q.x-q.Rw-g-bw,ty0],[q.x+q.Rw*.4,q.y-q.Rh-g-bh],[q.x+q.Rw*.4,q.y+q.Rh+g],
@@ -605,7 +614,7 @@ function svgInner(v,w,h,o={}){
     if(p.id===editId&&!o.print)g+=`<circle class="ring" cx="${x}" cy="${y}" r="${R*(doi?2:1)+7}"/>`;
     if(p.id===noiA)g+=`<circle class="noiA" cx="${x}" cy="${y}" r="${R*(doi?2:1)+6}"/>`;
     g+=symSvg(p,x,y,R,c,r);
-    if(!o.print){const dn=denDoc(p.code);if(dn.loai||dn.hong)g+=denSvg(dn,x,y,R)}
+    if(!o.print){const dn=denDoc(p.code);if(dn.loai||dn.hong){const t=p.shape==='tba';g+=denSvg(dn,x,y,R,R*(t?1.5:doi?2:1),R*(t?1.5:1))}}
     if(!o.print){const t=p.shape==='tba',rw=R*(t?1.5:doi?2:1),rh=R*(t?1.5:1),cx=f1(x-rw-3),cy=f1(y+rh+3),m=p.lat!=null?gpsMau(p.acc):'';
       if(p.nan)g+=`<rect class="nanmk" x="${f1(cx-5.5)}" y="${f1(cy-5.5)}" width="11" height="11" rx="2"/>`;
       if(m)g+=`<circle class="qd q-${m}${hcCot(p)?' hc':''}" cx="${cx}" cy="${cy}" r="3.6"/>`}
@@ -644,7 +653,7 @@ function status(){
       :selRoad?`<span class="pill solo">Kéo chấm vàng để sửa · chạm chỗ trống để bỏ chọn</span>`
       :`<span class="pill solo">Chạm điểm đầu rồi điểm cuối · chạm vào đường để sửa</span>`;
   else if(tool==='den'){const c=denDem(D.poles),k=DB.denBut||'L100';
-    h=`<span class="pill solo">${k==='hong'?'Chạm đèn: đánh / bỏ hỏng':'Chạm trống: thêm đèn · chạm cột: đổi đèn'} · ${c.tong} đèn${c.tong?` (100W ${c.L100} · 150W ${c.L150} · SĐ ${c.SD} · hỏng ${c.hong})`:''}</span>`}
+    h=`<span class="pill solo">${k==='hong'?'Chạm đèn: đánh / bỏ hỏng':'Chạm trống: thêm đèn · chạm cột: đổi đèn'} · ${c.tong} đèn${c.tong?` (60W ${c.L60} · 100W ${c.L100} · 150W ${c.L150} · SĐ ${c.SD} · hỏng ${c.hong})`:''}</span>`}
   else if(ed&&ed.auto)h=`<span class="pill solo">Cột tự đặt thẳng tuyến — chạm chỗ khác để dời tới đó</span>`;
   else if(a){const so=parse(a.code).so;h=`<span class="pill solo">${so?'Vẽ tiếp từ '+esc(so):'Vẽ tiếp từ cột chưa đánh số'}</span>`}
   else h=`<span class="pill solo">${D.poles.length?'Đoạn mới — cột sau không nối':'Chạm lên bảng để đặt cột đầu tiên'}</span>`;
@@ -1054,9 +1063,11 @@ function onTap(pt,h){
    21/11 Truong: sáng đi chấm vị trí đèn, tối đi chấm đèn cháy hỏng — mỗi loại đèn một nút. Đèn ghi trong mã cột (một ô ghi chú
    «Đèn LED 100W» / «Đèn LED 150W» / «Đèn sợi đốt» / «Đèn hỏng») nên bảng cột, Excel, DXF, nhãn tự mang theo, sửa tay vẫn được. */
 let denMsg='';
-function denSvg(d,x,y,R){let s='';const f=v=>+v.toFixed(1);
-  if(d.loai)s+=`<circle class="dn dn-${d.loai}" cx="${f(x+R*0.95)}" cy="${f(y-R*0.95)}" r="${f(Math.max(4,R*0.6))}"/>`;
+/* thẻ đèn: ô màu ghi 60 / 100 / 150 / SĐ ở trên-phải cột; hỏng: viền đỏ + gạch chéo đỏ qua cột; hỏng chưa rõ loại: thẻ xám «?» */
+function denKhung(d,x,y,rw,rh){if(!d.loai&&!d.hong)return null;const t=DEN_SO[d.loai]||'?',w=t.length*7+9,h=16;return {x:x+rw*.55,y:y-rh-h+1,w,h,t}}
+function denSvg(d,x,y,R,rw=R,rh=R){let s='';const f=v=>+v.toFixed(1),b=denKhung(d,x,y,rw,rh);
   if(d.hong){const a=R*1.3;s+=`<path class="dnh" d="M${f(x-a)} ${f(y-a)}L${f(x+a)} ${f(y+a)}M${f(x+a)} ${f(y-a)}L${f(x-a)} ${f(y+a)}"/>`}
+  if(b)s+=`<rect class="db db-${d.loai||'x'}${d.hong?' dbh':''}" x="${f(b.x)}" y="${f(b.y)}" width="${f(b.w)}" height="${b.h}" rx="4"/><text class="dbt${d.loai==='SD'?' dk':''}" x="${f(b.x+b.w/2)}" y="${f(b.y+b.h-4.2)}" text-anchor="middle">${b.t}</text>`;
   return s}
 function denApDung(p,k){const cu=denDoc(p.code),so=parse(p.code).so||'Cột chưa số';let m;
   if(k!=='hong'&&cu.loai===k)m=`${so}: đã là ${DEN_NGAN[k]}`;
@@ -2048,7 +2059,7 @@ function giongGop(list,them,ghiDe){
 /* 🎤 KHẨU LỆNH ở CUỐI câu nói (07/11): «điền» · «tiếp» (= Tiếp ▸) · «dừng» (= Dừng) · «đoạn mới» · «nói lại» / «xoá câu»
    → {lenh:'dien'|'tiep'|'dung'|'doan'|'xoa'|null, con: phần câu trước lệnh}. Chỉ nhận ở CUỐI câu, có chốt chặn:
    «tiếp địa», «nối tiếp», «trạm dừng», «xã Quảng Điền» không thành lệnh */
-const BAN_APP='kstuyen-30';
+const BAN_APP='kstuyen-31';
 /* 🎤 chờ bao lâu (ms) rồi mới làm khẩu lệnh cuối câu (07/11 rút ngắn ⚑): máy đã chốt câu → làm gần như ngay;
    còn chữ tạm → chờ ngắn xem có nói tiếp không («tiếp», «dừng» chờ lâu hơn chút vì hay đi tiếp chữ, vd «tiếp địa»);
    gõ tay / 🎤 bàn phím chờ lâu nhất; lai = nghỉ trước khi mở phiên nghe mới */
@@ -2319,18 +2330,19 @@ function dxfDoc(s,o){
   return {ly:LY.map(L=>({n:L.n,c:L.c,an:!!L.an})),ins,xy:XY,st:ST,li:LI,co:CO,kin:KIN,tx:TX,bb:[x0,y0,x1,y1],giua:[tv(mx),tv(my)],dem,cat};
 }
 /* đèn chiếu sáng trong mã cột: «Đèn LED 100W» / «Đèn LED 150W» / «Đèn sợi đốt» + «Đèn hỏng» (ô ghi chú, mỗi cột tối đa một loại đèn) */
-const DEN={L100:'Đèn LED 100W',L150:'Đèn LED 150W',SD:'Đèn sợi đốt'},DEN_HONG='Đèn hỏng',DEN_NGAN={L100:'LED 100W',L150:'LED 150W',SD:'Sợi đốt',hong:'Đèn hỏng'};
+const DEN={L60:'Đèn LED 60W',L100:'Đèn LED 100W',L150:'Đèn LED 150W',SD:'Đèn sợi đốt'},DEN_HONG='Đèn hỏng',
+  DEN_NGAN={L60:'LED 60W',L100:'LED 100W',L150:'LED 150W',SD:'Sợi đốt',hong:'Đèn hỏng'},DEN_SO={L60:'60',L100:'100',L150:'150',SD:'SĐ'};
 function denLoai(t){const u=String(t).normalize('NFC').toUpperCase().replace(/\s+/g,'');
-  if(/^ĐÈNLED100W?$/.test(u))return 'L100';if(/^ĐÈNLED150W?$/.test(u))return 'L150';if(/^ĐÈNSỢIĐỐT/.test(u))return 'SD';
+  if(/^ĐÈNLED60W?$/.test(u))return 'L60';if(/^ĐÈNLED100W?$/.test(u))return 'L100';if(/^ĐÈNLED150W?$/.test(u))return 'L150';if(/^ĐÈNSỢIĐỐT/.test(u))return 'SD';
   if(/^(ĐÈNHỎNG|ĐÈNCHÁY|HỎNGĐÈN|CHÁYĐÈN)$/.test(u))return 'hong';return ''}
 function denDoc(code){let loai='',hong=false;
   for(const x of String(code||'').split(';').slice(1)){const k=denLoai(x.trim());if(k==='hong')hong=true;else if(k)loai=k}return {loai,hong}}
-/* k = L100 / L150 / SD: thay loại đèn (giữ dấu hỏng); k = hong: bật / tắt dấu hỏng */
+/* k = L60 / L100 / L150 / SD: thay loại đèn (giữ dấu hỏng); k = hong: bật / tắt dấu hỏng */
 function denDat(code,k){code=String(code||'');const a=code.split(';').map(x=>x.trim()),so=a[0]||'';let t=a.slice(1).filter(Boolean);
   if(k==='hong'){t=t.some(x=>denLoai(x)==='hong')?t.filter(x=>denLoai(x)!=='hong'):t.concat(DEN_HONG)}
   else if(DEN[k]){t=t.filter(x=>{const q=denLoai(x);return !q||q==='hong'});const i=t.findIndex(x=>denLoai(x)==='hong');if(i>=0)t.splice(i,0,DEN[k]);else t.push(DEN[k])}
   return t.length||code.includes(';')?[so,...t].join(';')+';':so}
-function denDem(ps){const c={L100:0,L150:0,SD:0,hong:0,tong:0};
+function denDem(ps){const c={L60:0,L100:0,L150:0,SD:0,hong:0,tong:0};
   for(const p of ps||[]){const d=denDoc(p.code);if(d.loai)c[d.loai]++;if(d.hong)c.hong++;if(d.loai||d.hong)c.tong++}return c}
 /* === HẾT HÀM THUẦN === */
 /* 📖 nâng cấp một lần lúc mở app: cụm dạy bản cũ «cuộc» → «ghi chú cột» thành thay chữ (giongSuaCu) — lưu ở lần lưu sau */
@@ -2571,7 +2583,7 @@ async function xuatXlsx(){
     const ws4=XLSX.utils.aoa_to_sheet([[`ĐÈN CHIẾU SÁNG: ${D.ten}`],['STT','Số cột','Loại đèn','Tình trạng','Ký hiệu cột','Vĩ độ','Kinh độ','X_VN2000 (Bắc)','Y_VN2000 (Đông)'],
       ...dsDen.map((p,i)=>{const d=denDoc(p.code),v=vnOf(p,tb);return [i+1,parse(p.code).so,d.loai?DEN_NGAN[d.loai]:'(chưa rõ loại)',d.hong?'Hỏng':'',
         SHAPE_NAME[p.shape||'tron'],p.lat??'',p.lon??'',v?v.x:'',v?v.y:'']}),
-      [],['','Cộng',`LED 100W: ${c.L100}`,`LED 150W: ${c.L150}`,`Sợi đốt: ${c.SD}`,`Hỏng: ${c.hong}/${c.tong}`]]);
+      [],['','Cộng',`LED 60W: ${c.L60}`,`LED 100W: ${c.L100}`,`LED 150W: ${c.L150}`,`Sợi đốt: ${c.SD}`,`Hỏng: ${c.hong}/${c.tong}`]]);
     ws4['!cols']=[5,10,16,10,12,12,12,14,14].map(w=>({wch:w}));XLSX.utils.book_append_sheet(wb,ws4,'Chieu sang')}
   giao(new Blob([XLSX.write(wb,{bookType:'xlsx',type:'array'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),fname('.xlsx'));
 }

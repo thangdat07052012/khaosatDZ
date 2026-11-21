@@ -362,6 +362,13 @@ console.log('17. Bản vẽ CAD phủ lên: VN-2000 → WGS-84, đọc DXF');
   ok(/function khungVe\(v,w,h\)/.test(html)&&/const CL=o\.print\?null:khungVe\(v,w,h\)/.test(html)&&/sorted\(\)\.filter\(p=>inW\(p\.x,p\.y\)\)/.test(html)&&/const pre=s\+'#'\+k\+'#'\+kk\+/.test(html),'tốc độ: chỉ dựng phần trong khung nhìn, khoá nhãn theo ô khung');
   ok((()=>{try{let n=0;for(const m of html.matchAll(/<script>([\s\S]*?)<\/script>/g)){new Function(m[1]);n++}return n>0}catch(e){console.log('   cú pháp: '+e.message);return false}})(),'mã trang không lỗi cú pháp (21/11: trùng tên biến m trong showNen làm trắng trang, các chốt khác vẫn đạt)');
   ok(/function cadPhan\(\)\{[\s\S]{0,200}<label class="big\$\{ds\.length\?'':' pri'\}"[^\n]*\n\s*\$\{ds\.map\(cadDong\)\.join\(''\)\}/.test(html),'bảng CAD: ô «+ Nạp bản vẽ .dxf» đứng đầu, nổi màu khi chưa có bản vẽ');
+  {const c=T.denDat('3;LT8,5;Đèn LED 100W;Đèn hỏng;','L60'),d=T.denDem([{code:'1;Đèn LED 60W;'},{code:'2;đèn led 60w;Đèn hỏng;'},{code:'3;Đèn LED 100W;'}]);
+    ok(c==='3;LT8,5;Đèn LED 60W;Đèn hỏng;'&&T.denLoai('Đèn LED 60W')==='L60'&&T.denLoai('Đèn LED 600W')===''&&d.L60===2&&d.L100===1&&d.hong===1&&d.tong===3,
+      `đèn LED 60W: đổi loại giữ hỏng, đếm riêng (${c} · ${JSON.stringify(d)})`)}
+  ok(/data-den="L60"/.test(html)&&/\.tools\.che-cs\{grid-template-columns:repeat\(7,/.test(html)&&/`LED 60W: \$\{c\.L60\}`/.test(html)&&/60W \$\{c\.L60\}/.test(html),'nút LED 60W trên thanh chiếu sáng (7 ô), đếm ở thanh trạng thái + Excel');
+  ok(/function denKhung\(d,x,y,rw,rh\)/.test(html)&&/<rect class="db db-\$\{d\.loai\|\|'x'\}\$\{d\.hong\?' dbh':''\}"/.test(html)&&/\.db-L60\{fill:#8E44AD\}\.db-L100\{fill:#2E9E5B\}\.db-L150\{fill:#2F6FD0\}\.db-SD\{fill:#F0A30A\}/.test(html)&&
+     /const b=denKhung\(denDoc\(q\.p\.code\),q\.x,q\.y,q\.Rw,q\.Rh\);if\(b\)add\(/.test(html)&&!/class="dn dn-/.test(html),'đèn vẽ thẻ màu có chữ 60 / 100 / 150 / SĐ (không còn chấm nhỏ), nhãn số cột tránh thẻ');
+  ok(/r\.dd\.concat\(boDen\?r\.gc\.filter\(t=>!denLoai\(t\)\):r\.gc\)/.test(html)&&/labelLines\(p,r,!o\.print\)/.test(html)&&/for\(const l of labelLines\(p,r\)\)\{txt\(/.test(html),'nhãn màn hình bỏ chữ «Đèn LED …» (đã có thẻ đèn), ảnh xuất + DXF vẫn ghi');
   /* chốt trong code */
   ok(/function nenVe\(\)\{nenNen\(\);if\(D&&D\.cad&&D\.cad\.length\)try\{cadVe\(/.test(html),'nenVe vẽ thêm bản vẽ CAD sau ảnh nền');
   ok(!/nenCv\.style\.opacity=String\(DB\.nenMo/.test(html),'độ đậm ảnh nền dùng globalAlpha (không làm mờ nét CAD)');
