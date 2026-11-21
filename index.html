@@ -1011,7 +1011,9 @@ function onTap(pt,h){
     noiA=null;draw();return;
   }
   if(tool==='den'){const k=DB.denBut||'L100';
-    if(h&&h.ten===undefined){const q=byId(h.id);if(q)denApDung(q,k);return}
+    /* ⚑ thu nhỏ bản đồ (đèn sát nhau trên màn hình): chỉ coi là chạm cột khi trong 10 m (tối thiểu 12 px), kẻo đổi nhầm đèn bên cạnh */
+    if(h&&h.ten===undefined&&Math.hypot(h.x*V.s+V.tx-pt.x,h.y*V.s+V.ty-pt.y)<=Math.max(12,Math.min(26,10*V.s))){const q=byId(h.id);if(q)denApDung(q,k);return}
+    if(h&&h.ten===undefined)h=null;
     if(h)return;const [wx,wy]=toW(pt),q=snapToRoad(wx,wy);denThem(q.x,q.y);return}
   if(tool==='duong'){const w=toW(pt);
     if(roadStart){const a=roadStart;roadStart=null;makeRoad(a,w);return}
@@ -1045,9 +1047,19 @@ function denApDung(p,k){const cu=denDoc(p.code),so=parse(p.code).so||'Cột chư
   else{snap();p.code=denDat(p.code,k);p.auto=false;save();draw();const d=denDoc(p.code);
     m=k==='hong'?(d.hong?`${so}: đèn HỎNG`:`${so}: bỏ đánh dấu hỏng`):`${so}: ${cu.loai?DEN_NGAN[cu.loai]+' → ':''}${DEN_NGAN[k]}`}
   denMsg=m+' · ';toast(m)}
-/* ⚑ cột mới của thanh chiếu sáng là Cột CS, đánh số tiếp, nối dây với đèn trước (như nút Cột); không mở ô nhập */
-function denThem(x,y,gps){const k=DB.denBut||'L100';addPole(x,y,'cs',gps,false,true);const p=activeP();if(!p)return;
-  p.code=denDat(p.code,k);save();draw();const m=`${parse(p.code).so||'Cột mới'}: ${k==='hong'?'đèn HỎNG':DEN_NGAN[k]}`;denMsg=m+' · ';toast(m)}
+/* ⚑ cột mới của thanh chiếu sáng là Cột CS, không mở ô nhập; chỉ mang số + loại đèn (không chép loại cột / dây của cột trước).
+   Nối dây + số tiếp theo đèn vừa chấm; cột trước không phải đèn (cột hạ áp) hoặc chấm «Đèn hỏng» vào chỗ trống (đèn sáng chưa chấm)
+   thì không nối dây, số = số đèn lớn nhất + 1 (bản vẽ đã có cột khác mà chưa có đèn: Đ1). */
+const denCo=p=>{const d=denDoc(p.code);return !!(d.loai||d.hong)};
+function denSoMoi(){let pre=null,max=-1,w=1;
+  for(const p of D.poles){if(!denCo(p))continue;const s=parseSo(parse(p.code).so);if(s&&s.num>max){max=s.num;pre=s.pre;w=s.w}}
+  if(pre!==null)return pre+String(max+1).padStart(w,'0');return D.poles.some(p=>parse(p.code).so)?'Đ1':'1'}
+function denThem(x,y,gps){const k=DB.denBut||'L100',a=activeP(),noi=!!a&&denCo(a)&&k!=='hong';
+  if(!noi)D.active=null;const so=noi?'':denSoMoi();
+  addPole(x,y,'cs',gps,false,true);const p=activeP();if(!p)return;
+  const r=parse(p.code),kc=r.toks.filter(t=>t.k==='kc').map(t=>t.t);
+  p.code=denDat([noi?r.so||denSoMoi():so,...kc].join(';')+';',k);save();draw();
+  const m=`${parse(p.code).so||'Cột mới'}: ${k==='hong'?'đèn HỎNG (chưa rõ loại)':DEN_NGAN[k]}`;denMsg=m+' · ';toast(m)}
 /* ⚑ GPS ở thanh chiếu sáng: có cột trong 12 m (hoặc 1,5 × sai số GPS) thì đổi đèn cột đó, không thêm cột trùng */
 function denGan(xy,r){let b=null,bd=r;for(const p of D.poles){const d=Math.hypot(p.x-xy.x,p.y-xy.y);if(d<=bd){bd=d;b=p}}return b}
 
@@ -1191,7 +1203,9 @@ $('#opts').addEventListener('click',e=>{
   if(slot==='kc'){F.kc=String(F.kc)===v?'':+v;commit();if(F.kc!=='')goSlot(F.cotHT.length?'ct':'cot');return}
   if(slot==='ky'){if(!sheetSnap){snap();sheetSnap=true}
     if(v==='doi')p.doi=!p.doi;else{p.shape=v;if(v==='tba')p.doi=false}p.auto=false;save();renderSlots();renderOpts();draw();return}
-  if(slot==='gc'){const L=BASE.dd.includes(v)?F.dd:F.gc,i=L.indexOf(v);if(i>=0)L.splice(i,1);else L.push(v);commit();return}
+  if(slot==='gc'){const L=BASE.dd.includes(v)?F.dd:F.gc,i=L.indexOf(v);if(i>=0)L.splice(i,1);
+    else{const lk=denLoai(v);if(lk&&lk!=='hong')for(let j=L.length-1;j>=0;j--){const q=denLoai(L[j]);if(q&&q!=='hong')L.splice(j,1)}L.push(v)}   /* mỗi cột một loại đèn */
+    commit();return}
   const key=LIST[slot],L=F[key],i=L.findIndex(x=>norm(x)===norm(v));
   if(MULTI[slot]){if(i>=0)L.splice(i,1);else L.push(v);commit();return}
   F[key]=i>=0?[]:[v];commit();
@@ -2317,7 +2331,7 @@ function vnCot(p,tb){
 function vnOf(p,tb){const v=vnCot(p,tb);return v&&{x:+v.x.toFixed(3),y:+v.y.toFixed(3),h:v.h,goc:v.goc,phac:v.phac}}
 function gpsLab(){$('#gps-lab').textContent=fix?`±${vn1(fix.acc)} m`:'GPS'}
 function placeGps(){dropAuto();closeSheet();const xy=geoToXY(fix.lat,fix.lon);
-  if(tool==='den'){const q=denGan(xy,Math.max(12,(fix.acc||0)*1.5));if(q)denApDung(q,DB.denBut||'L100');else denThem(xy.x,xy.y,fix);return}
+  if(DB.che==='cs'){const q=denGan(xy,Math.max(12,(fix.acc||0)*1.5));if(q)denApDung(q,DB.denBut||'L100');else denThem(xy.x,xy.y,fix);return}
   addPole(xy.x,xy.y,null,fix)}
 function gpsCheDo(){return GPS_CHE_DO[DB.gpsCheDo]?DB.gpsCheDo:'chuan'}
 let gpsM=null;   /* phiên đang đo: {t0, ms, muc:'cot'|'moc', ds:[{lat,lon,acc,ts}], kq, tm} */

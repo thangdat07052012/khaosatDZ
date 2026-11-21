@@ -352,6 +352,9 @@ console.log('17. Bản vẽ CAD phủ lên: VN-2000 → WGS-84, đọc DXF');
   ok(/data-den="L100"/.test(html)&&/data-den="L150"/.test(html)&&/data-den="SD"/.test(html)&&/data-den="hong"/.test(html)&&/data-che="cs"/.test(html)&&/data-che="tt"/.test(html)&&
      /if\(tool==='den'\)\{const k=DB\.denBut/.test(html)&&/book_append_sheet\(wb,ws4,'Chieu sang'\)/.test(html)&&/DB\.che==='tt'&&BASE_TT\[kind\]/.test(html),
      'thanh nhanh chiếu sáng: 4 nút đèn, chuyển phần CS / HA / TT, chạm đèn đổi loại, sheet Excel Chieu sang, danh sách trung thế');
+  ok(/noi=!!a&&denCo\(a\)&&k!=='hong'/.test(html)&&/D\.poles\.some\(p=>parse\(p\.code\)\.so\)\?'Đ1':'1'/.test(html)&&/if\(DB\.che==='cs'\)\{const q=denGan\(xy,/.test(html)&&
+     /Math\.max\(12,Math\.min\(26,10\*V\.s\)\)/.test(html)&&/const lk=denLoai\(v\);if\(lk&&lk!=='hong'\)/.test(html),
+     'chiếu sáng (soát 21/11): đèn sau cột hạ áp không chép dây / số hạ áp (Đ1…), Hỏng chỗ trống không nối dây, GPS theo phần CS cả khi chọn Dời, chạm thu nhỏ không đổi nhầm đèn, chip ô nhập một loại đèn');
   /* chốt trong code */
   ok(/function nenVe\(\)\{nenNen\(\);if\(D&&D\.cad&&D\.cad\.length\)try\{cadVe\(/.test(html),'nenVe vẽ thêm bản vẽ CAD sau ảnh nền');
   ok(!/nenCv\.style\.opacity=String\(DB\.nenMo/.test(html),'độ đậm ảnh nền dùng globalAlpha (không làm mờ nét CAD)');
