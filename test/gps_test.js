@@ -340,6 +340,7 @@ console.log('17. Bản vẽ CAD phủ lên: VN-2000 → WGS-84, đọc DXF');
       0,'SECTION',2,'ENTITIES',0,'TEXT',8,'0',10,0,20,0,40,1,1,'lo¹i 1 (QL1A míi)',7,'VN',0,'TEXT',8,'0',10,0,20,0,40,1,1,'tñ ®iÖn',7,'VNH',0,'TEXT',8,'0',10,0,20,0,40,1,1,'lo¹i',7,'AR',
       0,'MTEXT',8,'0',10,0,20,0,40,1,1,'{\\f.VnTime|b0;§­êng}',7,'AR',0,'ENDSEC',0,'EOF']),k2=T.dxfDoc(d2);
     ok(k2.tx.map(t=>t.s).join('|')==='loại 1 (QL1A mới)|TỦ ĐIỆN|lo¹i|Đường',`DXF: chữ kiểu font TCVN3 ra Unicode, kiểu Arial giữ nguyên (${k2.tx.map(t=>t.s).join('|')})`)}
+  ok(/ggt:\{ten:'Google',zMax:20,url:\(z,x,y\)=>`https:\/\/mt\$\{\(x\+y\)&3\}\.google\.com\/vt\/lyrs=s&x=/.test(html)&&/if\(DB\.nenNguon==='ggt'\)return GT\.loi\?'esri':'ggt'/.test(html)&&/src==='ggt'&&\+\+GT\.hong>=6/.test(html),'nguồn Google không khoá (như IRT): mt0-3.google.com, hỏng 6 ô liền thì về Esri');
   /* chốt trong code */
   ok(/function nenVe\(\)\{nenNen\(\);if\(D&&D\.cad&&D\.cad\.length\)try\{cadVe\(/.test(html),'nenVe vẽ thêm bản vẽ CAD sau ảnh nền');
   ok(!/nenCv\.style\.opacity=String\(DB\.nenMo/.test(html),'độ đậm ảnh nền dùng globalAlpha (không làm mờ nét CAD)');

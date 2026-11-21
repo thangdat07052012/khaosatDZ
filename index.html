@@ -638,12 +638,17 @@ const OC=new Map(),OC_MAX=180;let ocDang=0,nenLuot=0,nenRaf=false,ocMoi=0;
 const GH={cv:null,k:''};
 const NEN_RO={A:0.55,K:1.05};   /* ⚑ độ làm nét (unsharp 4 lân cận) và độ tương phản — chỉnh ở đây nếu thấy gắt */
 const GG={s:null,exp:0,dang:false,loi:false,hong:0,cr:'',crK:'',crT:null};
+const GT={hong:0,loi:false};
 const NGUON={
   esri:{ten:'Esri',zMax:18,url:(z,x,y)=>NEN.url(z,x,y)},
+  /* 21/11 Truong: «k add thẻ vào google được, sao IRT 4.4 dùng được bản mới nhất» — máy chủ ô Google Maps (lyrs=s), không khoá, như IRT / SAS.Planet.
+     ⚑ không phải API chính thức: Google có thể chặn khi tải quá nhiều; hỏng 6 ô liền thì tự về Esri */
+  ggt:{ten:'Google',zMax:20,url:(z,x,y)=>`https://mt${(x+y)&3}.google.com/vt/lyrs=s&x=${x}&y=${y}&z=${z}`},
   /* ⚑ Google Map Tiles API: cần khoá của anh (Google Cloud), phiên createSession; chưa thử với khoá thật */
   gg:{ten:'Google',zMax:20,url:(z,x,y)=>`https://tile.googleapis.com/v1/2dtiles/${z}/${x}/${y}?session=${encodeURIComponent(GG.s)}&key=${encodeURIComponent(DB.ggKey)}`}
 };
 function nenNguon(){
+  if(DB.nenNguon==='ggt')return GT.loi?'esri':'ggt';
   if(DB.nenNguon!=='gg'||!DB.ggKey||GG.loi)return 'esri';
   if(GG.s&&GG.exp&&GG.exp*1000<Date.now()+60000)GG.s=null;   /* phiên sắp hết hạn: xin phiên mới */
   if(!GG.s){ggPhien();return GG.s?'gg':'esri'}
@@ -704,9 +709,10 @@ function ocTai(src,z,x,y){
   if(!o){o={bm:null,dang:false,hong:0,luot:nenLuot};OC.set(k,o)}
   o.dang=true;ocDang++;const url=NGUON[src].url(z,x,y);
   taiAnh(url,true).then(im=>[im,true],()=>taiAnh(url,false).then(im=>[im,false]))
-    .then(([im,cors])=>{o.bm=im;o.w=im.naturalWidth||256;o.hong=0;ocMoi++;if(src==='gg')GG.hong=0;
+    .then(([im,cors])=>{o.bm=im;o.w=im.naturalWidth||256;o.hong=0;ocMoi++;if(src==='gg')GG.hong=0;if(src==='ggt')GT.hong=0;
       if(cors)lamRo(im).then(b=>{if(!b)return;if(OC.get(k)===o){o.bm=b;o.ro=1;ocMoi++;nenHen()}else b.close()})})
     .catch(()=>{o.hong=Date.now();
+      if(src==='ggt'&&++GT.hong>=6&&!GT.loi){GT.loi=true;toast('Ảnh Google không tải được (mạng / Google chặn) — đang dùng ảnh Esri; mở lại 🛰 bấm Google để thử lại')}
       if(src==='gg'&&++GG.hong>=6&&!GG.loi){GG.loi=true;toast('Ảnh Google không tải được (khoá / hạn mức / mạng) — đang dùng ảnh Esri')}})
     .finally(()=>{o.dang=false;ocDang--;nenHen();ocDon()});
 }
@@ -894,6 +900,7 @@ function nenNen(){
     if(ocDang<4)for(let y=y0-1;y<=y1+1;y++)for(let x=x0-1;x<=x1+1;x++)if((y<y0||y>y1||x<x0||x>x1)&&x>=0&&y>=0&&x<n&&y<n&&!ocCo(src,z,x,y))ocTai(src,z,x,y)}
   c.globalAlpha=1;
   if(src==='gg'){nenChu('Google'+(GG.cr?' · '+GG.cr:''));ggCr(z,latN,latS,lonE,lonW)}
+  else if(src==='ggt')nenChu('Ảnh nền: Google');
   else{nenChu('Ảnh nền: Esri, Maxar, Earthstar Geographics'+(EN.t?' · ảnh chụp '+EN.t:''));esriNgay((latN+latS)/2,(lonE+lonW)/2,z)}
 }
 
@@ -1531,7 +1538,8 @@ function showNen(){
     <div class="row" style="align-items:center"><h2 style="flex:1 1 auto">Ảnh nền & bản vẽ CAD</h2><button class="btn" data-a="close" style="flex:0 0 auto">Đóng</button></div>
     <button class="big${DB.nen?' pri':''}" data-a="nen-bat"><b>${DB.nen?'Đang bật — bấm để tắt':'Đang tắt — bấm để bật'}</b><span>${D.geo?'Ảnh nằm dưới sơ đồ, cần mạng. Ô đã tải giữ trong bộ nhớ, kéo / phóng lại không tải lại.':'Bản vẽ chưa có cột nào lấy GPS — lấy GPS một cột thì ảnh mới hiện.'}</span></button>
     <div class="h3">Nguồn ảnh</div>
-    <div class="seg" style="grid-template-columns:repeat(2,minmax(0,1fr))"><button class="btn${gg?'':' pri'}" data-a="nen-src" data-m="esri">Esri (miễn phí)</button><button class="btn${gg?' pri':''}" data-a="nen-src" data-m="gg">Google (cần khoá)</button></div>
+    <div class="seg" style="grid-template-columns:repeat(3,minmax(0,1fr))"><button class="btn${DB.nenNguon==='ggt'||gg?'':' pri'}" data-a="nen-src" data-m="esri">Esri</button><button class="btn${DB.nenNguon==='ggt'?' pri':''}" data-a="nen-src" data-m="ggt">Google (ảnh mới)</button><button class="btn${gg?' pri':''}" data-a="nen-src" data-m="gg">Google có khoá</button></div>
+    ${DB.nenNguon==='ggt'?`<p class="note">${GT.loi?'Google đang không tải được — đang dùng Esri. Bấm lại «Google (ảnh mới)» để thử lại.':'Ảnh Google lấy thẳng như IRT, không cần khoá, phóng gần tới mức 20. Không phải dịch vụ chính thức: tải quá nhiều Google có thể tạm chặn, khi đó app tự về Esri.'}</p>`:''}
     ${gg?`<label class="sl vn"><span class="k">Khoá Google Map Tiles API (chỉ lưu trên máy này)</span><input id="gg-key" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(DB.ggKey||'')}" style="font:700 15px var(--f);border:0;background:transparent;color:var(--fg);padding:4px 0;width:100%"></label>
     <p class="note">${!DB.ggKey?'Chưa có khoá — đang dùng ảnh Esri.':GG.loi?'Khoá chưa dùng được (sai khoá, chưa bật Map Tiles API hoặc hết hạn mức) — đang dùng ảnh Esri. Sửa khoá rồi mở lại bảng này.':GG.s?'Đang dùng ảnh Google (phóng gần tới mức 20).':'Đang mở phiên Google…'} Khoá lấy ở Google Cloud Console, bật “Map Tiles API”; Google tính phí khi dùng vượt mức miễn phí của tài khoản.</p>`:''}
     <div class="h3">Độ đậm ảnh</div>
@@ -1945,7 +1953,7 @@ function giongGop(list,them,ghiDe){
 /* 🎤 KHẨU LỆNH ở CUỐI câu nói (07/11): «điền» · «tiếp» (= Tiếp ▸) · «dừng» (= Dừng) · «đoạn mới» · «nói lại» / «xoá câu»
    → {lenh:'dien'|'tiep'|'dung'|'doan'|'xoa'|null, con: phần câu trước lệnh}. Chỉ nhận ở CUỐI câu, có chốt chặn:
    «tiếp địa», «nối tiếp», «trạm dừng», «xã Quảng Điền» không thành lệnh */
-const BAN_APP='kstuyen-27';
+const BAN_APP='kstuyen-28';
 /* 🎤 chờ bao lâu (ms) rồi mới làm khẩu lệnh cuối câu (07/11 rút ngắn ⚑): máy đã chốt câu → làm gần như ngay;
    còn chữ tạm → chờ ngắn xem có nói tiếp không («tiếp», «dừng» chờ lâu hơn chút vì hay đi tiếp chữ, vd «tiếp địa»);
    gõ tay / 🎤 bàn phím chờ lâu nhất; lai = nghỉ trước khi mở phiên nghe mới */
@@ -2654,7 +2662,7 @@ panel.addEventListener('click',e=>{
   else if(a==='mf-lai'){mocCho=null;closePanel();gpsBatDau('moc')}
   else if(a==='mf-luu')luuMoc();
   else if(a==='nen-bat'){nenBat(!DB.nen);showNen()}
-  else if(a==='nen-src'){DB.nenNguon=b.dataset.m;if(DB.nenNguon==='gg')ggDatLai();saveNow();showNen();draw()}
+  else if(a==='nen-src'){DB.nenNguon=b.dataset.m;if(DB.nenNguon==='gg')ggDatLai();if(DB.nenNguon==='ggt'){GT.loi=false;GT.hong=0;GH.k=''}saveNow();showNen();draw()}
   else if(a==='nen-mo'){DB.nenMo=+b.dataset.m;saveNow();showNen();nenVe()}
   else if(a==='nen-doi'){closePanel();if(!D.geo){toast('Lấy GPS ít nhất một cột trước');return}if(!DB.nen)nenBat(true);nenDoi=true;draw();toast('Kéo ảnh cho khớp cột GPS, xong bấm Xong ở trên')}
   else if(a==='cad-bat'){const m=cadMuc(id);if(m){m.bat=!m.bat;save();showNen();nenVe()}}
