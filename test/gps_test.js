@@ -355,6 +355,13 @@ console.log('17. Bản vẽ CAD phủ lên: VN-2000 → WGS-84, đọc DXF');
   ok(/noi=!!a&&denCo\(a\)&&k!=='hong'/.test(html)&&/D\.poles\.some\(p=>parse\(p\.code\)\.so\)\?'Đ1':'1'/.test(html)&&/if\(DB\.che==='cs'\)\{const q=denGan\(xy,/.test(html)&&
      /Math\.max\(12,Math\.min\(26,10\*V\.s\)\)/.test(html)&&/const lk=denLoai\(v\);if\(lk&&lk!=='hong'\)/.test(html),
      'chiếu sáng (soát 21/11): đèn sau cột hạ áp không chép dây / số hạ áp (Đ1…), Hỏng chỗ trống không nối dây, GPS theo phần CS cả khi chọn Dời, chạm thu nhỏ không đổi nhầm đèn, chip ô nhập một loại đèn');
+  ok(/<div id="mapctl"><button id="b-nen" class="mb"/.test(html)&&/<button id="b-cad" class="mb"/.test(html)&&/<button id="b-fit" class="mb"/.test(html)&&!/<header class="top">[\s\S]{0,600}id="b-nen"[\s\S]{0,200}<\/header>/.test(html),'nút 🛰 / 📐 CAD / ⤢ nổi trên bản đồ, không còn trong đầu trang');
+  ok(/closest\('#status,#mapctl'\)/.test(html),'chạm nút nổi không đặt cột');
+  ok(/\$\('#b-cad'\)\.addEventListener\('click',\(\)=>showNen\('cad'\)\)/.test(html)&&/if\(nenChe==='cad'\)\{showCad\(\);return\}/.test(html)&&/function showCad\(\)\{[\s\S]{0,700}\$\{cadPhan\(\)\}/.test(html),'nút 📐 mở thẳng bảng CAD (nạp .dxf)');
+  ok(/accept="\.json,\.dxf,application\/json"/.test(html)&&/if\(e\.target\.id==='imp'\)\{\s*if\(\/\\\.\(dxf\|dwg\)\$\/i\.test\(fl\[0\]\.name\)\)\{closePanel\(\);await cadNap\(fl\[0\]\);return\}/.test(html),'☰ Mở file nhận .dxf → nạp CAD');
+  ok(/function khungVe\(v,w,h\)/.test(html)&&/const CL=o\.print\?null:khungVe\(v,w,h\)/.test(html)&&/sorted\(\)\.filter\(p=>inW\(p\.x,p\.y\)\)/.test(html)&&/const pre=s\+'#'\+k\+'#'\+kk\+/.test(html),'tốc độ: chỉ dựng phần trong khung nhìn, khoá nhãn theo ô khung');
+  ok((()=>{try{let n=0;for(const m of html.matchAll(/<script>([\s\S]*?)<\/script>/g)){new Function(m[1]);n++}return n>0}catch(e){console.log('   cú pháp: '+e.message);return false}})(),'mã trang không lỗi cú pháp (21/11: trùng tên biến m trong showNen làm trắng trang, các chốt khác vẫn đạt)');
+  ok(/function cadPhan\(\)\{[\s\S]{0,200}<label class="big\$\{ds\.length\?'':' pri'\}"[^\n]*\n\s*\$\{ds\.map\(cadDong\)\.join\(''\)\}/.test(html),'bảng CAD: ô «+ Nạp bản vẽ .dxf» đứng đầu, nổi màu khi chưa có bản vẽ');
   /* chốt trong code */
   ok(/function nenVe\(\)\{nenNen\(\);if\(D&&D\.cad&&D\.cad\.length\)try\{cadVe\(/.test(html),'nenVe vẽ thêm bản vẽ CAD sau ảnh nền');
   ok(!/nenCv\.style\.opacity=String\(DB\.nenMo/.test(html),'độ đậm ảnh nền dùng globalAlpha (không làm mờ nét CAD)');
