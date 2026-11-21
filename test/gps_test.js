@@ -368,15 +368,25 @@ console.log('17. Bản vẽ CAD phủ lên: VN-2000 → WGS-84, đọc DXF');
   ok(/data-den="L60"/.test(html)&&/\.tools\.che-cs\{grid-template-columns:repeat\(8,/.test(html)&&/`LED 60W: \$\{c\.L60\}`/.test(html)&&/60W \$\{c\.L60\}/.test(html),'nút LED 60W trên thanh chiếu sáng (7 ô), đếm ở thanh trạng thái + Excel');
   ok(/function denKhung\(d,x,y,rw,rh\)/.test(html)&&/<rect class="db db-\$\{d\.loai\|\|'x'\}\$\{d\.hong\?' dbh':''\}"/.test(html)&&/\.db-L60\{fill:#8E44AD\}\.db-L100\{fill:#2E9E5B\}\.db-L150\{fill:#2F6FD0\}\.db-SD\{fill:#F0A30A\}/.test(html)&&
      /const b=denKhung\(denDoc\(q\.p\.code\),q\.x,q\.y,q\.Rw,q\.Rh\);if\(b\)add\(/.test(html)&&!/class="dn dn-/.test(html),'đèn vẽ thẻ màu có chữ 60 / 100 / 150 / SĐ (không còn chấm nhỏ), nhãn số cột tránh thẻ');
-  ok(/r\.dd\.concat\(boDen\?r\.gc\.filter\(t=>!denLoai\(t\)\):r\.gc\)/.test(html)&&/labelLines\(p,r,!o\.print\)/.test(html)&&/for\(const l of labelLines\(p,r\)\)\{txt\(/.test(html),'nhãn màn hình bỏ chữ «Đèn LED …» (đã có thẻ đèn), ảnh xuất + DXF vẫn ghi');
+  ok(/r\.dd\.concat\(boDen\?r\.gc\.filter\(t=>!denLoai\(t\)&&!denSlTok\(t\)\):r\.gc\)/.test(html)&&/labelLines\(p,r,!o\.print\)/.test(html)&&/for\(const l of labelLines\(p,r\)\)\{txt\(/.test(html),'nhãn màn hình bỏ chữ «Đèn LED …» (đã có thẻ đèn), ảnh xuất + DXF vẫn ghi');
   ok(/if\(d\.hong\)\{const r=f\(Math\.max\(rw,rh\)\+11\);s\+=`<circle class="dnl"[^`]*<circle class="dnh"/.test(html)&&/\.dnh\{[^}]*stroke-dasharray/.test(html)&&!/class="dnh" d="M/.test(html),'đèn hỏng: vòng đỏ nét đứt, không gạch chéo (gạch chéo = bóng thu hồi)');
   ok(/const DL=\{L60:\['KS_DEN_LED60',6\],L100:\['KS_DEN_LED100',3\],L150:\['KS_DEN_LED150',5\],L200:\['KS_DEN_LED200',34\],SD:\['KS_DEN_SOIDOT',30\],x:\['KS_DEN_CHUA_RO',8\]\}/.test(html)&&/a\(0,'INSERT',8,ly,66,1,2,ly,/.test(html)&&/a\(0,'SEQEND',8,ly\)/.test(html)&&
      /'ATTDEF',8,'0'/.test(html)&&/if\(d\.hong\)ins\('KS_DEN_HONG',x,y,'KS_DEN_HONG'\)/.test(html)&&/'THỐNG KÊ ĐÈN CHIẾU SÁNG'/.test(html)&&/2,'DASHED',70,0/.test(html),'DXF: đèn mỗi loại một lớp + block thuộc tính SO_COT / LOAI_DEN / TINH_TRANG, hỏng lớp KS_DEN_HONG, bảng thống kê');
-  ok(/\{L60:'LED 60W',L100:'LED 100W',L150:'LED 150W',L200:'LED 200W',SD:'SOI DOT'\}\[d\.loai\]\|\|'CHUA RO',d\.hong\?'HONG':'TOT'\]/.test(html),'DXF: giá trị thuộc tính đèn không dấu (trích bảng trong AutoCAD đọc được, không ra mã \\U+)');
+  ok(/\{L60:'LED 60W',L100:'LED 100W',L150:'LED 150W',L200:'LED 200W',SD:'SOI DOT'\}\[d\.loai\]\|\|'CHUA RO',d\.hong\?'HONG':'TOT',String\(d\.n\)\]/.test(html),'DXF: giá trị thuộc tính đèn không dấu (trích bảng trong AutoCAD đọc được, không ra mã \\U+)');
   {const c=T.denDat('4;LT8,5;Đèn LED 150W;Đèn hỏng;','L200'),d=T.denDem([{code:'1;Đèn LED 200W;'},{code:'2;đèn led 200w;Đèn hỏng;'},{code:'3;Đèn LED 150W;'}]);
     ok(c==='4;LT8,5;Đèn LED 200W;Đèn hỏng;'&&T.denLoai('Đèn LED 200W')==='L200'&&T.denLoai('Đèn LED 2000W')===''&&d.L200===2&&d.L150===1&&d.hong===1&&d.tong===3,
       `đèn LED 200W: đổi loại giữ hỏng, đếm riêng (${c} · ${JSON.stringify(d)})`)}
   ok(/data-den="L200"/.test(html)&&/\.db-L200\{fill:#8D5524\}/.test(html)&&/\.ic-den\.L200\{/.test(html)&&/200W \$\{c\.L200\}/.test(html)&&/`LED 200W: \$\{c\.L200\}`/.test(html)&&/L200:'200'/.test(html),'LED 200W: nút (8 ô), thẻ nâu «200», đếm ở thanh trạng thái + Excel');
+  {const T2=new Function(html.slice(html.indexOf('const VN=(()=>{'),html.indexOf('/* === HẾT HÀM THUẦN === */'))+';return {denSoBong,denBo,denSlTok,denDoc,denDem,denDat}')();
+    const c2=T2.denSoBong('5;LT8,5;Đèn LED 100W;Đèn hỏng;',2),c3=T2.denSoBong(c2,3),c1=T2.denSoBong(c3,1),b=T2.denBo('5;LT8,5;Đèn LED 150W;2 bóng;Đèn hỏng;ghi chú;');
+    const d=T2.denDem([{code:'1;Đèn LED 100W;2 bóng;'},{code:'2;Đèn LED 100W;'},{code:'3;Đèn LED 150W;3 bóng;Đèn hỏng;'},{code:'4;LT8,5;'}]),dd=T2.denDoc(c3);
+    ok(c2==='5;LT8,5;Đèn LED 100W;2 bóng;Đèn hỏng;'&&c3==='5;LT8,5;Đèn LED 100W;3 bóng;Đèn hỏng;'&&c1==='5;LT8,5;Đèn LED 100W;Đèn hỏng;'&&dd.n===3&&dd.loai==='L100'&&dd.hong&&
+       b==='5;LT8,5;ghi chú;'&&T2.denDoc('7;Đèn LED 60W;').n===1&&T2.denSlTok('2 BÓNG')===2&&T2.denSlTok('12 bóng')===0&&d.L100===3&&d.L150===3&&d.hong===3&&d.tong===6&&
+       T2.denDat(c3,'L200')==='5;LT8,5;Đèn LED 200W;3 bóng;Đèn hỏng;',
+      `số bóng: thêm / bớt «n bóng», bỏ đèn giữ cột + ghi chú, đếm theo bóng, đổi loại giữ số bóng (${c3} · ${b} · ${JSON.stringify(d)})`)}
+  ok(/<section id="dsheet"/.test(html)&&/if\(denCo\(q\)&&k!=='hong'\)moDen\(q\)/.test(html)&&/\$\('#ds-xoa'\)/.test(html)&&/if\(ke\.length===2&&!hasEdge\(ke\[0\],ke\[1\]\)\)D\.edges\.push/.test(html)&&
+     /\(p\.id===editId\|\|p\.id===denId\)&&!o\.print/.test(html)&&/\(editId\|\|''\)\+\(denId\|\|''\)/.test(html),'chạm đèn mở bảng chi tiết (đổi loại / số bóng / hỏng / bỏ đèn / xoá cột nối lại dây), vòng chọn + khoá vẽ theo denId');
+  ok(/'SO_BONG'\]\[i\]/.test(html)&&/c\[k\]\.n\+=d\.n/.test(html)&&/'Số bóng','Tình trạng'/.test(html)&&/\(d\.n>1\?'×'\+d\.n:''\)/.test(html)&&/!denLoai\(t\)&&!denSlTok\(t\)/.test(html),'số bóng: thẻ ×n, Excel cột Số bóng, DXF thuộc tính SO_BONG + bảng đếm theo bóng, nhãn màn hình không lặp');
   /* chốt trong code */
   ok(/function nenVe\(\)\{nenNen\(\);if\(D&&D\.cad&&D\.cad\.length\)try\{cadVe\(/.test(html),'nenVe vẽ thêm bản vẽ CAD sau ảnh nền');
   ok(!/nenCv\.style\.opacity=String\(DB\.nenMo/.test(html),'độ đậm ảnh nền dùng globalAlpha (không làm mờ nét CAD)');

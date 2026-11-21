@@ -148,6 +148,19 @@ button{font:inherit;color:inherit;cursor:pointer}
 .anhxem .row{display:flex;gap:10px}
 .btn.pri{background:var(--ink);color:var(--ink-fg);border-color:var(--ink)}
 .btn.danger{color:var(--warn);border-color:currentColor;background:transparent}
+/* bảng chi tiết đèn (21/11 Truong «chưa có phần chi tiết, chỉ thêm mà không xoá / sửa được đèn») */
+#dsheet{gap:9px;padding-bottom:12px}
+#ds-so{font-size:15.5px;flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dsg{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.dsg button{height:46px;border-radius:10px;border:2px solid var(--line);background:var(--paper);display:flex;align-items:center;justify-content:center;padding:0}
+.dsg button.on{border-color:var(--fg);box-shadow:inset 0 0 0 2px var(--fg)}
+.dsr{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.dsr .k{font-size:13px;color:var(--muted);font-weight:700}
+.dsn{display:inline-flex;align-items:center;border:1.5px solid var(--line);border-radius:10px;overflow:hidden;background:var(--paper)}
+.dsn button{width:46px;height:42px;border:0;background:transparent;font:800 21px var(--f);color:var(--fg)}
+.dsn button:disabled{opacity:.3}
+.dsn b{min-width:36px;text-align:center;font-size:18px}
+#ds-hong.on{background:#E0412F;color:#fff;border-color:#E0412F}
 .btn.armed{background:var(--warn);color:#fff;border-color:var(--warn)}
 .sact{flex:0 0 auto;background:var(--bg);display:flex;gap:6px;padding:6px 0 calc(8px + env(safe-area-inset-bottom,0px))}
 .sact .btn{flex:1;padding:0 6px}
@@ -275,6 +288,15 @@ label.btn{display:flex;align-items:center;justify-content:center}
   </div>
   <p class="hint">Kéo chấm vàng ở hai đầu để sửa vị trí. Kéo chấm rỗng giữa đoạn để thêm điểm gấp; giữ lâu một điểm để bỏ. Vẽ nhánh: chạm điểm ngoài rồi chạm vào thân đường.</p>
 </section>
+<section id="dsheet" class="sheet" hidden aria-label="Chi tiết đèn">
+  <div class="shh"><button id="ds-prev" class="btn sm" aria-label="Đèn trước">◀</button><b id="ds-so"></b><button id="ds-next" class="btn sm" aria-label="Đèn sau">▶</button>
+    <span class="grow"></span><button id="ds-cot" class="btn sm">Ô nhập cột</button><button id="ds-ok" class="btn sm pri">Xong</button></div>
+  <div class="dsr"><span class="k">Loại đèn — chạm để đổi</span></div>
+  <div id="ds-loai" class="dsg"></div>
+  <div class="dsr"><span class="k">Số bóng</span><span class="dsn"><button type="button" id="ds-bot" aria-label="Bớt một bóng">−</button><b id="ds-n">1</b><button type="button" id="ds-them" aria-label="Thêm một bóng">+</button></span>
+    <span class="grow"></span><button id="ds-hong" class="btn" type="button">Đèn hỏng</button></div>
+  <div class="dsr"><button id="ds-bo" class="btn" type="button">Bỏ đèn (giữ cột)</button><span class="grow"></span><button id="ds-xoa" class="btn danger" type="button">Xoá cột</button></div>
+</section>
 <section id="panel" hidden></section>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <!-- xlsx.full.min.js (881 KB) nạp khi mở Xuất (napXlsx) — không làm chậm lúc mở app; sw.js vẫn lưu sẵn để dùng mất mạng -->
@@ -368,7 +390,7 @@ function ddText(p,r){const a=[];if(p.shape==='tba'||p.shape==='cs')a.push(SHAPE_
 function labelLines(p,r,boDen){
   return [[pair(r.cotHT,r.cotTT),pair(r.dayHT,r.dayTT)].filter(Boolean).join(' · '),
     [ctText(r),J(r.sau),tuText(r)].filter(Boolean).join(' · '),
-    r.dd.concat(boDen?r.gc.filter(t=>!denLoai(t)):r.gc).join('; ')].filter(Boolean);
+    r.dd.concat(boDen?r.gc.filter(t=>!denLoai(t)&&!denSlTok(t)):r.gc).join('; ')].filter(Boolean);
 }
 function wrap(s,n){const out=[];let cur='';for(const w of s.split(' ')){if(cur&&(cur+' '+w).length>n){out.push(cur);cur=w}else cur=cur?cur+' '+w:w}if(cur)out.push(cur);return out}
 function parseSo(s){const m=String(s||'').trim().split(/\s+/)[0].match(/^(.*?)(\d+)$/);return m?{pre:m[1],num:+m[2],w:m[2].length}:null}
@@ -479,7 +501,7 @@ function nextPos(p){
 /* ================= vẽ ================= */
 const cv=$('#cv'), stage=$('#stage'), nenCv=$('#nen'), nenCx=nenCv.getContext('2d',{alpha:true}), nenAttr=$('#nenattr');
 let DPR=window.devicePixelRatio||1;
-let W=0,H=0,V=D.view||null,tool='cot',noiA=null,editId=null,selRoad=null,roadStart=null,fix=null,watchId=null,tmpRoad=null;
+let W=0,H=0,V=D.view||null,tool='cot',noiA=null,editId=null,denId=null,selRoad=null,roadStart=null,fix=null,watchId=null,tmpRoad=null;
 function sizeUp(){const r=stage.getBoundingClientRect();W=r.width;H=r.height;cv.setAttribute('viewBox',`0 0 ${W} ${H}`);
   DPR=window.devicePixelRatio||1;const cw=Math.max(1,Math.round(W*DPR)),ch=Math.max(1,Math.round(H*DPR));
   if(nenCv.width!==cw||nenCv.height!==ch){nenCv.width=cw;nenCv.height=ch}}
@@ -514,12 +536,12 @@ function catKhung(CL,s){const het=!CL||CL.all;
     segW:(x1,y1,x2,y2)=>het||(Math.max(x1,x2)*s>=CL.x0&&Math.min(x1,x2)*s<=CL.x1&&Math.max(y1,y2)*s>=CL.y0&&Math.min(y1,y2)*s<=CL.y1)}}
 function layout(v,w,h,o,pr,JN,CL){
   const k=o.k||1,s=v.s,X=x=>x*s,Y=y=>y*s,{inW,segW}=catKhung(o.print?null:CL,s),kk=!o.print&&CL?CL.key:'';
-  const sig=o.print?null:[s,k,kk,D.id,editId||'',D.poles.map(p=>p.id+','+p.x.toFixed(2)+','+p.y.toFixed(2)+','+p.shape+(p.doi?1:0)+(p.kcThat?'!':'')+','+p.code).join('|'),
+  const sig=o.print?null:[s,k,kk,D.id,(editId||'')+(denId||''),D.poles.map(p=>p.id+','+p.x.toFixed(2)+','+p.y.toFixed(2)+','+p.shape+(p.doi?1:0)+(p.kcThat?'!':'')+','+p.code).join('|'),
     D.edges.map(e=>e.join()).join(),JN.map(j=>j.x.toFixed(1)+','+j.y.toFixed(1)).join(),D.mocs.map(m=>m.x.toFixed(1)+m.y.toFixed(1)+m.ten).join(),
     D.roads.map(r=>(r.ten||'')+r.w+':'+r.pts.join()).join()].join('#');
   if(sig&&LCACHE&&LCACHE.sig===sig)return LCACHE.L;
   /* đang kéo cột / kéo điểm đường: giữ nhãn đã xếp (đỡ nhảy, đỡ tính lại mỗi khung), nhãn + số khoảng cột của cột đang kéo đi theo cột; thả tay mới xếp lại */
-  const pre=s+'#'+k+'#'+kk+'#'+D.id+'#'+(editId||'');
+  const pre=s+'#'+k+'#'+kk+'#'+D.id+'#'+(editId||'')+(denId||'');
   if(sig&&LCACHE&&LCACHE.pre===pre&&G&&(G.type==='drag'||G.type==='rdrag')){const L=LCACHE.L;
     if(G.type==='drag'){const p=G.hit,e=L.PL.find(l=>l.id===p.id);
       if(e){const dx=X(p.x)-e.px,dy=Y(p.y)-e.py;e.x+=dx;e.y+=dy;e.px+=dx;e.py+=dy}
@@ -544,7 +566,7 @@ function layout(v,w,h,o,pr,JN,CL){
       if(!best||sc<best.sc)best={b,c:cc,sc,i,far:!!c[2]};if(cc===0)break}
     return best};
   const P=sorted().filter(p=>inW(p.x,p.y)).map(p=>{const r=pr[p.id],doi=isDoi(p,r)&&p.shape!=='tba',t=p.shape==='tba';
-    return {p,r,x:X(p.x),y:Y(p.y),Rw:R*(t?1.5:doi?2:1),Rh:R*(t?1.5:1),ed:!o.print&&p.id===editId}});
+    return {p,r,x:X(p.x),y:Y(p.y),Rw:R*(t?1.5:doi?2:1),Rh:R*(t?1.5:1),ed:!o.print&&(p.id===editId||p.id===denId)}});
   /* chỗ đã bị chiếm: ký hiệu cột, nút đường, mốc, tên đường, số khoảng cột, dây.
      Cột đang sửa có vòng chọn vàng (R+7) nên vùng tránh lấy R+9 để số cột không đè lên vòng. */
   for(const q of P){const m=q.ed?9:3;add(q.x-q.Rw-m,q.y-q.Rh-m,q.x+q.Rw+m,q.y+q.Rh+m,4);
@@ -613,7 +635,7 @@ function svgInner(v,w,h,o={}){
   const R=7*k;
   for(const p of D.poles){if(!inW(p.x,p.y))continue;
     const x=X(p.x),y=Y(p.y),c='pole'+(p.id===D.active&&!o.print?' act':''),r=pr[p.id],doi=isDoi(p,r)&&p.shape!=='tba';
-    if(p.id===editId&&!o.print)g+=`<circle class="ring" cx="${x}" cy="${y}" r="${R*(doi?2:1)+7}"/>`;
+    if((p.id===editId||p.id===denId)&&!o.print)g+=`<circle class="ring" cx="${x}" cy="${y}" r="${R*(doi?2:1)+7}"/>`;
     if(p.id===noiA)g+=`<circle class="noiA" cx="${x}" cy="${y}" r="${R*(doi?2:1)+6}"/>`;
     g+=symSvg(p,x,y,R,c,r);
     if(!o.print){const dn=denDoc(p.code);if(dn.loai||dn.hong){const t=p.shape==='tba';g+=denSvg(dn,x,y,R,R*(t?1.5:doi?2:1),R*(t?1.5:1))}}
@@ -655,7 +677,7 @@ function status(){
       :selRoad?`<span class="pill solo">Kéo chấm vàng để sửa · chạm chỗ trống để bỏ chọn</span>`
       :`<span class="pill solo">Chạm điểm đầu rồi điểm cuối · chạm vào đường để sửa</span>`;
   else if(tool==='den'){const c=denDem(D.poles),k=DB.denBut||'L100';
-    h=`<span class="pill solo">${k==='hong'?'Chạm đèn: đánh / bỏ hỏng':'Chạm trống: thêm đèn · chạm cột: đổi đèn'} · ${c.tong} đèn${c.tong?` (60W ${c.L60} · 100W ${c.L100} · 150W ${c.L150} · 200W ${c.L200} · SĐ ${c.SD} · hỏng ${c.hong})`:''}</span>`}
+    h=`<span class="pill solo">${k==='hong'?'Chạm đèn: đánh / bỏ hỏng':'Chạm trống: thêm đèn · chạm đèn: sửa / xoá'} · ${c.tong} đèn${c.tong?` (60W ${c.L60} · 100W ${c.L100} · 150W ${c.L150} · 200W ${c.L200} · SĐ ${c.SD} · hỏng ${c.hong})`:''}</span>`}
   else if(ed&&ed.auto)h=`<span class="pill solo">Cột tự đặt thẳng tuyến — chạm chỗ khác để dời tới đó</span>`;
   else if(a){const so=parse(a.code).so;h=`<span class="pill solo">${so?'Vẽ tiếp từ '+esc(so):'Vẽ tiếp từ cột chưa đánh số'}</span>`}
   else h=`<span class="pill solo">${D.poles.length?'Đoạn mới — cột sau không nối':'Chạm lên bảng để đặt cột đầu tiên'}</span>`;
@@ -1039,9 +1061,12 @@ function onTap(pt,h){
   }
   if(tool==='den'){const k=DB.denBut||'L100';
     /* ⚑ thu nhỏ bản đồ (đèn sát nhau trên màn hình): chỉ coi là chạm cột khi trong 10 m (tối thiểu 12 px), kẻo đổi nhầm đèn bên cạnh */
-    if(h&&h.ten===undefined&&Math.hypot(h.x*V.s+V.tx-pt.x,h.y*V.s+V.ty-pt.y)<=Math.max(12,Math.min(26,10*V.s))){const q=byId(h.id);if(q)denApDung(q,k);return}
+    /* ⚑ 21/11: chạm cột ĐÃ có đèn → bảng chi tiết (đổi loại / số bóng / hỏng / bỏ đèn / xoá cột); nút «Hỏng» vẫn chạm là đánh hỏng ngay;
+       cột chưa có đèn (cột hạ áp) → lắp đèn loại đang chọn; đang mở bảng mà chạm chỗ trống → chỉ đóng bảng, không thêm đèn */
+    if(h&&h.ten===undefined&&Math.hypot(h.x*V.s+V.tx-pt.x,h.y*V.s+V.ty-pt.y)<=Math.max(12,Math.min(26,10*V.s))){const q=byId(h.id);
+      if(q){if(denCo(q)&&k!=='hong')moDen(q);else{denApDung(q,k);if(denId===q.id)veDen()}}return}
     if(h&&h.ten===undefined)h=null;
-    if(h)return;const [wx,wy]=toW(pt),q=snapToRoad(wx,wy);denThem(q.x,q.y);return}
+    if(h)return;if(denId){dongDen();return}const [wx,wy]=toW(pt),q=snapToRoad(wx,wy);denThem(q.x,q.y);return}
   if(tool==='duong'){const w=toW(pt);
     if(roadStart){const a=roadStart;roadStart=null;makeRoad(a,w);return}
     const r=hitRoad(pt);if(r){openRoad(r);return}
@@ -1066,7 +1091,7 @@ function onTap(pt,h){
    «Đèn LED 100W» / «Đèn LED 150W» / «Đèn sợi đốt» / «Đèn hỏng») nên bảng cột, Excel, DXF, nhãn tự mang theo, sửa tay vẫn được. */
 let denMsg='';
 /* thẻ đèn: ô màu ghi 60 / 100 / 150 / SĐ ở trên-phải cột; hỏng: viền thẻ đỏ + vòng đỏ nét đứt quanh cột; hỏng chưa rõ loại: thẻ xám «?» */
-function denKhung(d,x,y,rw,rh){if(!d.loai&&!d.hong)return null;const t=DEN_SO[d.loai]||'?',w=t.length*7+9,h=16;return {x:x+rw*.55,y:y-rh-h+1,w,h,t}}
+function denKhung(d,x,y,rw,rh){if(!d.loai&&!d.hong)return null;const t=(DEN_SO[d.loai]||'?')+(d.n>1?'×'+d.n:''),w=t.length*7+9,h=16;return {x:x+rw*.55,y:y-rh-h+1,w,h,t}}
 function denSvg(d,x,y,R,rw=R,rh=R){let s='';const f=v=>+v.toFixed(1),b=denKhung(d,x,y,rw,rh);
   if(d.hong){const r=f(Math.max(rw,rh)+11);s+=`<circle class="dnl" cx="${f(x)}" cy="${f(y)}" r="${r}"/><circle class="dnh" cx="${f(x)}" cy="${f(y)}" r="${r}"/>`}
   if(b)s+=`<rect class="db db-${d.loai||'x'}${d.hong?' dbh':''}" x="${f(b.x)}" y="${f(b.y)}" width="${f(b.w)}" height="${b.h}" rx="4"/><text class="dbt${d.loai==='SD'?' dk':''}" x="${f(b.x+b.w/2)}" y="${f(b.y+b.h-4.2)}" text-anchor="middle">${b.t}</text>`;
@@ -1091,9 +1116,41 @@ function denThem(x,y,gps){const k=DB.denBut||'L100',a=activeP(),noi=!!a&&denCo(a
   const m=`${parse(p.code).so||'Cột mới'}: ${k==='hong'?'đèn HỎNG (chưa rõ loại)':DEN_NGAN[k]}`;denMsg=m+' · ';toast(m)}
 /* ⚑ GPS ở thanh chiếu sáng: có cột trong 12 m (hoặc 1,5 × sai số GPS) thì đổi đèn cột đó, không thêm cột trùng */
 function denGan(xy,r){let b=null,bd=r;for(const p of D.poles){const d=Math.hypot(p.x-xy.x,p.y-xy.y);if(d<=bd){bd=d;b=p}}return b}
+/* bảng chi tiết đèn: mỗi thao tác ghi ngay + hoàn tác được (nút ↶); xoá cột giữa tuyến thì nối lại dây hai cột hai bên */
+let denXoaT=null;
+function moDen(p){if(editId)finishSheet();rsheet.hidden=true;denId=p.id;D.active=p.id;dsheet.hidden=false;veDen();draw()}
+function dongDen(){clearTimeout(denXoaT);denXoaT=null;if(!denId&&dsheet.hidden)return;denId=null;dsheet.hidden=true;draw()}
+function veDen(){const p=denId&&byId(denId);if(!p){dongDen();return}
+  const d=denDoc(p.code),co=!!(d.loai||d.hong);
+  $('#ds-so').textContent=(parse(p.code).so||'Cột chưa số')+' · '+(d.loai?DEN_NGAN[d.loai]:co?'chưa rõ loại':'chưa có đèn');
+  $('#ds-loai').innerHTML=Object.keys(DEN).map(k=>`<button type="button" data-l="${k}" class="${d.loai===k?'on':''}" aria-label="${esc(DEN[k])}"><span class="ic-den ${k}">${DEN_SO[k]}${k==='SD'?'':'W'}</span></button>`).join('');
+  $('#ds-n').textContent=co?d.n:0;$('#ds-bot').disabled=!co||d.n<=1;$('#ds-them').disabled=!co||d.n>=9;
+  $('#ds-hong').classList.toggle('on',d.hong);$('#ds-hong').textContent=d.hong?'Đang hỏng — bỏ':'Đèn hỏng';$('#ds-bo').disabled=!co;
+  const x=$('#ds-xoa');x.classList.remove('armed');x.textContent='Xoá cột'}
+function denSua(f,m){const p=denId&&byId(denId);if(!p)return;const c=f(p.code);if(c===p.code)return;snap();p.code=c;p.auto=false;save();draw();veDen();
+  if(m){const t=(parse(p.code).so||'Cột')+': '+m;denMsg=t+' · ';toast(t)}}
+$('#ds-loai').addEventListener('click',e=>{const b=e.target.closest('[data-l]');if(b)denSua(c=>denDat(c,b.dataset.l),DEN_NGAN[b.dataset.l])});
+$('#ds-them').addEventListener('click',()=>{const p=byId(denId);if(p)denSua(c=>denSoBong(c,denDoc(c).n+1),`${denDoc(p.code).n+1} bóng`)});
+$('#ds-bot').addEventListener('click',()=>{const p=byId(denId);if(p)denSua(c=>denSoBong(c,denDoc(c).n-1),`${Math.max(1,denDoc(p.code).n-1)} bóng`)});
+$('#ds-hong').addEventListener('click',()=>{const p=byId(denId);if(p)denSua(c=>denDat(c,'hong'),denDoc(p.code).hong?'bỏ đánh dấu hỏng':'đèn HỎNG')});
+$('#ds-bo').addEventListener('click',()=>denSua(denBo,'đã bỏ đèn (cột giữ lại)'));
+$('#ds-ok').addEventListener('click',dongDen);
+$('#ds-cot').addEventListener('click',()=>{const p=byId(denId);dongDen();if(p){D.active=p.id;save();openSheet(p)}});
+$('#ds-xoa').addEventListener('click',e=>{const b=e.currentTarget,p=byId(denId);if(!p)return;
+  if(!denXoaT){b.classList.add('armed');b.textContent='Xoá thật?';denXoaT=setTimeout(()=>{denXoaT=null;b.classList.remove('armed');b.textContent='Xoá cột'},3000);return}
+  clearTimeout(denXoaT);denXoaT=null;const so=parse(p.code).so||'',ke=D.edges.filter(([a,c])=>a===p.id||c===p.id).map(([a,c])=>a===p.id?c:a);
+  const con=D.poles.filter(q=>q.from===p.id),cha=p.from&&byId(p.from)?p.from:null;
+  snap();removePole(p.id);if(ke.length===2&&!hasEdge(ke[0],ke[1]))D.edges.push([ke[0],ke[1]]);for(const q of con)q.from=cha;
+  denId=null;dsheet.hidden=true;save();draw();toast(`Đã xoá cột ${so}`+(ke.length===2?' — nối lại dây hai bên':''))});
+function denSang(d){const o=sorted(),i=o.findIndex(q=>q.id===denId);if(i<0)return;
+  for(let j=i+d;j>=0&&j<o.length;j+=d)if(denCo(o[j])){const q=byId(o[j].id);denId=q.id;D.active=q.id;veDen();
+    const sx=q.x*V.s+V.tx,sy=q.y*V.s+V.ty,visH=Math.max(window.innerHeight-dsheet.offsetHeight-stage.getBoundingClientRect().top,120);
+    if(sx<50||sx>W-50||sy<50||sy>visH-50){V.tx+=W/2-sx;V.ty+=visH/2-sy;persistView()}draw();return}
+  toast(d>0?'Đây là đèn cuối':'Đây là đèn đầu')}
+$('#ds-prev').addEventListener('click',()=>denSang(-1));$('#ds-next').addEventListener('click',()=>denSang(1));
 
 /* ================= ô nhập cột (dạng ô) ================= */
-const sheet=$('#sheet'), rsheet=$('#rsheet');
+const sheet=$('#sheet'), rsheet=$('#rsheet'), dsheet=$('#dsheet');
 const BASE={
   cot:['LT8,5','LT10','LT12','H7,5','H8,5','2LT8,5','2H7,5','LT7,5','H6,5','Cột gỗ'],
   cotTT:['LT8,5','LT10','LT12','H7,5','H8,5','2LT8,5','2H7,5','Nhổ bỏ'],
@@ -1492,7 +1549,7 @@ async function guiAnhCot(){
   toast(`Đã tải ${files.length} ảnh vào thư mục Tải xuống`);
 }
 function openSheet(p){
-  rsheet.hidden=true;selRoad=null;giongTat();$('#sh-noi').hidden=true;giongXoa();
+  dongDen();rsheet.hidden=true;selRoad=null;giongTat();$('#sh-noi').hidden=true;giongXoa();
   editId=p.id;F=parse(p.code);sheetSnap=false;
   slot=!F.so?'so':F.cotHT.length?'ct':'cot';
   sheet.hidden=false;renderSlots();renderOpts();$('#opts').scrollTop=0;veAnhCot();
@@ -1593,11 +1650,11 @@ function showTable(){
 
 /* ================= công cụ ================= */
 for(const b of document.querySelectorAll('[data-tool]'))b.addEventListener('click',()=>{
-  tool=b.dataset.tool;if(b.dataset.den){DB.denBut=b.dataset.den;saveNow()}noiA=null;roadStart=null;closeRoad();
+  tool=b.dataset.tool;dongDen();if(b.dataset.den){DB.denBut=b.dataset.den;saveNow()}noiA=null;roadStart=null;closeRoad();
   for(const x of document.querySelectorAll('[data-tool]'))x.classList.toggle('on',x===b);
   if(tool!=='cot')finishSheet();draw()});
 /* phần khảo sát: Chiếu sáng (thanh nút đèn) · Hạ áp (như cũ) · Trung thế (như Hạ áp, danh sách cột / dây trung thế) */
-function datChe(c,dau){DB.che=c;const nv=$('nav.tools');nv.classList.toggle('che-cs',c==='cs');
+function datChe(c,dau){DB.che=c;dongDen();const nv=$('nav.tools');nv.classList.toggle('che-cs',c==='cs');
   for(const b of nv.querySelectorAll('[data-che]'))b.classList.toggle('on',b.dataset.che===c);
   tool=c==='cs'?'den':'cot';noiA=null;roadStart=null;
   for(const x of nv.querySelectorAll('[data-tool]'))x.classList.toggle('on',tool==='den'?x.dataset.den===(DB.denBut||'L100'):x.dataset.tool==='cot');
@@ -1616,7 +1673,7 @@ $('#status').addEventListener('click',e=>{
   else if(s==='nd0'){const l=nenLech();l[0]=0;l[1]=0;nenDoi=false;save();nenVe();status();toast('Ảnh nền về chỗ cũ')}
 });
 $('#b-undo').addEventListener('click',()=>{const s=undoSt.pop();if(!s){toast('Không còn gì để hoàn tác');return}
-  Object.assign(D,JSON.parse(s));editId=null;F=null;sheet.hidden=true;closeRoad();save();draw();toast('Đã hoàn tác')});
+  Object.assign(D,JSON.parse(s));editId=null;F=null;sheet.hidden=true;closeRoad();if(denId)veDen();save();draw();toast('Đã hoàn tác')});
 $('#b-cad').addEventListener('click',()=>showNen('cad'));
 function cadNut(){const b=$('#b-cad');if(b)b.classList.toggle('on',!!(D&&D.cad&&D.cad.some(m=>m.bat)))}
 $('#b-fit').addEventListener('click',()=>{V=fitView(W,H,40);persistView();draw()});
@@ -2061,7 +2118,7 @@ function giongGop(list,them,ghiDe){
 /* 🎤 KHẨU LỆNH ở CUỐI câu nói (07/11): «điền» · «tiếp» (= Tiếp ▸) · «dừng» (= Dừng) · «đoạn mới» · «nói lại» / «xoá câu»
    → {lenh:'dien'|'tiep'|'dung'|'doan'|'xoa'|null, con: phần câu trước lệnh}. Chỉ nhận ở CUỐI câu, có chốt chặn:
    «tiếp địa», «nối tiếp», «trạm dừng», «xã Quảng Điền» không thành lệnh */
-const BAN_APP='kstuyen-33';
+const BAN_APP='kstuyen-34';
 /* 🎤 chờ bao lâu (ms) rồi mới làm khẩu lệnh cuối câu (07/11 rút ngắn ⚑): máy đã chốt câu → làm gần như ngay;
    còn chữ tạm → chờ ngắn xem có nói tiếp không («tiếp», «dừng» chờ lâu hơn chút vì hay đi tiếp chữ, vd «tiếp địa»);
    gõ tay / 🎤 bàn phím chờ lâu nhất; lai = nghỉ trước khi mở phiên nghe mới */
@@ -2337,15 +2394,25 @@ const DEN={L60:'Đèn LED 60W',L100:'Đèn LED 100W',L150:'Đèn LED 150W',L200:
 function denLoai(t){const u=String(t).normalize('NFC').toUpperCase().replace(/\s+/g,'');
   if(/^ĐÈNLED60W?$/.test(u))return 'L60';if(/^ĐÈNLED100W?$/.test(u))return 'L100';if(/^ĐÈNLED150W?$/.test(u))return 'L150';if(/^ĐÈNLED200W?$/.test(u))return 'L200';if(/^ĐÈNSỢIĐỐT/.test(u))return 'SD';
   if(/^(ĐÈNHỎNG|ĐÈNCHÁY|HỎNGĐÈN|CHÁYĐÈN)$/.test(u))return 'hong';return ''}
-function denDoc(code){let loai='',hong=false;
-  for(const x of String(code||'').split(';').slice(1)){const k=denLoai(x.trim());if(k==='hong')hong=true;else if(k)loai=k}return {loai,hong}}
+function denDoc(code){let loai='',hong=false,n=1;
+  for(const x of String(code||'').split(';').slice(1)){const k=denLoai(x.trim());if(k==='hong')hong=true;else if(k)loai=k;else{const b=denSlTok(x);if(b)n=b}}return {loai,hong,n}}
+/* số bóng trên một cột: ô «2 bóng» … «9 bóng» trong mã cột (1 bóng thì không ghi); đứng ngay sau ô loại đèn */
+function denSlTok(t){const m=String(t||'').trim().toLowerCase().replace(/\s+/g,' ').match(/^([1-9]) ?bóng$/);return m?+m[1]:0}
+function denSoBong(code,n){code=String(code||'');const a=code.split(';').map(x=>x.trim()),so=a[0]||'';n=Math.max(1,Math.min(9,n|0));
+  const t=a.slice(1).filter(Boolean).filter(x=>!denSlTok(x));
+  if(n>1){const i=t.findIndex(x=>{const q=denLoai(x);return q&&q!=='hong'});t.splice(i>=0?i+1:t.length,0,n+' bóng')}
+  return t.length||code.includes(';')?[so,...t].join(';')+';':so}
+/* bỏ đèn khỏi cột: xoá ô loại đèn, ô hỏng, ô số bóng — giữ số cột, loại cột, khoảng cột, ghi chú khác */
+function denBo(code){code=String(code||'');const a=code.split(';').map(x=>x.trim()),so=a[0]||'';
+  const t=a.slice(1).filter(Boolean).filter(x=>!denLoai(x)&&!denSlTok(x));return t.length||code.includes(';')?[so,...t].join(';')+';':so}
 /* k = L60 / L100 / L150 / L200 / SD: thay loại đèn (giữ dấu hỏng); k = hong: bật / tắt dấu hỏng */
 function denDat(code,k){code=String(code||'');const a=code.split(';').map(x=>x.trim()),so=a[0]||'';let t=a.slice(1).filter(Boolean);
   if(k==='hong'){t=t.some(x=>denLoai(x)==='hong')?t.filter(x=>denLoai(x)!=='hong'):t.concat(DEN_HONG)}
-  else if(DEN[k]){t=t.filter(x=>{const q=denLoai(x);return !q||q==='hong'});const i=t.findIndex(x=>denLoai(x)==='hong');if(i>=0)t.splice(i,0,DEN[k]);else t.push(DEN[k])}
+  else if(DEN[k]){const o=t.findIndex(x=>{const q=denLoai(x);return q&&q!=='hong'});t=t.filter(x=>{const q=denLoai(x);return !q||q==='hong'});
+    const i=o>=0?o:t.findIndex(x=>denLoai(x)==='hong'||denSlTok(x));if(i>=0)t.splice(i,0,DEN[k]);else t.push(DEN[k])}   /* ô loại mới đứng chỗ ô cũ, trước «n bóng» */
   return t.length||code.includes(';')?[so,...t].join(';')+';':so}
 function denDem(ps){const c={L60:0,L100:0,L150:0,L200:0,SD:0,hong:0,tong:0};
-  for(const p of ps||[]){const d=denDoc(p.code);if(d.loai)c[d.loai]++;if(d.hong)c.hong++;if(d.loai||d.hong)c.tong++}return c}
+  for(const p of ps||[]){const d=denDoc(p.code);if(!d.loai&&!d.hong)continue;if(d.loai)c[d.loai]+=d.n;if(d.hong)c.hong+=d.n;c.tong+=d.n}return c}   /* đếm theo BÓNG */
 /* === HẾT HÀM THUẦN === */
 /* 📖 nâng cấp một lần lúc mở app: cụm dạy bản cũ «cuộc» → «ghi chú cột» thành thay chữ (giongSuaCu) — lưu ở lần lưu sau */
 {const L=giongSuaCu(DB.giongTu);if(L!==DB.giongTu)DB.giongTu=L}
@@ -2582,11 +2649,11 @@ async function xuatXlsx(){
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Bang ke');XLSX.utils.book_append_sheet(wb,ws2,'Toa do');if((D.mocDo||[]).length)XLSX.utils.book_append_sheet(wb,ws3,'Moc hieu chinh');
   const dsDen=sorted().filter(p=>{const d=denDoc(p.code);return d.loai||d.hong});
   if(dsDen.length){const c=denDem(D.poles);
-    const ws4=XLSX.utils.aoa_to_sheet([[`ĐÈN CHIẾU SÁNG: ${D.ten}`],['STT','Số cột','Loại đèn','Tình trạng','Ký hiệu cột','Vĩ độ','Kinh độ','X_VN2000 (Bắc)','Y_VN2000 (Đông)'],
-      ...dsDen.map((p,i)=>{const d=denDoc(p.code),v=vnOf(p,tb);return [i+1,parse(p.code).so,d.loai?DEN_NGAN[d.loai]:'(chưa rõ loại)',d.hong?'Hỏng':'',
+    const ws4=XLSX.utils.aoa_to_sheet([[`ĐÈN CHIẾU SÁNG: ${D.ten}`],['STT','Số cột','Loại đèn','Số bóng','Tình trạng','Ký hiệu cột','Vĩ độ','Kinh độ','X_VN2000 (Bắc)','Y_VN2000 (Đông)'],
+      ...dsDen.map((p,i)=>{const d=denDoc(p.code),v=vnOf(p,tb);return [i+1,parse(p.code).so,d.loai?DEN_NGAN[d.loai]:'(chưa rõ loại)',d.n,d.hong?'Hỏng':'',
         SHAPE_NAME[p.shape||'tron'],p.lat??'',p.lon??'',v?v.x:'',v?v.y:'']}),
       [],['','Cộng',`LED 60W: ${c.L60}`,`LED 100W: ${c.L100}`,`LED 150W: ${c.L150}`,`LED 200W: ${c.L200}`,`Sợi đốt: ${c.SD}`,`Hỏng: ${c.hong}/${c.tong}`]]);
-    ws4['!cols']=[5,10,16,10,12,12,12,14,14].map(w=>({wch:w}));XLSX.utils.book_append_sheet(wb,ws4,'Chieu sang')}
+    ws4['!cols']=[5,10,16,8,10,12,12,12,14,14].map(w=>({wch:w}));XLSX.utils.book_append_sheet(wb,ws4,'Chieu sang')}
   giao(new Blob([XLSX.write(wb,{bookType:'xlsx',type:'array'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),fname('.xlsx'));
 }
 function dxfTxt(s){return String(s).replace(/[^\x20-\x7e]/g,c=>'\\U+'+c.codePointAt(0).toString(16).toUpperCase().padStart(4,'0'))}
@@ -2624,7 +2691,7 @@ function buildDxf(that){
   /* block đèn: gốc = tâm cột; thẻ ở trên-trái cột (bên phải là số cột); 3 thuộc tính ẩn */
   const TH=(t)=>{const w=t.length*0.75+0.7,x0=-0.45-w,y0=0.9;sq2(x0,y0,x0+w,y0+1.4);
     a(0,'TEXT',8,'0',10,f(x0+w/2),20,f(y0+0.7),30,'0.0',40,'0.9',1,dxfTxt(t),7,'KS',72,1,73,2,11,f(x0+w/2),21,f(y0+0.7),31,'0.0');
-    for(const [i,tag,ten] of [[0,'SO_COT','Số cột'],[1,'LOAI_DEN','Loại đèn'],[2,'TINH_TRANG','Tình trạng']])
+    for(const [i,tag,ten] of [[0,'SO_COT','Số cột'],[1,'LOAI_DEN','Loại đèn'],[2,'TINH_TRANG','Tình trạng'],[3,'SO_BONG','Số bóng']])
       a(0,'ATTDEF',8,'0',10,f(x0),20,f(y0-0.6-i*0.7),30,'0.0',40,'0.5',1,'',3,dxfTxt(ten),2,tag,70,1,7,'KS')};
   const sq2=(x0,y0,x1,y1)=>{line(x0,y0,x1,y0,'0');line(x1,y0,x1,y1,'0');line(x1,y1,x0,y1,'0');line(x0,y1,x0,y0,'0')};
   if(dsDen.length){for(const [k,[n]] of Object.entries(DL))BL[n]=()=>TH(DEN_SO[k]||'?');
@@ -2658,11 +2725,11 @@ function buildDxf(that){
     if(LC!=='KS_COT')txt(x+w+0.4,y+2.6,'1.0','(cột không có GPS - vị trí phác)',LC);
     let yy=y-1.1;for(const l of labelLines(p,r)){txt(x+w+0.4,yy,'1.0',l,'KS_CHU');yy-=1.4}}
   if(dsDen.length){const c={},ds=Object.keys(DL);for(const k of ds)c[k]={n:0,h:0};
-    for(const {p,d} of dsDen){const k=d.loai||'x',[ly]=DL[k],[x,y]=XY[p.id];c[k].n++;if(d.hong)c[k].h++;
+    for(const {p,d} of dsDen){const k=d.loai||'x',[ly]=DL[k],[x,y]=XY[p.id];c[k].n+=d.n;if(d.hong)c[k].h+=d.n;
       a(0,'INSERT',8,ly,66,1,2,ly,10,f(x),20,f(y),30,'0.0',41,'1.0',42,'1.0',50,'0.0');
       /* thuộc tính để trích bảng (ATTOUT / DATAEXTRACTION): chữ KHÔNG DẤU — DXF R12 giữ chữ có dấu dạng mã \U+…, xuất bảng ra mã khó đọc */
-      [parse(p.code).so||'',{L60:'LED 60W',L100:'LED 100W',L150:'LED 150W',L200:'LED 200W',SD:'SOI DOT'}[d.loai]||'CHUA RO',d.hong?'HONG':'TOT'].forEach((v,i)=>
-        a(0,'ATTRIB',8,ly,10,f(x-3),20,f(y+0.3-i*0.7),30,'0.0',40,'0.5',1,dxfTxt(v),2,['SO_COT','LOAI_DEN','TINH_TRANG'][i],70,1,7,'KS'));
+      [parse(p.code).so||'',{L60:'LED 60W',L100:'LED 100W',L150:'LED 150W',L200:'LED 200W',SD:'SOI DOT'}[d.loai]||'CHUA RO',d.hong?'HONG':'TOT',String(d.n)].forEach((v,i)=>
+        a(0,'ATTRIB',8,ly,10,f(x-3),20,f(y+0.3-i*0.7),30,'0.0',40,'0.5',1,dxfTxt(v),2,['SO_COT','LOAI_DEN','TINH_TRANG','SO_BONG'][i],70,1,7,'KS'));
       a(0,'SEQEND',8,ly);
       if(d.hong)ins('KS_DEN_HONG',x,y,'KS_DEN_HONG')}
     /* bảng thống kê: bên phải bản vẽ, mép trên ngang cột cao nhất */
@@ -2882,7 +2949,7 @@ $('#b-list').addEventListener('click',showList);
 $('#b-export').addEventListener('click',showExport);
 $('#b-table').addEventListener('click',showTable);
 $('#b-gpsp').addEventListener('click',()=>{nanCho=null;showGps()});
-function switchTo(d){saveNow();cadDoi=null;D=d;D.poles=D.poles||[];D.roads=D.roads||[];D.mocs=D.mocs||[];D.edges=D.edges||[];D.mocDo=D.mocDo||[];mocCho=null;nanCho=null;DB.cur=d.id;undoSt=[];editId=null;F=null;noiA=null;selRoad=null;sheet.hidden=true;rsheet.hidden=true;V=D.view||fitView(W,H,40);saveNow();title();draw()}
+function switchTo(d){saveNow();cadDoi=null;denId=null;dsheet.hidden=true;D=d;D.poles=D.poles||[];D.roads=D.roads||[];D.mocs=D.mocs||[];D.edges=D.edges||[];D.mocDo=D.mocDo||[];mocCho=null;nanCho=null;DB.cur=d.id;undoSt=[];editId=null;F=null;noiA=null;selRoad=null;sheet.hidden=true;rsheet.hidden=true;V=D.view||fitView(W,H,40);saveNow();title();draw()}
 
 /* ================= toast / khởi động ================= */
 let toastT=null;
