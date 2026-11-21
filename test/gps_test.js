@@ -369,6 +369,10 @@ console.log('17. Bản vẽ CAD phủ lên: VN-2000 → WGS-84, đọc DXF');
   ok(/function denKhung\(d,x,y,rw,rh\)/.test(html)&&/<rect class="db db-\$\{d\.loai\|\|'x'\}\$\{d\.hong\?' dbh':''\}"/.test(html)&&/\.db-L60\{fill:#8E44AD\}\.db-L100\{fill:#2E9E5B\}\.db-L150\{fill:#2F6FD0\}\.db-SD\{fill:#F0A30A\}/.test(html)&&
      /const b=denKhung\(denDoc\(q\.p\.code\),q\.x,q\.y,q\.Rw,q\.Rh\);if\(b\)add\(/.test(html)&&!/class="dn dn-/.test(html),'đèn vẽ thẻ màu có chữ 60 / 100 / 150 / SĐ (không còn chấm nhỏ), nhãn số cột tránh thẻ');
   ok(/r\.dd\.concat\(boDen\?r\.gc\.filter\(t=>!denLoai\(t\)\):r\.gc\)/.test(html)&&/labelLines\(p,r,!o\.print\)/.test(html)&&/for\(const l of labelLines\(p,r\)\)\{txt\(/.test(html),'nhãn màn hình bỏ chữ «Đèn LED …» (đã có thẻ đèn), ảnh xuất + DXF vẫn ghi');
+  ok(/if\(d\.hong\)\{const r=f\(Math\.max\(rw,rh\)\+11\);s\+=`<circle class="dnl"[^`]*<circle class="dnh"/.test(html)&&/\.dnh\{[^}]*stroke-dasharray/.test(html)&&!/class="dnh" d="M/.test(html),'đèn hỏng: vòng đỏ nét đứt, không gạch chéo (gạch chéo = bóng thu hồi)');
+  ok(/const DL=\{L60:\['KS_DEN_LED60',6\],L100:\['KS_DEN_LED100',3\],L150:\['KS_DEN_LED150',5\],SD:\['KS_DEN_SOIDOT',30\],x:\['KS_DEN_CHUA_RO',8\]\}/.test(html)&&/a\(0,'INSERT',8,ly,66,1,2,ly,/.test(html)&&/a\(0,'SEQEND',8,ly\)/.test(html)&&
+     /'ATTDEF',8,'0'/.test(html)&&/if\(d\.hong\)ins\('KS_DEN_HONG',x,y,'KS_DEN_HONG'\)/.test(html)&&/'THỐNG KÊ ĐÈN CHIẾU SÁNG'/.test(html)&&/2,'DASHED',70,0/.test(html),'DXF: đèn mỗi loại một lớp + block thuộc tính SO_COT / LOAI_DEN / TINH_TRANG, hỏng lớp KS_DEN_HONG, bảng thống kê');
+  ok(/\{L60:'LED 60W',L100:'LED 100W',L150:'LED 150W',SD:'SOI DOT'\}\[d\.loai\]\|\|'CHUA RO',d\.hong\?'HONG':'TOT'\]/.test(html),'DXF: giá trị thuộc tính đèn không dấu (trích bảng trong AutoCAD đọc được, không ra mã \\U+)');
   /* chốt trong code */
   ok(/function nenVe\(\)\{nenNen\(\);if\(D&&D\.cad&&D\.cad\.length\)try\{cadVe\(/.test(html),'nenVe vẽ thêm bản vẽ CAD sau ảnh nền');
   ok(!/nenCv\.style\.opacity=String\(DB\.nenMo/.test(html),'độ đậm ảnh nền dùng globalAlpha (không làm mờ nét CAD)');
