@@ -62,6 +62,8 @@ button{font:inherit;color:inherit;cursor:pointer}
 .ed{stroke:var(--wire);stroke-width:2.2}
 .pole{fill:var(--paper);stroke:var(--fg);stroke-width:2.2}
 .pole.act{stroke:var(--hi);stroke-width:3.5}
+.dn{stroke:var(--paper);stroke-width:1.5}.dn-L100{fill:#2E9E5B}.dn-L150{fill:#2F6FD0}.dn-SD{fill:#E39B12}
+.dnh{stroke:#E0412F;stroke-width:3;stroke-linecap:round;fill:none}
 .fillk{fill:var(--fg)}
 .ring{fill:none;stroke:var(--hi);stroke-width:2;stroke-dasharray:4 3}
 .noiA{fill:var(--hi)}
@@ -99,6 +101,12 @@ button{font:inherit;color:inherit;cursor:pointer}
   border:1.5px solid transparent;background:transparent;font-size:11.5px;font-weight:600;color:var(--muted);min-width:0}
 .tools button i{font-style:normal;font-size:19px;line-height:22px;color:var(--fg);display:flex;align-items:center;justify-content:center;height:22px}
 .tools button.on{background:var(--hi-soft);border-color:var(--hi);color:var(--fg)}
+.tools .che{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin-bottom:2px}
+.tools .che button{height:32px;flex-direction:row;font-size:13px;border:1.5px solid var(--line);border-radius:9px;color:var(--fg)}
+.tools .che button.on{background:var(--ink);border-color:var(--ink);color:var(--ink-fg)}
+.tools [data-den]{display:none}.tools.che-cs [data-den]{display:flex}.tools.che-cs .ha{display:none}
+.ic-den{display:inline-block;width:17px;height:17px;border-radius:50%;border:2px solid var(--paper);box-shadow:0 0 0 1.5px var(--fg)}
+.ic-den.L100{background:#2E9E5B}.ic-den.L150{background:#2F6FD0}.ic-den.SD{background:#E39B12}
 .ic-tron{display:inline-block;width:17px;height:17px;border-radius:50%;border:2.5px solid currentColor}
 .ic-vuong{display:inline-block;width:15px;height:15px;border:2.5px solid currentColor}
 .ic-road{display:inline-block;width:22px;height:9px;border-radius:5px;background:var(--road-c)}
@@ -194,7 +202,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .note{font-size:13.5px;color:var(--muted);line-height:1.55;margin:0}
 .row{display:flex;gap:10px;flex-wrap:wrap}.row>*{flex:1 1 160px}
 label.btn{display:flex;align-items:center;justify-content:center}
-#toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:40;
+#toast{position:fixed;left:50%;bottom:calc(124px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:40;
   background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;font-weight:600;max-width:calc(100% - 32px);text-align:center}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .16s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.4}}}
 </style>
@@ -212,11 +220,16 @@ label.btn{display:flex;align-items:center;justify-content:center}
 </header>
 <div id="stage"><canvas id="nen" aria-hidden="true"></canvas><svg id="cv" role="img" aria-label="Sơ đồ tuyến"></svg><div id="nenattr" hidden></div><div id="status"></div></div>
 <nav class="tools" aria-label="Công cụ">
-  <button data-tool="cot" class="on"><i><span class="ic-tron"></span></i>Cột</button>
-  <button data-tool="duong"><i><span class="ic-road"></span></i>Đường</button>
-  <button data-tool="moc"><i>⚑</i>Mốc</button>
+  <div class="che" role="group" aria-label="Phần khảo sát"><button data-che="cs">💡 Chiếu sáng</button><button data-che="ha" class="on">Hạ áp</button><button data-che="tt">Trung thế</button></div>
+  <button data-tool="den" data-den="L100"><i><span class="ic-den L100"></span></i>LED 100W</button>
+  <button data-tool="den" data-den="L150"><i><span class="ic-den L150"></span></i>LED 150W</button>
+  <button data-tool="den" data-den="SD"><i><span class="ic-den SD"></span></i>Sợi đốt</button>
+  <button data-tool="den" data-den="hong"><i style="color:#E0412F">✕</i>Đèn hỏng</button>
+  <button data-tool="cot" class="on ha"><i><span class="ic-tron"></span></i>Cột</button>
+  <button data-tool="duong" class="ha"><i><span class="ic-road"></span></i>Đường</button>
+  <button data-tool="moc" class="ha"><i>⚑</i>Mốc</button>
   <button data-tool="chon"><i>✥</i>Dời</button>
-  <button data-tool="noi"><i>╱</i>Nối dây</button>
+  <button data-tool="noi" class="ha"><i>╱</i>Nối dây</button>
   <button id="b-gps"><i>⌖</i><span id="gps-lab">GPS</span></button>
 </nav>
 <section id="sheet" class="sheet" hidden aria-label="Nhập cột">
@@ -419,7 +432,7 @@ function snapToRoad(x,y){
   const b=nearestRoad(x,y,Math.max(6,26/V.s));if(!b)return {x,y};
   const o=b.r.w/2+1.5,n=b.n;return {x:n.px+n.side*o*(-n.uy),y:n.py+n.side*o*n.ux};
 }
-function addPole(x,y,shape,gps,auto){
+function addPole(x,y,shape,gps,auto,im){
   snap();
   const prev=activeP();
   if(prev){prev.code=chuanHoa(prev.code);prev.auto=false}
@@ -428,7 +441,7 @@ function addPole(x,y,shape,gps,auto){
   if(gps){p.lat=+gps.lat.toFixed(8);p.lon=+gps.lon.toFixed(8);p.acc=+gps.acc.toFixed(1);p.gt=gps.t||Date.now();if(gps.n)p.gn=gps.n}
   if(auto){p.auto=true;p.autoCode=p.code}
   D.poles.push(p);if(prev)D.edges.push([prev.id,p.id]);
-  D.active=p.id;save();draw();openSheet(p);
+  D.active=p.id;save();draw();if(!im)openSheet(p);
 }
 function removePole(id){
   D.poles=D.poles.filter(p=>p.id!==id);D.edges=D.edges.filter(([a,b])=>a!==id&&b!==id);
@@ -576,6 +589,7 @@ function svgInner(v,w,h,o={}){
     if(p.id===editId&&!o.print)g+=`<circle class="ring" cx="${x}" cy="${y}" r="${R*(doi?2:1)+7}"/>`;
     if(p.id===noiA)g+=`<circle class="noiA" cx="${x}" cy="${y}" r="${R*(doi?2:1)+6}"/>`;
     g+=symSvg(p,x,y,R,c,r);
+    if(!o.print){const dn=denDoc(p.code);if(dn.loai||dn.hong)g+=denSvg(dn,x,y,R)}
     if(!o.print){const t=p.shape==='tba',rw=R*(t?1.5:doi?2:1),rh=R*(t?1.5:1),cx=f1(x-rw-3),cy=f1(y+rh+3),m=p.lat!=null?gpsMau(p.acc):'';
       if(p.nan)g+=`<rect class="nanmk" x="${f1(cx-5.5)}" y="${f1(cy-5.5)}" width="11" height="11" rx="2"/>`;
       if(m)g+=`<circle class="qd q-${m}${hcCot(p)?' hc':''}" cx="${cx}" cy="${cy}" r="3.6"/>`}
@@ -613,6 +627,8 @@ function status(){
   else if(tool==='duong')h=roadStart?`<span class="pill">Chạm điểm cuối của đường<button data-st="rx">Huỷ</button></span>`
       :selRoad?`<span class="pill solo">Kéo chấm vàng để sửa · chạm chỗ trống để bỏ chọn</span>`
       :`<span class="pill solo">Chạm điểm đầu rồi điểm cuối · chạm vào đường để sửa</span>`;
+  else if(tool==='den'){const c=denDem(D.poles),k=DB.denBut||'L100';
+    h=`<span class="pill solo">${k==='hong'?'Chạm đèn: đánh / bỏ hỏng':'Chạm trống: thêm đèn · chạm cột: đổi đèn'} · ${c.tong} đèn${c.tong?` (100W ${c.L100} · 150W ${c.L150} · SĐ ${c.SD} · hỏng ${c.hong})`:''}</span>`}
   else if(ed&&ed.auto)h=`<span class="pill solo">Cột tự đặt thẳng tuyến — chạm chỗ khác để dời tới đó</span>`;
   else if(a){const so=parse(a.code).so;h=`<span class="pill solo">${so?'Vẽ tiếp từ '+esc(so):'Vẽ tiếp từ cột chưa đánh số'}</span>`}
   else h=`<span class="pill solo">${D.poles.length?'Đoạn mới — cột sau không nối':'Chạm lên bảng để đặt cột đầu tiên'}</span>`;
@@ -994,6 +1010,9 @@ function onTap(pt,h){
       else{D.edges.push([noiA,h.id]);toast('Đã nối dây')}save()}
     noiA=null;draw();return;
   }
+  if(tool==='den'){const k=DB.denBut||'L100';
+    if(h&&h.ten===undefined){const q=byId(h.id);if(q)denApDung(q,k);return}
+    if(h)return;const [wx,wy]=toW(pt),q=snapToRoad(wx,wy);denThem(q.x,q.y);return}
   if(tool==='duong'){const w=toW(pt);
     if(roadStart){const a=roadStart;roadStart=null;makeRoad(a,w);return}
     const r=hitRoad(pt);if(r){openRoad(r);return}
@@ -1013,6 +1032,25 @@ function onTap(pt,h){
   addPole(q.x,q.y);
 }
 
+/* ================= thanh nhanh chiếu sáng =================
+   21/11 Truong: sáng đi chấm vị trí đèn, tối đi chấm đèn cháy hỏng — mỗi loại đèn một nút. Đèn ghi trong mã cột (một ô ghi chú
+   «Đèn LED 100W» / «Đèn LED 150W» / «Đèn sợi đốt» / «Đèn hỏng») nên bảng cột, Excel, DXF, nhãn tự mang theo, sửa tay vẫn được. */
+let denMsg='';
+function denSvg(d,x,y,R){let s='';const f=v=>+v.toFixed(1);
+  if(d.loai)s+=`<circle class="dn dn-${d.loai}" cx="${f(x+R*0.95)}" cy="${f(y-R*0.95)}" r="${f(Math.max(4,R*0.6))}"/>`;
+  if(d.hong){const a=R*1.3;s+=`<path class="dnh" d="M${f(x-a)} ${f(y-a)}L${f(x+a)} ${f(y+a)}M${f(x+a)} ${f(y-a)}L${f(x-a)} ${f(y+a)}"/>`}
+  return s}
+function denApDung(p,k){const cu=denDoc(p.code),so=parse(p.code).so||'Cột chưa số';let m;
+  if(k!=='hong'&&cu.loai===k)m=`${so}: đã là ${DEN_NGAN[k]}`;
+  else{snap();p.code=denDat(p.code,k);p.auto=false;save();draw();const d=denDoc(p.code);
+    m=k==='hong'?(d.hong?`${so}: đèn HỎNG`:`${so}: bỏ đánh dấu hỏng`):`${so}: ${cu.loai?DEN_NGAN[cu.loai]+' → ':''}${DEN_NGAN[k]}`}
+  denMsg=m+' · ';toast(m)}
+/* ⚑ cột mới của thanh chiếu sáng là Cột CS, đánh số tiếp, nối dây với đèn trước (như nút Cột); không mở ô nhập */
+function denThem(x,y,gps){const k=DB.denBut||'L100';addPole(x,y,'cs',gps,false,true);const p=activeP();if(!p)return;
+  p.code=denDat(p.code,k);save();draw();const m=`${parse(p.code).so||'Cột mới'}: ${k==='hong'?'đèn HỎNG':DEN_NGAN[k]}`;denMsg=m+' · ';toast(m)}
+/* ⚑ GPS ở thanh chiếu sáng: có cột trong 12 m (hoặc 1,5 × sai số GPS) thì đổi đèn cột đó, không thêm cột trùng */
+function denGan(xy,r){let b=null,bd=r;for(const p of D.poles){const d=Math.hypot(p.x-xy.x,p.y-xy.y);if(d<=bd){bd=d;b=p}}return b}
+
 /* ================= ô nhập cột (dạng ô) ================= */
 const sheet=$('#sheet'), rsheet=$('#rsheet');
 const BASE={
@@ -1024,6 +1062,13 @@ const BASE={
   kc:['20','25','30','35','40','45','50'],
   dd:['Néo','Góc','Cuối','Rẽ nhánh','Đầu nguồn','Nghiêng','Nứt'],
   gc:['Tủ bù','Tủ ĐKCS','Tiếp địa','Hộp đấu dây','Chống sét']
+};
+/* ⚑ phần Trung thế dùng chung công cụ Hạ áp, chỉ đổi danh sách cột / dây chọn nhanh */
+const BASE_TT={
+  cot:['LT12','LT14','LT16','LT18','LT20','2LT12','2LT14','2LT16','H12'],
+  cotTT:['LT12','LT14','LT16','LT18','LT20','2LT12','2LT14','Nhổ bỏ'],
+  day:['AC50','AC70','AC95','AC120','AC150','AC185','AC240'],
+  dayTT:['AC70','AC95','AC120','AC150','AC185','AC240','Thu hồi']
 };
 /* xếp tăng dần theo loại rồi kích cỡ: LT7,5 < LT8,5 < 2LT8,5 < LT10 … ; ABC2x25 < ABC4x35 < … < ABC4x240
    ('VX' giữ cạnh 'ABC' chỉ để xếp dữ liệu cũ chưa đổi; DSTA3x10+1x6 xếp theo phần 3x10) */
@@ -1044,7 +1089,7 @@ function learned(kind){
   const src=kind==='cotTT'?'cot':kind==='dayTT'?'day':kind,cnt={};
   for(const d of Object.values(DB.ds))for(const p of d.poles){const vals=hocDoc(p.code)[kind]||[];
     for(const v of vals)if(v)cnt[v]=(cnt[v]||0)+1}
-  const base=BASE[kind],have=new Set(base.map(norm));
+  const base=(DB.che==='tt'&&BASE_TT[kind])||BASE[kind],have=new Set(base.map(norm));
   const all=base.concat(Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a]).filter(v=>!have.has(norm(v))).slice(0,12));
   return kind==='gc'?all:all.sort((x,y)=>cmpSize(x,y,src==='sau'));   /* dây sau CT: xếp theo tiết diện, không theo loại */
 }
@@ -1505,9 +1550,17 @@ function showTable(){
 
 /* ================= công cụ ================= */
 for(const b of document.querySelectorAll('[data-tool]'))b.addEventListener('click',()=>{
-  tool=b.dataset.tool;noiA=null;roadStart=null;closeRoad();
+  tool=b.dataset.tool;if(b.dataset.den){DB.denBut=b.dataset.den;saveNow()}noiA=null;roadStart=null;closeRoad();
   for(const x of document.querySelectorAll('[data-tool]'))x.classList.toggle('on',x===b);
   if(tool!=='cot')finishSheet();draw()});
+/* phần khảo sát: Chiếu sáng (thanh nút đèn) · Hạ áp (như cũ) · Trung thế (như Hạ áp, danh sách cột / dây trung thế) */
+function datChe(c,dau){DB.che=c;const nv=$('nav.tools');nv.classList.toggle('che-cs',c==='cs');
+  for(const b of nv.querySelectorAll('[data-che]'))b.classList.toggle('on',b.dataset.che===c);
+  tool=c==='cs'?'den':'cot';noiA=null;roadStart=null;
+  for(const x of nv.querySelectorAll('[data-tool]'))x.classList.toggle('on',tool==='den'?x.dataset.den===(DB.denBut||'L100'):x.dataset.tool==='cot');
+  if(dau)return;closeRoad();finishSheet();saveNow();draw()}
+for(const b of document.querySelectorAll('[data-che]'))b.addEventListener('click',()=>datChe(b.dataset.che));
+if(DB.che==='cs'||DB.che==='tt')datChe(DB.che,true);
 $('#status').addEventListener('click',e=>{
   const s=e.target.dataset&&e.target.dataset.st;if(!s)return;const r=selRoad&&D.roads.find(x=>x.id===selRoad);
   if(s==='new'){finishSheet();D.active=null;save();draw();toast('Cột tiếp theo bắt đầu đoạn mới')}
@@ -1953,7 +2006,7 @@ function giongGop(list,them,ghiDe){
 /* 🎤 KHẨU LỆNH ở CUỐI câu nói (07/11): «điền» · «tiếp» (= Tiếp ▸) · «dừng» (= Dừng) · «đoạn mới» · «nói lại» / «xoá câu»
    → {lenh:'dien'|'tiep'|'dung'|'doan'|'xoa'|null, con: phần câu trước lệnh}. Chỉ nhận ở CUỐI câu, có chốt chặn:
    «tiếp địa», «nối tiếp», «trạm dừng», «xã Quảng Điền» không thành lệnh */
-const BAN_APP='kstuyen-28';
+const BAN_APP='kstuyen-29';
 /* 🎤 chờ bao lâu (ms) rồi mới làm khẩu lệnh cuối câu (07/11 rút ngắn ⚑): máy đã chốt câu → làm gần như ngay;
    còn chữ tạm → chờ ngắn xem có nói tiếp không («tiếp», «dừng» chờ lâu hơn chút vì hay đi tiếp chữ, vd «tiếp địa»);
    gõ tay / 🎤 bàn phím chờ lâu nhất; lai = nghỉ trước khi mở phiên nghe mới */
@@ -2223,6 +2276,20 @@ function dxfDoc(s,o){
   const tv=a=>{const b=a.slice().sort((p,q)=>p-q);return b.length?b[b.length>>1]:0};
   return {ly:LY.map(L=>({n:L.n,c:L.c,an:!!L.an})),ins,xy:XY,st:ST,li:LI,co:CO,kin:KIN,tx:TX,bb:[x0,y0,x1,y1],giua:[tv(mx),tv(my)],dem,cat};
 }
+/* đèn chiếu sáng trong mã cột: «Đèn LED 100W» / «Đèn LED 150W» / «Đèn sợi đốt» + «Đèn hỏng» (ô ghi chú, mỗi cột tối đa một loại đèn) */
+const DEN={L100:'Đèn LED 100W',L150:'Đèn LED 150W',SD:'Đèn sợi đốt'},DEN_HONG='Đèn hỏng',DEN_NGAN={L100:'LED 100W',L150:'LED 150W',SD:'Sợi đốt',hong:'Đèn hỏng'};
+function denLoai(t){const u=String(t).normalize('NFC').toUpperCase().replace(/\s+/g,'');
+  if(/^ĐÈNLED100W?$/.test(u))return 'L100';if(/^ĐÈNLED150W?$/.test(u))return 'L150';if(/^ĐÈNSỢIĐỐT/.test(u))return 'SD';
+  if(/^(ĐÈNHỎNG|ĐÈNCHÁY|HỎNGĐÈN|CHÁYĐÈN)$/.test(u))return 'hong';return ''}
+function denDoc(code){let loai='',hong=false;
+  for(const x of String(code||'').split(';').slice(1)){const k=denLoai(x.trim());if(k==='hong')hong=true;else if(k)loai=k}return {loai,hong}}
+/* k = L100 / L150 / SD: thay loại đèn (giữ dấu hỏng); k = hong: bật / tắt dấu hỏng */
+function denDat(code,k){code=String(code||'');const a=code.split(';').map(x=>x.trim()),so=a[0]||'';let t=a.slice(1).filter(Boolean);
+  if(k==='hong'){t=t.some(x=>denLoai(x)==='hong')?t.filter(x=>denLoai(x)!=='hong'):t.concat(DEN_HONG)}
+  else if(DEN[k]){t=t.filter(x=>{const q=denLoai(x);return !q||q==='hong'});const i=t.findIndex(x=>denLoai(x)==='hong');if(i>=0)t.splice(i,0,DEN[k]);else t.push(DEN[k])}
+  return t.length||code.includes(';')?[so,...t].join(';')+';':so}
+function denDem(ps){const c={L100:0,L150:0,SD:0,hong:0,tong:0};
+  for(const p of ps||[]){const d=denDoc(p.code);if(d.loai)c[d.loai]++;if(d.hong)c.hong++;if(d.loai||d.hong)c.tong++}return c}
 /* === HẾT HÀM THUẦN === */
 /* 📖 nâng cấp một lần lúc mở app: cụm dạy bản cũ «cuộc» → «ghi chú cột» thành thay chữ (giongSuaCu) — lưu ở lần lưu sau */
 {const L=giongSuaCu(DB.giongTu);if(L!==DB.giongTu)DB.giongTu=L}
@@ -2249,7 +2316,9 @@ function vnCot(p,tb){
 }
 function vnOf(p,tb){const v=vnCot(p,tb);return v&&{x:+v.x.toFixed(3),y:+v.y.toFixed(3),h:v.h,goc:v.goc,phac:v.phac}}
 function gpsLab(){$('#gps-lab').textContent=fix?`±${vn1(fix.acc)} m`:'GPS'}
-function placeGps(){dropAuto();closeSheet();const xy=geoToXY(fix.lat,fix.lon);addPole(xy.x,xy.y,null,fix)}
+function placeGps(){dropAuto();closeSheet();const xy=geoToXY(fix.lat,fix.lon);
+  if(tool==='den'){const q=denGan(xy,Math.max(12,(fix.acc||0)*1.5));if(q)denApDung(q,DB.denBut||'L100');else denThem(xy.x,xy.y,fix);return}
+  addPole(xy.x,xy.y,null,fix)}
 function gpsCheDo(){return GPS_CHE_DO[DB.gpsCheDo]?DB.gpsCheDo:'chuan'}
 let gpsM=null;   /* phiên đang đo: {t0, ms, muc:'cot'|'moc', ds:[{lat,lon,acc,ts}], kq, tm} */
 function gpsDung(){if(watchId!==null)navigator.geolocation.clearWatch(watchId);watchId=null;if(gpsM)clearInterval(gpsM.tm);gpsM=null;draw()}
@@ -2259,9 +2328,9 @@ function gpsXong(){
   const r=gpsLoc(ds);fix={lat:r.lat,lon:r.lon,acc:r.acc,t:Date.now(),n:r.n,tong:r.tong,ms:t,canh:r.canh};gpsLab();
   window.__gpsKQ={...fix,muc:M.muc};   /* để kiểm tự động đọc kết quả */
   if(M.muc==='moc'){showMocForm(fix);return}
-  placeGps();
-  const m=gpsMau(r.acc);
-  setTimeout(()=>toast(`Đo ${vn1(t/1000)} s · ${r.n}/${r.tong} lần · ±${vn1(r.acc)} m — ${MAU_TEN[m]}${m==='do'?'. '+GPS_NHAC+', rồi đo lại':''}${r.diChuyen?' · Máy đang di chuyển: đứng yên tại chân cột rồi đo lại':r.boDiChuyen?` · bỏ ${r.boDiChuyen} lần đang đi`:''}`),60);
+  denMsg='';placeGps();
+  const m=gpsMau(r.acc),dm=denMsg;
+  setTimeout(()=>toast(dm+`Đo ${vn1(t/1000)} s · ${r.n}/${r.tong} lần · ±${vn1(r.acc)} m — ${MAU_TEN[m]}${m==='do'?'. '+GPS_NHAC+', rồi đo lại':''}${r.diChuyen?' · Máy đang di chuyển: đứng yên tại chân cột rồi đo lại':r.boDiChuyen?` · bỏ ${r.boDiChuyen} lần đang đi`:''}`),60);
 }
 function gpsTien(){
   if(!gpsM)return;const t=Date.now()-gpsM.t0;
@@ -2455,6 +2524,13 @@ async function xuatXlsx(){
     [],['Ghi chú: dX = X thật − X GPS, dY = Y thật − Y GPS. Cột GPS dùng mốc trong 1 km và 60 phút quanh giờ đo; nhiều mốc thì nội suy nghịch đảo bình phương khoảng cách gộp (1 km ≈ 60 phút).']]);
   ws3['!cols']=[10,18,12,12,10,14,14,14,14,9,9,9,8].map(w=>({wch:w}));
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Bang ke');XLSX.utils.book_append_sheet(wb,ws2,'Toa do');if((D.mocDo||[]).length)XLSX.utils.book_append_sheet(wb,ws3,'Moc hieu chinh');
+  const dsDen=sorted().filter(p=>{const d=denDoc(p.code);return d.loai||d.hong});
+  if(dsDen.length){const c=denDem(D.poles);
+    const ws4=XLSX.utils.aoa_to_sheet([[`ĐÈN CHIẾU SÁNG: ${D.ten}`],['STT','Số cột','Loại đèn','Tình trạng','Ký hiệu cột','Vĩ độ','Kinh độ','X_VN2000 (Bắc)','Y_VN2000 (Đông)'],
+      ...dsDen.map((p,i)=>{const d=denDoc(p.code),v=vnOf(p,tb);return [i+1,parse(p.code).so,d.loai?DEN_NGAN[d.loai]:'(chưa rõ loại)',d.hong?'Hỏng':'',
+        SHAPE_NAME[p.shape||'tron'],p.lat??'',p.lon??'',v?v.x:'',v?v.y:'']}),
+      [],['','Cộng',`LED 100W: ${c.L100}`,`LED 150W: ${c.L150}`,`Sợi đốt: ${c.SD}`,`Hỏng: ${c.hong}/${c.tong}`]]);
+    ws4['!cols']=[5,10,16,10,12,12,12,14,14].map(w=>({wch:w}));XLSX.utils.book_append_sheet(wb,ws4,'Chieu sang')}
   giao(new Blob([XLSX.write(wb,{bookType:'xlsx',type:'array'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),fname('.xlsx'));
 }
 function dxfTxt(s){return String(s).replace(/[^\x20-\x7e]/g,c=>'\\U+'+c.codePointAt(0).toString(16).toUpperCase().padStart(4,'0'))}
@@ -2640,7 +2716,7 @@ let delListT={};
 panel.addEventListener('click',e=>{
   const tr=e.target.closest('tr[data-id]');
   if(tr){const p=byId(tr.dataset.id);closePanel();if(!p)return;
-    tool='cot';for(const x of document.querySelectorAll('[data-tool]'))x.classList.toggle('on',x.dataset.tool==='cot');
+    tool=DB.che==='cs'?'chon':'cot';for(const x of document.querySelectorAll('[data-tool]'))x.classList.toggle('on',x.dataset.tool===tool);
     V.tx=W/2-p.x*V.s;V.ty=H*0.3-p.y*V.s;persistView();D.active=p.id;save();openSheet(p);return}
   const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a,id=b.dataset.id;
   if(a==='close')closePanel();

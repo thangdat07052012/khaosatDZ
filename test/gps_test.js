@@ -4,7 +4,7 @@ const fs=require('fs'),path=require('path');
 const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
 const a=html.indexOf('const VN=(()=>{'),b=html.indexOf('/* === HẾT HÀM THUẦN === */');
 if(a<0||b<0)throw new Error('Không thấy đoạn hàm thuần');
-const T=new Function(html.slice(a,b)+';return {VN,haversine,gpsLoc,gpsXongSom,gpsMau,hcTinh,docSo,mocNhap,nanTuyen,GPS_CHE_DO,NEN,chuSo,giongMa,giongDay,giongKhoa,giongGop,giongLenh,giongChuan,giongCho,GIONG_CHO,giongSua,GIONG_SAI,giongLaTu,giongSuaCu,giongLaLenh,vnVe84,dxfDoc,cadKieu,cadDonVi,aciRgb,cadChu,tcvn3,fontTC};')();
+const T=new Function(html.slice(a,b)+';return {VN,haversine,gpsLoc,gpsXongSom,gpsMau,hcTinh,docSo,mocNhap,nanTuyen,GPS_CHE_DO,NEN,chuSo,giongMa,giongDay,giongKhoa,giongGop,giongLenh,giongChuan,giongCho,GIONG_CHO,giongSua,GIONG_SAI,giongLaTu,giongSuaCu,giongLaLenh,vnVe84,dxfDoc,cadKieu,cadDonVi,aciRgb,cadChu,tcvn3,fontTC,denDoc,denDat,denDem,denLoai};')();
 let nOk=0,nSai=0;
 const ok=(c,m)=>{if(c){nOk++;console.log('  ✓ '+m)}else{nSai++;console.log('  ✗ '+m)}};
 // số ngẫu nhiên có hạt giống (kết quả lặp lại được)
@@ -341,6 +341,17 @@ console.log('17. Bản vẽ CAD phủ lên: VN-2000 → WGS-84, đọc DXF');
       0,'MTEXT',8,'0',10,0,20,0,40,1,1,'{\\f.VnTime|b0;§­êng}',7,'AR',0,'ENDSEC',0,'EOF']),k2=T.dxfDoc(d2);
     ok(k2.tx.map(t=>t.s).join('|')==='loại 1 (QL1A mới)|TỦ ĐIỆN|lo¹i|Đường',`DXF: chữ kiểu font TCVN3 ra Unicode, kiểu Arial giữ nguyên (${k2.tx.map(t=>t.s).join('|')})`)}
   ok(/ggt:\{ten:'Google',zMax:20,url:\(z,x,y\)=>`https:\/\/mt\$\{\(x\+y\)&3\}\.google\.com\/vt\/lyrs=s&x=/.test(html)&&/if\(DB\.nenNguon==='ggt'\)return GT\.loi\?'esri':'ggt'/.test(html)&&/src==='ggt'&&\+\+GT\.hong>=6/.test(html),'nguồn Google không khoá (như IRT): mt0-3.google.com, hỏng 6 ô liền thì về Esri');
+  {const c1=T.denDat('5;LT8,5;','L100'),c2=T.denDat(c1,'L150'),c3=T.denDat(c2,'hong'),c4=T.denDat(c3,'SD'),c5=T.denDat(c4,'hong');
+    ok(c1==='5;LT8,5;Đèn LED 100W;'&&c2==='5;LT8,5;Đèn LED 150W;'&&c3==='5;LT8,5;Đèn LED 150W;Đèn hỏng;'&&c4==='5;LT8,5;Đèn sợi đốt;Đèn hỏng;'&&c5==='5;LT8,5;Đèn sợi đốt;',
+      `denDat: đổi loại đèn thay ô cũ, giữ dấu hỏng, bấm Hỏng lần hai thì bỏ (${[c1,c2,c3,c4,c5].join(' | ')})`)}
+  {const d=T.denDoc('7;LT8,5;đèn led 150w;ĐÈN HỎNG;'),d2=T.denDoc('7;LT8,5;Đèn LED 150W ghi chú;'),e=T.denDat('8','hong');
+    ok(d.loai==='L150'&&d.hong&&!d2.loai&&!d2.hong&&e==='8;Đèn hỏng;'&&T.denDat('','L100')===';Đèn LED 100W;'&&T.denLoai('Đèn sợi đốt 75W')==='SD',
+      'denDoc / denLoai: nhận chữ hoa thường, không nhầm ghi chú dài; mã chưa có ô thì thêm đúng dạng')}
+  {const c=T.denDem([{code:'1;Đèn LED 100W;'},{code:'2;Đèn LED 100W;Đèn hỏng;'},{code:'3;Đèn sợi đốt;'},{code:'4;Đèn hỏng;'},{code:'5;LT8,5;'}]);
+    ok(c.L100===2&&c.L150===0&&c.SD===1&&c.hong===2&&c.tong===4,`denDem: đếm đèn theo loại + hỏng (${JSON.stringify(c)})`)}
+  ok(/data-den="L100"/.test(html)&&/data-den="L150"/.test(html)&&/data-den="SD"/.test(html)&&/data-den="hong"/.test(html)&&/data-che="cs"/.test(html)&&/data-che="tt"/.test(html)&&
+     /if\(tool==='den'\)\{const k=DB\.denBut/.test(html)&&/book_append_sheet\(wb,ws4,'Chieu sang'\)/.test(html)&&/DB\.che==='tt'&&BASE_TT\[kind\]/.test(html),
+     'thanh nhanh chiếu sáng: 4 nút đèn, chuyển phần CS / HA / TT, chạm đèn đổi loại, sheet Excel Chieu sang, danh sách trung thế');
   /* chốt trong code */
   ok(/function nenVe\(\)\{nenNen\(\);if\(D&&D\.cad&&D\.cad\.length\)try\{cadVe\(/.test(html),'nenVe vẽ thêm bản vẽ CAD sau ảnh nền');
   ok(!/nenCv\.style\.opacity=String\(DB\.nenMo/.test(html),'độ đậm ảnh nền dùng globalAlpha (không làm mờ nét CAD)');
