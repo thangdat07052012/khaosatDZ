@@ -239,6 +239,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .card .tx b{display:block;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .card .tx span{font:13px var(--mono);color:var(--muted)}
 .card.cur{border-color:var(--hi);border-width:2px}
+.big.chinh{border:2px solid var(--hi)}.big.chinh>b{color:var(--hi)}
 .big{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;text-align:left;background:var(--paper);
   border:1.5px solid var(--line);border-radius:14px;padding:14px 16px;cursor:pointer}
 .big b{font-size:16.5px}.big span{font-size:13.5px;color:var(--muted)}
@@ -2342,7 +2343,7 @@ function giongGop(list,them,ghiDe){
 /* 🎤 KHẨU LỆNH ở CUỐI câu nói (07/11): «điền» · «tiếp» (= Tiếp ▸) · «dừng» (= Dừng) · «đoạn mới» · «nói lại» / «xoá câu»
    → {lenh:'dien'|'tiep'|'dung'|'doan'|'xoa'|null, con: phần câu trước lệnh}. Chỉ nhận ở CUỐI câu, có chốt chặn:
    «tiếp địa», «nối tiếp», «trạm dừng», «xã Quảng Điền» không thành lệnh */
-const BAN_APP='kstuyen-40';
+const BAN_APP='kstuyen-41';
 /* 🎤 chờ bao lâu (ms) rồi mới làm khẩu lệnh cuối câu (07/11 rút ngắn ⚑): máy đã chốt câu → làm gần như ngay;
    còn chữ tạm → chờ ngắn xem có nói tiếp không («tiếp», «dừng» chờ lâu hơn chút vì hay đi tiếp chữ, vd «tiếp địa»);
    gõ tay / 🎤 bàn phím chờ lâu nhất; lai = nghỉ trước khi mở phiên nghe mới */
@@ -3068,7 +3069,8 @@ function xuatDxf(that){
     if(!n||!D.geo){toast('Chưa có cột nào lấy GPS — không xuất được toạ độ thật VN-2000');return}
     giao(new Blob([buildDxf(true)],{type:'application/dxf'}),fname('_VN2000.dxf'));
     if(k)setTimeout(()=>toast(`${k} cột không có GPS — giữ vị trí phác, layer KS_COT_KHONG_GPS, cần kiểm lại`),3300);return}
-  giao(new Blob([buildDxf()],{type:'application/dxf'}),fname('.dxf'))}
+  giao(new Blob([buildDxf()],{type:'application/dxf'}),fname('_SoDoPhac.dxf'));
+  if(D.geo&&D.poles.some(p=>p.lat!=null))setTimeout(()=>toast('⚑ Đây là SƠ ĐỒ PHÁC — toạ độ tự do, mở chồng bản đồ CAD sẽ lệch. Cần khớp bản đồ: chọn «toạ độ thật VN-2000»'),3300)}
 function xuatJson(){
   const tb=hcTB(),poles=D.poles.map(p=>{const v=vnOf(p,tb);if(!v)return p;const o={...p,X_VN2000:v.x,Y_VN2000:v.y};
     if(v.goc){o.X_VN2000_goc=+v.goc.x.toFixed(3);o.Y_VN2000_goc=+v.goc.y.toFixed(3);o.hieuChinhTheoMoc=v.h?v.h.ten:'không';o.chatLuongGPS=gpsMau(p.acc)}return o});
@@ -3174,8 +3176,10 @@ function showExport(){
     <div class="row" style="align-items:center"><h2 style="flex:1 1 auto">Xuất · ${esc(D.ten)}</h2><button class="btn" data-a="close" style="flex:0 0 auto">Đóng</button></div>
     <button class="big pri" data-a="png"><b>Gửi ảnh sơ đồ</b><span>Mở Zalo / Messenger gửi ngay ảnh sơ đồ có ghi chú.</span></button>
     <button class="big" data-a="xlsx"><b>Bảng kê Excel (.xlsx)</b><span>Đúng mẫu tờ "Bảng tổng kê khối lượng hiện trạng và thay thế", kèm sheet tọa độ.</span></button>
-    <button class="big" data-a="dxf"><b>Bản vẽ AutoCAD (.dxf) — sơ đồ phác</b><span>Cột, TBA, dây nối, đường, mốc, số cột và ghi chú. 1 đơn vị = 1 m. Layer / block theo thư viện LispcadZP (0_ZP_0-COT_…, 0_ZP_0-DZ_…, ZP_COT_…): mở ra chạy được KEDUONGDAY, XUATDUONGDAY. Đèn: mỗi loại một lớp KS_DEN_… + block có thuộc tính, đèn hỏng lớp KS_DEN_HONG, bảng thống kê đèn.</span></button>
-    <button class="big" data-a="dxfvn"><b>Bản vẽ AutoCAD (.dxf) — toạ độ thật VN-2000</b><span>Cột có GPS đặt đúng toạ độ VN-2000 (X = Đông, Y = Bắc). Cột vẽ tay không có GPS giữ vị trí phác, khoanh vòng cam layer KS_COT_KHONG_GPS. Layer / block chuẩn LispcadZP như bản phác. Đèn tách lớp + bảng thống kê như bản phác.</span></button>
+    ${(()=>{const co=!!D.geo&&D.poles.some(p=>p.lat!=null);
+      const vn=`<button class="big${co?' chinh':''}" data-a="dxfvn"><b>Bản vẽ AutoCAD (.dxf) — toạ độ thật VN-2000${co?' · khớp bản đồ CAD':''}</b><span>${co?'<b>Dùng nút này để mở chồng lên bản đồ / mặt bằng CAD.</b> ':'Cần cột lấy GPS. '}Cột có GPS đặt đúng toạ độ VN-2000 (X = Đông, Y = Bắc), kinh tuyến trục ${kttTen(ktt())}. Cột vẽ tay không có GPS giữ vị trí phác, khoanh vòng cam layer KS_COT_KHONG_GPS. File đuôi _VN2000.dxf. Layer / block chuẩn LispcadZP như bản phác, đèn tách lớp + bảng thống kê.</span></button>`;
+      const ph=`<button class="big" data-a="dxf"><b>Bản vẽ AutoCAD (.dxf) — sơ đồ phác${co?' · toạ độ tự do, KHÔNG khớp bản đồ':''}</b><span>Toạ độ tự do (gốc 0,0), 1 đơn vị = 1 m — chỉ để xem / in sơ đồ, mở chồng lên bản đồ CAD sẽ lệch. File đuôi _SoDoPhac.dxf. Cột, TBA, dây nối, đường, mốc, số cột và ghi chú; layer / block theo thư viện LispcadZP (0_ZP_0-COT_…, 0_ZP_0-DZ_…, ZP_COT_…): chạy được KEDUONGDAY, XUATDUONGDAY. Đèn: mỗi loại một lớp KS_DEN_… + block có thuộc tính, bảng thống kê đèn.</span></button>`;
+      return co?vn+'\n    '+ph:ph+'\n    '+vn})()}
     <label class="sl vn"><span class="k">Tỉnh / kinh tuyến trục VN-2000</span><select id="ex-ktt">${VN.TINH.map(([t,v,,,,m])=>`<option value="${v}"${Math.abs(v-ktt())<1e-9&&tinhKhop(t,DB.tinh||'Thanh Hóa')?' selected':''}>${t} — ${kttTen(v)}${m&&m!==t?' · nay '+m:''}</option>`).join('')}
       <option value="khac"${VN.TINH.some(([t,v])=>Math.abs(v-ktt())<1e-9&&tinhKhop(t,DB.tinh||'Thanh Hóa'))?'':' selected'}>Khác — tự nhập (${kttTen(ktt())})</option></select></label>
     ${D.kttGoi?`<p class="note">Theo GPS cột đầu: <b>${esc(D.kttGoi.t)}</b>${D.kttGoi.moi&&D.kttGoi.moi!==D.kttGoi.t?' (nay '+esc(D.kttGoi.moi)+')':''} — KTT ${kttTen(D.kttGoi.v)}${D.kttGoi.chac?'':' · ⚑ gần ranh tỉnh: '+esc((D.kttGoi.c||[]).map(r=>r[0]+' '+kttTen(r[1])).join(' / '))}${Math.abs(D.kttGoi.v-ktt())<1e-9?'':' · <b>khác KTT đang chọn</b>'}</p>`:''}

@@ -443,6 +443,9 @@ console.log('17. Bản vẽ CAD phủ lên: VN-2000 → WGS-84, đọc DXF');
     ok(Q.soTuMoi(['T1.L1.C05','T1.L2.C03'],'T1.L2.C03')==='T2.L1.C01'&&Q.soTuMoi(['T1.L1.05','T3.L2.07'],'T1.L1.05')==='T4.L1.01','tủ mới: tủ lớn nhất + 1, lộ 1, số về 1')}
   ok(/const HINH_NH=\[\['tba'/.test(html)&&/data-nh="hinh"/.test(html)&&/CẦUDAO\)\//.test(html),'nút TBA / Cột đơn / Cột đôi / Cầu dao (Hạ, Trung); «Cầu dao» là dạng cột');
   ok(/#nhanh button\{width:34px/.test(html)&&/\.mb\{width:34px/.test(html),'nút bên phải thu ×0,6 (34 px)');
+  /* 22/11 lỗi «DXF toạ độ không đúng» = bấm nhầm bản phác */
+  ok(/fname\('_SoDoPhac\.dxf'\)/.test(html)&&/fname\('_VN2000\.dxf'\)/.test(html),'hai file DXF khác đuôi: _SoDoPhac / _VN2000');
+  ok(/return co\?vn\+/.test(html)&&/KHÔNG khớp bản đồ/.test(html),'có GPS: nút VN-2000 đứng đầu, nút phác ghi rõ không khớp bản đồ');
   /* chốt trong code */
   ok(/function nenVe\(\)\{nenNen\(\);if\(D&&D\.cad&&D\.cad\.length\)try\{cadVe\(/.test(html),'nenVe vẽ thêm bản vẽ CAD sau ảnh nền');
   ok(!/nenCv\.style\.opacity=String\(DB\.nenMo/.test(html),'độ đậm ảnh nền dùng globalAlpha (không làm mờ nét CAD)');
