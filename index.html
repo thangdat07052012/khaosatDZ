@@ -150,7 +150,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .btn.danger{color:var(--warn);border-color:currentColor;background:transparent}
 /* bảng chi tiết đèn (21/11 Truong «chưa có phần chi tiết, chỉ thêm mà không xoá / sửa được đèn») */
 #dsheet{gap:9px;padding-bottom:12px}
-#ds-so{font-size:15.5px;flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#ds-so,.qso{font-size:15.5px;flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dsg{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
 .dsg button{height:46px;border-radius:10px;border:2px solid var(--line);background:var(--paper);display:flex;align-items:center;justify-content:center;padding:0}
 .dsg button.on{border-color:var(--fg);box-shadow:inset 0 0 0 2px var(--fg)}
@@ -161,6 +161,20 @@ button{font:inherit;color:inherit;cursor:pointer}
 .dsn button:disabled{opacity:.3}
 .dsn b{min-width:36px;text-align:center;font-size:18px}
 #ds-hong.on{background:#E0412F;color:#fff;border-color:#E0412F}
+/* bảng chi tiết cột Hạ / Trung + phím nhanh bên phải (22/11) */
+#qsheet{gap:7px;padding-bottom:12px}
+.qsg button{height:40px;font:800 12.5px var(--f);color:var(--fg);white-space:nowrap;overflow:hidden}
+.qdd{display:flex;gap:6px;flex-wrap:wrap}
+.qdd button{height:34px;padding:0 12px;border-radius:999px;border:1.5px solid var(--line);background:var(--paper);font:700 13px var(--f);color:var(--fg)}
+.qdd button.on{background:var(--fg);color:var(--paper);border-color:var(--fg)}
+#qs-nho.on,#qs-thu.on{background:#E0412F;color:#fff;border-color:#E0412F}
+#nhanh{position:absolute;right:8px;top:78px;display:flex;flex-direction:column;gap:6px;z-index:6}
+#nhanh button{width:52px;min-height:40px;border-radius:12px;border:1.5px solid var(--line);background:var(--paper);color:var(--fg);font:800 12px var(--f);box-shadow:0 2px 8px rgba(0,0,0,.2);padding:2px;line-height:1.15}
+#nhanh button.on{background:var(--fg);color:var(--paper);border-color:var(--fg)}
+#nhanh small{display:block;font-size:9.5px;font-weight:700;opacity:.8}
+#nhanh .mic{font-size:22px;min-height:52px}
+#nhanh .mic.on{background:#E0412F;color:#fff;border-color:#E0412F;animation:nhm 1.2s infinite}
+@keyframes nhm{50%{box-shadow:0 0 0 7px rgba(224,65,47,.28)}}
 .btn.armed{background:var(--warn);color:#fff;border-color:var(--warn)}
 .sact{flex:0 0 auto;background:var(--bg);display:flex;gap:6px;padding:6px 0 calc(8px + env(safe-area-inset-bottom,0px))}
 .sact .btn{flex:1;padding:0 6px}
@@ -190,6 +204,8 @@ button{font:inherit;color:inherit;cursor:pointer}
 .typ{display:flex;gap:4px}
 .typ .inp{flex:1;min-width:0;height:34px;border-radius:7px;border:1.5px solid var(--line);background:var(--paper);color:var(--fg);font:600 15px var(--mono);padding:0 8px}
 #sh-noi{flex:0 0 auto}#o-noi{font:500 14px var(--f)}#o-noi.lenh{border-color:var(--hi);box-shadow:0 0 0 2px var(--hi-soft)}
+#o-noi.cho{background-image:linear-gradient(#2E9E5B,#2E9E5B);background-repeat:no-repeat;background-position:left bottom;background-size:0% 4px;animation:nhc 3s linear forwards}
+@keyframes nhc{to{background-size:100% 4px}}   /* vạch xanh chạy 3 giây: hết vạch là tự điền */
 .gs summary{cursor:pointer;font-weight:600;font-size:14.5px;padding:8px 0}.gs-ds{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
 .gs-i{font:13px var(--f);color:inherit;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:5px 10px}.gs-i small{color:var(--muted)}
 .gs-i.tat{text-decoration:line-through;opacity:.45}
@@ -241,7 +257,7 @@ label.btn{display:flex;align-items:center;justify-content:center}
   <button id="b-table" class="ib" aria-label="Bảng cột">▤</button>
   <button id="b-export" class="ib pri">Xuất</button>
 </header>
-<div id="stage"><canvas id="nen" aria-hidden="true"></canvas><svg id="cv" role="img" aria-label="Sơ đồ tuyến"></svg><div id="nenattr" hidden></div><div id="mapctl"><button id="b-nen" class="mb" aria-label="Ảnh vệ tinh: chạm bật / tắt, giữ lâu: nguồn ảnh, độ đậm, dời ảnh" aria-pressed="false"><span>🛰</span><small>Ảnh</small></button><button id="b-cad" class="mb" aria-label="Bản vẽ CAD .dxf: nạp, ẩn / hiện, lớp, dời"><span>📐</span><small>CAD</small></button><button id="b-fit" class="mb" aria-label="Xem toàn bộ tuyến"><span>⤢</span><small>Xem hết</small></button></div><div id="status"></div></div>
+<div id="stage"><canvas id="nen" aria-hidden="true"></canvas><svg id="cv" role="img" aria-label="Sơ đồ tuyến"></svg><div id="nenattr" hidden></div><div id="mapctl"><button id="b-nen" class="mb" aria-label="Ảnh vệ tinh: chạm bật / tắt, giữ lâu: nguồn ảnh, độ đậm, dời ảnh" aria-pressed="false"><span>🛰</span><small>Ảnh</small></button><button id="b-cad" class="mb" aria-label="Bản vẽ CAD .dxf: nạp, ẩn / hiện, lớp, dời"><span>📐</span><small>CAD</small></button><button id="b-fit" class="mb" aria-label="Xem toàn bộ tuyến"><span>⤢</span><small>Xem hết</small></button></div><div id="nhanh" aria-label="Phím nhanh"></div><div id="status"></div></div>
 <nav class="tools" aria-label="Công cụ">
   <div class="che" role="group" aria-label="Phần khảo sát"><button data-che="cs">💡 Chiếu sáng</button><button data-che="ha" class="on">Hạ áp</button><button data-che="tt">Trung thế</button></div>
   <button data-tool="den" data-den="L60" aria-label="Đèn LED 60W"><i><span class="ic-den L60">60W</span></i>LED</button>
@@ -268,7 +284,7 @@ label.btn{display:flex;align-items:center;justify-content:center}
     <span class="grow"></span>
     <button id="sh-del" class="btn sm danger">Xoá</button>
   </div>
-  <div id="sh-noi" class="typ" hidden><input id="o-noi" class="inp" placeholder="Nói cả câu, cuối câu «điền» — «tiếp» sang cột sau" autocomplete="off" spellcheck="false" enterkeyhint="done"><button id="o-noi-x" type="button" class="btn sm" aria-label="Xoá câu nói">✕</button><button id="o-noi-nho" type="button" class="btn sm" aria-label="Bộ nhớ giọng nói">📖</button><button id="o-noi-ok" type="button" class="btn sm pri">Điền</button></div>
+  <div id="sh-noi" class="typ" hidden><input id="o-noi" class="inp" placeholder="Nói cả câu — im 3 giây là tự điền · «tiếp» sang cột sau" autocomplete="off" spellcheck="false" enterkeyhint="done"><button id="o-noi-x" type="button" class="btn sm" aria-label="Xoá câu nói">✕</button><button id="o-noi-nho" type="button" class="btn sm" aria-label="Bộ nhớ giọng nói">📖</button><button id="o-noi-ok" type="button" class="btn sm pri">Điền</button></div>
   <input id="anh-in" type="file" accept="image/*" capture="environment" hidden>
   <div id="sh-anhs" class="anhs" hidden></div>
   <div id="slots" class="slots"></div>
@@ -296,6 +312,16 @@ label.btn{display:flex;align-items:center;justify-content:center}
   <div class="dsr"><span class="k">Số bóng</span><span class="dsn"><button type="button" id="ds-bot" aria-label="Bớt một bóng">−</button><b id="ds-n">1</b><button type="button" id="ds-them" aria-label="Thêm một bóng">+</button></span>
     <span class="grow"></span><button id="ds-hong" class="btn" type="button">Đèn hỏng</button></div>
   <div class="dsr"><button id="ds-bo" class="btn" type="button">Bỏ đèn (giữ cột)</button><span class="grow"></span><button id="ds-xoa" class="btn danger" type="button">Xoá cột</button></div>
+</section>
+<section id="qsheet" class="sheet" hidden aria-label="Chi tiết cột">
+  <div class="shh"><button id="qs-prev" class="btn sm" aria-label="Cột trước">◀</button><b id="ds-so2" class="qso"></b><button id="qs-next" class="btn sm" aria-label="Cột sau">▶</button>
+    <span class="grow"></span><button id="qs-cot" class="btn sm">Ô nhập cột</button><button id="qs-ok" class="btn sm pri">Xong</button></div>
+  <div class="dsr"><span class="k">Loại cột — chạm để đổi</span></div>
+  <div id="qs-loai" class="dsg qsg"></div>
+  <div class="dsr"><span class="k">Dây</span><span class="grow"></span><button id="qs-giong" class="btn sm" type="button">⧉ Dây giống cột trước</button></div>
+  <div id="qs-day" class="dsg qsg"></div>
+  <div id="qs-dd" class="qdd"></div>
+  <div class="dsr"><button id="qs-nho" class="btn" type="button">Nhổ bỏ cột</button><button id="qs-thu" class="btn" type="button">Thu hồi dây</button><span class="grow"></span><button id="qs-xoa" class="btn danger" type="button">Xoá cột</button></div>
 </section>
 <section id="panel" hidden></section>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -1079,10 +1105,11 @@ function onTap(pt,h){
     snap();D.mocs.push({id:uid(),x,y,ten:t.trim()||'Mốc'});save();draw();return;
   }
   if((!h||h.ten===undefined)&&(tool==='cot'||tool==='chon')){const sp=hitSpan(pt,h);if(sp){nhapKcThat(sp);return}}
-  if(h&&h.ten===undefined){if(h.id!==editId)dropAuto();D.active=h.id;save();openSheet(byId(h.id)||h);return}
-  if(tool==='chon'){finishSheet();return}
+  if(h&&h.ten===undefined){if(h.id!==editId)dropAuto();const q=byId(h.id);if(q&&DB.che!=='cs'){moCot(q);return}D.active=h.id;save();openSheet(q||h);return}
+  if(tool==='chon'){finishSheet();dongDen();return}
   const [wx,wy]=toW(pt),q=snapToRoad(wx,wy),ed=editId&&byId(editId);
   if(ed&&ed.auto){snap();ed.x=q.x;ed.y=q.y;save();draw();return}
+  const kb=cotBut();if(kb){cotNhanh(q.x,q.y,null,kb);return}if(denId){dongDen();return}
   addPole(q.x,q.y);
 }
 
@@ -1118,8 +1145,8 @@ function denThem(x,y,gps){const k=DB.denBut||'L100',a=activeP(),noi=!!a&&denCo(a
 function denGan(xy,r){let b=null,bd=r;for(const p of D.poles){const d=Math.hypot(p.x-xy.x,p.y-xy.y);if(d<=bd){bd=d;b=p}}return b}
 /* bảng chi tiết đèn: mỗi thao tác ghi ngay + hoàn tác được (nút ↶); xoá cột giữa tuyến thì nối lại dây hai cột hai bên */
 let denXoaT=null;
-function moDen(p){if(editId)finishSheet();rsheet.hidden=true;denId=p.id;D.active=p.id;dsheet.hidden=false;veDen();draw()}
-function dongDen(){clearTimeout(denXoaT);denXoaT=null;if(!denId&&dsheet.hidden)return;denId=null;dsheet.hidden=true;draw()}
+function moDen(p){if(editId)finishSheet();rsheet.hidden=true;qsheet.hidden=true;denId=p.id;D.active=p.id;dsheet.hidden=false;veDen();draw()}
+function dongDen(){clearTimeout(denXoaT);denXoaT=null;clearTimeout(qXoaT);qXoaT=null;if(!denId&&dsheet.hidden&&qsheet.hidden)return;denId=null;dsheet.hidden=true;qsheet.hidden=true;draw()}
 function veDen(){const p=denId&&byId(denId);if(!p){dongDen();return}
   const d=denDoc(p.code),co=!!(d.loai||d.hong);
   $('#ds-so').textContent=(parse(p.code).so||'Cột chưa số')+' · '+(d.loai?DEN_NGAN[d.loai]:co?'chưa rõ loại':'chưa có đèn');
@@ -1138,19 +1165,74 @@ $('#ds-ok').addEventListener('click',dongDen);
 $('#ds-cot').addEventListener('click',()=>{const p=byId(denId);dongDen();if(p){D.active=p.id;save();openSheet(p)}});
 $('#ds-xoa').addEventListener('click',e=>{const b=e.currentTarget,p=byId(denId);if(!p)return;
   if(!denXoaT){b.classList.add('armed');b.textContent='Xoá thật?';denXoaT=setTimeout(()=>{denXoaT=null;b.classList.remove('armed');b.textContent='Xoá cột'},3000);return}
-  clearTimeout(denXoaT);denXoaT=null;const so=parse(p.code).so||'',ke=D.edges.filter(([a,c])=>a===p.id||c===p.id).map(([a,c])=>a===p.id?c:a);
+  clearTimeout(denXoaT);denXoaT=null;xoaCotNoi(p)});
+/* xoá cột giữa tuyến: nối lại dây hai cột hai bên, cột sau nhận cột trước làm gốc; hoàn tác được */
+function xoaCotNoi(p){const so=parse(p.code).so||'',ke=D.edges.filter(([a,c])=>a===p.id||c===p.id).map(([a,c])=>a===p.id?c:a);
   const con=D.poles.filter(q=>q.from===p.id),cha=p.from&&byId(p.from)?p.from:null;
   snap();removePole(p.id);if(ke.length===2&&!hasEdge(ke[0],ke[1]))D.edges.push([ke[0],ke[1]]);for(const q of con)q.from=cha;
-  denId=null;dsheet.hidden=true;save();draw();toast(`Đã xoá cột ${so}`+(ke.length===2?' — nối lại dây hai bên':''))});
-function denSang(d){const o=sorted(),i=o.findIndex(q=>q.id===denId);if(i<0)return;
-  for(let j=i+d;j>=0&&j<o.length;j+=d)if(denCo(o[j])){const q=byId(o[j].id);denId=q.id;D.active=q.id;veDen();
-    const sx=q.x*V.s+V.tx,sy=q.y*V.s+V.ty,visH=Math.max(window.innerHeight-dsheet.offsetHeight-stage.getBoundingClientRect().top,120);
+  clearTimeout(qXoaT);qXoaT=null;denId=null;dsheet.hidden=true;qsheet.hidden=true;save();draw();toast(`Đã xoá cột ${so}`+(ke.length===2?' — nối lại dây hai bên':''))}
+function denSang(d,loc=denCo,ve=veDen){const o=sorted(),i=o.findIndex(q=>q.id===denId);if(i<0)return;
+  for(let j=i+d;j>=0&&j<o.length;j+=d)if(loc(o[j])){const q=byId(o[j].id);denId=q.id;D.active=q.id;ve();
+    const sx=q.x*V.s+V.tx,sy=q.y*V.s+V.ty,visH=Math.max(window.innerHeight-(qsheet.hidden?dsheet:qsheet).offsetHeight-stage.getBoundingClientRect().top,120);
     if(sx<50||sx>W-50||sy<50||sy>visH-50){V.tx+=W/2-sx;V.ty+=visH/2-sy;persistView()}draw();return}
-  toast(d>0?'Đây là đèn cuối':'Đây là đèn đầu')}
+  toast(loc===denCo?(d>0?'Đây là đèn cuối':'Đây là đèn đầu'):(d>0?'Đây là cột cuối':'Đây là cột đầu'))}
 $('#ds-prev').addEventListener('click',()=>denSang(-1));$('#ds-next').addEventListener('click',()=>denSang(1));
+/* ===== Hạ áp / Trung thế: bảng chi tiết cột gọn + phím nhanh bên phải (22/11 Truong «làm tương tự cho Hạ và Trung… thuận tiện nhất khi khảo sát»)
+   ⚑ chạm cột ở Hạ / Trung → bảng gọn (không còn mở thẳng ô nhập lớn; nút «Ô nhập cột» mở ô đầy đủ); chọn sẵn loại cột ở phím phải →
+   chạm chỗ trống / bấm GPS là thêm cột loại đó (dây theo cột trước) và hiện bảng gọn của cột mới; không chọn sẵn → như cũ (ô nhập lớn) */
+const NHANH={ha:{cot:['LT8,5','LT10','LT12','H7,5','H8,5'],day:['ABC4x50','ABC4x70','ABC4x95','ABC4x120','A50'],dd:['Néo','Góc','Cuối','Rẽ nhánh','Đầu nguồn']},
+  tt:{cot:['LT12','LT14','LT16','LT18','2LT12'],day:['AC50','AC70','AC95','AC120','AC150'],dd:['Néo','Góc','Cuối','Rẽ nhánh','Đầu nguồn']}};
+let qXoaT=null;
+const nhanhCua=()=>NHANH[DB.che==='tt'?'tt':'ha'];
+function cotBut(){return DB.che==='cs'?'':(DB.cotBut||{})[DB.che]||''}
+function moCot(p){if(editId)finishSheet();rsheet.hidden=true;dsheet.hidden=true;denId=p.id;D.active=p.id;qsheet.hidden=false;veCot();draw()}
+function veCot(){const p=denId&&byId(denId);if(!p){dongDen();return}
+  const f=parse(p.code),N=nhanhCua(),cot=f.cotHT[0]||'',day=f.dayHT[0]||'',L=(a,v)=>v&&!a.some(x=>norm(x)===norm(v))?[v,...a.slice(0,4)]:a;
+  const chip=(a,v)=>L(a,v).map(x=>`<button type="button" data-v="${esc(x)}" class="${v&&norm(x)===norm(v)?'on':''}">${esc(x)}</button>`).join('');
+  $('#ds-so2').textContent=(f.so||'Cột chưa số')+' · '+([cot,day].filter(Boolean).join(' · ')||'chưa ghi loại');
+  $('#qs-loai').innerHTML=chip(N.cot,cot);$('#qs-day').innerHTML=chip(N.day,day);
+  $('#qs-dd').innerHTML=N.dd.map(x=>`<button type="button" data-v="${esc(x)}" class="${f.dd.includes(x)?'on':''}">${esc(x)}</button>`).join('');
+  const nho=f.cotTT[0]==='Nhổ bỏ',thu=f.dayTT[0]==='Thu hồi',tr=p.from&&byId(p.from);
+  $('#qs-nho').classList.toggle('on',nho);$('#qs-nho').textContent=nho?'Nhổ bỏ ✓':'Nhổ bỏ cột';
+  $('#qs-thu').classList.toggle('on',thu);$('#qs-thu').textContent=thu?'Thu hồi dây ✓':'Thu hồi dây';
+  $('#qs-giong').disabled=!(tr&&parse(tr.code).dayHT.length);
+  const x=$('#qs-xoa');x.classList.remove('armed');x.textContent='Xoá cột'}
+function cotSua(fn,m){const p=denId&&byId(denId);if(!p)return;const f=parse(p.code);fn(f);const c=chuanHoa(codeOf(f));if(c===p.code)return;
+  snap();p.code=c;p.auto=false;save();draw();veCot();if(m)toast((f.so||'Cột')+': '+m)}
+/* thêm cột loại chọn sẵn (chạm trống / GPS): cột mới theo cột trước (số, dây…), đổi loại cột, hiện bảng gọn */
+function cotNhanh(x,y,gps,kb){if(editId)finishSheet();addPole(x,y,null,gps,false,true);const p=activeP();if(!p)return;
+  const f=parse(p.code);f.cotHT[0]=kb;p.code=chuanHoa(codeOf(f));p.auto=false;save();moCot(p);
+  toast((f.so||'Cột mới')+': '+kb+(f.dayHT[0]?' · '+f.dayHT[0]:'')+' — chạm bảng để sửa')}
+const qChon=(sel,fn)=>$(sel).addEventListener('click',e=>{const b=e.target.closest('[data-v]');if(b)fn(b.dataset.v)});
+qChon('#qs-loai',v=>cotSua(f=>{f.cotHT[0]=v},'cột '+v));
+qChon('#qs-day',v=>cotSua(f=>{f.dayHT[0]=v},'dây '+v));
+qChon('#qs-dd',v=>cotSua(f=>{const i=f.dd.indexOf(v);if(i>=0)f.dd.splice(i,1);else f.dd.push(v)},v));
+$('#qs-nho').addEventListener('click',()=>cotSua(f=>{f.cotTT[0]=f.cotTT[0]==='Nhổ bỏ'?'':'Nhổ bỏ'},'nhổ bỏ / giữ cột'));
+$('#qs-thu').addEventListener('click',()=>cotSua(f=>{f.dayTT[0]=f.dayTT[0]==='Thu hồi'?'':'Thu hồi'},'thu hồi / giữ dây'));
+$('#qs-giong').addEventListener('click',()=>{const p=byId(denId),tr=p&&p.from&&byId(p.from);if(tr)cotSua(f=>{f.dayHT=parse(tr.code).dayHT.slice()},'dây giống cột trước')});
+$('#qs-ok').addEventListener('click',dongDen);
+$('#qs-cot').addEventListener('click',()=>{const p=byId(denId);dongDen();if(p){D.active=p.id;save();openSheet(p)}});
+$('#qs-xoa').addEventListener('click',e=>{const b=e.currentTarget,p=byId(denId);if(!p)return;
+  if(!qXoaT){b.classList.add('armed');b.textContent='Xoá thật?';qXoaT=setTimeout(()=>{qXoaT=null;b.classList.remove('armed');b.textContent='Xoá cột'},3000);return}
+  clearTimeout(qXoaT);qXoaT=null;xoaCotNoi(p)});
+$('#qs-prev').addEventListener('click',()=>denSang(-1,()=>true,veCot));$('#qs-next').addEventListener('click',()=>denSang(1,()=>true,veCot));
+/* phím nhanh bên phải: 🎤 (nghe ở cả ba phần), loại cột chọn sẵn (Hạ / Trung), đoạn mới */
+function veNhanh(){const kb=cotBut();let h=`<button type="button" class="mic${giongNghe?' on':''}" data-nh="mic" aria-label="Nói để điền — im 3 giây là tự điền">🎤</button>`;
+  if(DB.che!=='cs')h+=nhanhCua().cot.slice(0,4).map(v=>`<button type="button" data-nh="cot" data-v="${esc(v)}" class="${v===kb?'on':''}" aria-label="Chọn sẵn cột ${esc(v)}: chạm chỗ trống là thêm cột loại này">${esc(v)}<small>cột</small></button>`).join('');
+  h+=`<button type="button" data-nh="doan" aria-label="Cột tiếp theo bắt đầu đoạn mới, không nối dây">✂<small>Đoạn mới</small></button>`;$('#nhanh').innerHTML=h}
+function micNhanh(){if(editId&&!sheet.hidden){$('#sh-mic').click();return}
+  const p=(denId&&byId(denId))||activeP()||D.poles[D.poles.length-1];
+  if(!p){toast('Chấm cột trước (GPS hoặc chạm bản đồ) rồi bấm 🎤');return}
+  dongDen();D.active=p.id;save();openSheet(p);$('#sh-mic').click()}
+$('#nhanh').addEventListener('click',e=>{const b=e.target.closest('[data-nh]');if(!b)return;const k=b.dataset.nh;
+  if(k==='mic'){micNhanh();return}
+  if(k==='doan'){finishSheet();dongDen();D.active=null;save();draw();toast('Cột tiếp theo bắt đầu đoạn mới, không nối dây');return}
+  const B=DB.cotBut||(DB.cotBut={});B[DB.che]=B[DB.che]===b.dataset.v?'':b.dataset.v;saveNow();
+  if(B[DB.che]){tool='cot';noiA=null;roadStart=null;for(const x of document.querySelectorAll('[data-tool]'))x.classList.toggle('on',x.dataset.tool==='cot')}
+  veNhanh();draw();toast(B[DB.che]?`Đã chọn sẵn cột ${B[DB.che]}: chạm chỗ trống hoặc bấm GPS là thêm cột — chạm lại phím để thôi`:'Thôi chọn sẵn loại cột')});
 
 /* ================= ô nhập cột (dạng ô) ================= */
-const sheet=$('#sheet'), rsheet=$('#rsheet'), dsheet=$('#dsheet');
+const sheet=$('#sheet'), rsheet=$('#rsheet'), dsheet=$('#dsheet'), qsheet=$('#qsheet');
 const BASE={
   cot:['LT8,5','LT10','LT12','H7,5','H8,5','2LT8,5','2H7,5','LT7,5','H6,5','Cột gỗ'],
   cotTT:['LT8,5','LT10','LT12','H7,5','H8,5','2LT8,5','2H7,5','Nhổ bỏ'],
@@ -1363,11 +1445,11 @@ $('#sh-anh').addEventListener('click',()=>{if(!editId)return;$('#anh-in').value=
 var SR=window.SpeechRecognition||window.webkitSpeechRecognition,GHE=null;
 /* 🎤 nghe liền (07/11): bấm 🎤 một lần là nghe tới khi nói «tiếp» / «dừng» / «đoạn mới», bấm 🎤 lần nữa, hoặc im 1 phút.
    Câu nói dồn vào ô; cuối câu nói «điền» là điền ô rồi nghe tiếp (giongLenh). ⚑ Chrome Android mỗi lần nghe lại có thể kêu «bíp» */
-var giongNghe=false,giongChot=false,giongDem='',giongLuc=0,giongHong=0,giongDaBao=false,giongHen=null,giongGo=null;
+var giongNghe=false,giongChot=false,giongDem='',giongLuc=0,giongHong=0,giongDaBao=false,giongHen=null,giongGo=null,giongTuH=null;
 const GIONG_IM=60000,GIONG_LOI={'not-allowed':'Chưa cho phép micro — bấm ổ khoá trên thanh địa chỉ để cho phép','service-not-allowed':'Chưa cho phép micro',
   'network':'Nhận giọng nói cần mạng — gõ câu rồi bấm Điền','audio-capture':'Không mở được micro'};
-function giongTat(){giongNghe=false;giongChot=false;clearTimeout(giongHen);clearTimeout(giongGo);
-  if(GHE){const g=GHE;GHE=null;try{g.abort()}catch(e){}}const b=$('#sh-mic');if(b)b.classList.remove('on')}
+function giongTat(){giongNghe=false;giongChot=false;clearTimeout(giongHen);clearTimeout(giongGo);clearTimeout(giongTuH);giongTuH=null;$('#o-noi').classList.remove('cho');
+  if(GHE){const g=GHE;GHE=null;try{g.abort()}catch(e){}}const b=$('#sh-mic');if(b)b.classList.remove('on');const m=$('#nhanh .mic');if(m)m.classList.remove('on')}
 function giongBat(thu){clearTimeout(giongHen);if(!giongNghe||!editId||!SR||GHE)return;
   const o=$('#o-noi'),g=new SR(),t0=Date.now();g.lang='vi-VN';g.interimResults=true;g.continuous=false;g.maxAlternatives=1;
   let fin='',tam='',loi='',cu='';GHE=g;
@@ -1380,7 +1462,7 @@ function giongBat(thu){clearTimeout(giongHen);if(!giongNghe||!editId||!SR||GHE)r
     fin=giongChuan(f,DB.giongBo);tam=t;giongLuc=Date.now();
     const v=(giongDem+' '+giongChuan(f+' '+t,DB.giongBo)).replace(/\s+/g,' ').trim();o.value=v;
     if(v===cu)return;cu=v;clearTimeout(giongGo);
-    const k=giongLenh(v,DB.giongTu).lenh;o.classList.toggle('lenh',!!k);if(k)giongGo=setTimeout(lam,giongCho(k,!!t.trim()))};
+    const k=giongLenh(v,DB.giongTu).lenh;o.classList.toggle('lenh',!!k);if(k)giongGo=setTimeout(lam,giongCho(k,!!t.trim()));giongTuHen()};
   g.onerror=e=>{loi=e.error||'loi'};
   g.onend=()=>{if(GHE!==g)return;GHE=null;clearTimeout(giongGo);   /* đã bị huỷ (✕, Điền, đổi cột, đóng ô nhập) → bỏ */
     const s=fin.trim()||giongChuan(tam,DB.giongBo);   /* máy tắt phiên mà chưa chốt câu → lấy chữ tạm, không để mất */
@@ -1397,7 +1479,14 @@ function giongBat(thu){clearTimeout(giongHen);if(!giongNghe||!editId||!SR||GHE)r
     giongTat();o.focus();toast('Không mở được nhận giọng nói — gõ câu rồi bấm Điền')}}
 /* câu trong ô vừa đổi ngoài nhận giọng (✕, Điền, gõ tay) → bỏ phiên đang nghe (nó còn giữ chữ cũ), nghe lại phiên mới */
 function giongMoi(){if(!giongNghe)return;if(GHE){const g=GHE;GHE=null;try{g.abort()}catch(e){}}clearTimeout(giongHen);giongHen=setTimeout(giongBat,GIONG_CHO.lai)}
-function giongXoa(){const o=$('#o-noi');o.value='';o.classList.remove('lenh');giongDem='';clearTimeout(giongGo)}
+function giongXoa(){const o=$('#o-noi');o.value='';o.classList.remove('lenh','cho');giongDem='';clearTimeout(giongGo);clearTimeout(giongTuH);giongTuH=null}
+/* 22/11 Truong «chờ 3s tự điền chứ không cần nói điền»: mỗi lần câu đổi thì đếm lại GIONG_CHO.tu (3 giây); câu đứng yên đủ 3 giây,
+   không có khẩu lệnh → điền luôn rồi nghe tiếp. Vạch xanh dưới ô câu nói = đang đếm. Vẫn nói «điền» / «tiếp»… được như cũ */
+function giongTuHen(){clearTimeout(giongTuH);giongTuH=null;const o=$('#o-noi');o.classList.remove('cho');
+  if(!giongNghe||!o.value.trim()||o.classList.contains('lenh'))return;void o.offsetWidth;o.classList.add('cho');giongTuH=setTimeout(giongTuDien,GIONG_CHO.tu)}
+function giongTuDien(){giongTuH=null;const o=$('#o-noi');o.classList.remove('cho');if(!giongNghe||!editId)return;const v=o.value.trim();if(!v)return;
+  if(GHE){const g=GHE;GHE=null;try{g.abort()}catch(e){}}clearTimeout(giongGo);
+  if(giongLam(v))return;giongXoa();apGiong(v);giongMoi()}
 /* câu có khẩu lệnh ở cuối → làm; trả false nếu không có lệnh */
 function giongLam(s){const l=giongLenh(s,DB.giongTu);if(!l.lenh)return false;
   if(l.lenh==='xoa'){giongXoa();giongMoi();toast('Đã xoá câu — nói lại');return true}
@@ -1419,7 +1508,7 @@ function giongNut(lenh,con){
   if(lenh==='doan'){D.active=null;save();draw();toast(ghi+'Cột tiếp theo bắt đầu đoạn mới, không nối dây');return}
   if(ghi||nghe)toast(ghi+'■ Dừng — đã lưu cột')}
 function giongMoLai(hien,nghe,foc){if(hien||nghe)$('#sh-noi').hidden=false;
-  if(nghe&&SR){giongNghe=true;giongLuc=Date.now();giongHong=0;$('#sh-mic').classList.add('on');giongBat()}else if(foc)$('#o-noi').focus()}
+  if(nghe&&SR){giongNghe=true;giongLuc=Date.now();giongHong=0;$('#sh-mic').classList.add('on');$('#nhanh .mic')?.classList.add('on');giongBat()}else if(foc)$('#o-noi').focus()}
 var giongCon='',giongCau='';   /* câu vừa nói + phần chưa hiểu của nó — 📖 điền sẵn phần chưa hiểu vào ô «Khi nói» */
 const giongDs=()=>({cot:learned('cot'),cotTT:learned('cotTT'),day:learned('day'),dayTT:learned('dayTT'),sau:learned('sau')});
 /* lưu một cụm dạy; «hiểu là» là khẩu lệnh hoặc toàn chữ app biết («cột», «công tơ») → thay chữ; app không hiểu gì → ⚑ lưu thành Ghi chú */
@@ -1470,7 +1559,16 @@ function apGiong(text){const p=curP();if(!p||!F)return null;
     else{DB.giongTu=M;saveNow();toast(co?'📖 Đã tắt cụm có sẵn «'+s+'» — bật lại trong 📖':'📖 Đã quên «'+d.quen+'»')}return null}
   if(d){const r=giongLuu(d.noi,d.la);giongCon='';
     toast('📖 '+(r.sua?'Đã sửa':'Đã nhớ')+': nói «'+d.noi+'» → '+r.mo+(r.t.hieu.length&&r.t.con?' — chưa hiểu: '+r.t.con:''));return null}
+  /* «sang trung thế …», «chiếu sáng …» đổi phần; «đèn LED 150 hai bóng», «sợi đốt», «đèn hỏng», «bỏ đèn» ghi đèn — ở phần nào cũng nói được */
+  const dn=giongDen(text,DB.che);
+  if(dn.che&&dn.che!==DB.che){datChe(dn.che,true);veNhanh();saveNow();renderSlots();renderOpts();draw()}
+  if(dn.loai||dn.n||dn.hong!=null||dn.bo){let c=codeOf(F);
+    if(dn.bo)c=denBo(c);else{if(dn.loai)c=denDat(c,dn.loai);if(dn.hong!=null&&denDoc(c).hong!==dn.hong)c=denDat(c,'hong');if(dn.n)c=denSoBong(c,dn.n)}
+    F=parse(c);commit()}
+  text=dn.con;
+  if(!text){if(dn.hieu.length){giongCau=dn.hieu.join(' · ');giongCon='';toast('🎤 '+dn.hieu.join(' · '))}return {hieu:dn.hieu,con:'',nho:[]}}
   const g=giongMa(text,giongDs(),DB.giongTu,DB.giongBo);
+  if(dn.hieu.length){if(!g.hieu.length)g.con=text;g.hieu=dn.hieu.concat(g.hieu)}
   giongCau=text;giongCon=g.hieu.length?g.con||'':text;
   if(!g.hieu.length){toast('🎤 Chưa hiểu: «'+text+'» — bấm 📖 để dạy app');return g}
   if(g.shape||g.doi){if(!sheetSnap){snap();sheetSnap=true}
@@ -1488,8 +1586,8 @@ $('#sh-mic').addEventListener('click',()=>{
   if(giongNghe){if(GHE){giongChot=true;try{GHE.stop()}catch(e){giongTat();giongXong()}}else{giongTat();giongXong()}return}
   $('#sh-noi').hidden=false;giongDem=o.value.trim();
   if(!SR){o.focus();toast('Máy này không có nhận giọng nói — bấm 🎤 trên bàn phím rồi nói, cuối câu nói «điền» (hoặc «tiếp», «dừng», «đoạn mới»)');return}
-  giongNghe=true;giongChot=false;giongLuc=Date.now();giongHong=0;$('#sh-mic').classList.add('on');giongBat();
-  if(!giongDaBao){giongDaBao=true;toast('🎤 Đang nghe — cuối câu nói «điền», «tiếp», «dừng», «đoạn mới» hoặc «nói lại». Bấm 🎤 lần nữa là thôi')}
+  giongNghe=true;giongChot=false;giongLuc=Date.now();giongHong=0;$('#sh-mic').classList.add('on');$('#nhanh .mic')?.classList.add('on');giongBat();
+  if(!giongDaBao){giongDaBao=true;toast('🎤 Đang nghe — nói xong im 3 giây là tự điền · «tiếp» sang cột sau, «dừng», «đoạn mới», «nói lại» · nói «sang trung thế / hạ áp / chiếu sáng» đổi phần. Bấm 🎤 lần nữa là thôi')}
 });
 /* ✕ xoá nhanh câu đang nói — pointerdown giữ ô nhập không mất focus (bàn phím không sập) */
 $('#o-noi-x').addEventListener('pointerdown',e=>e.preventDefault());
@@ -1658,9 +1756,9 @@ function datChe(c,dau){DB.che=c;dongDen();const nv=$('nav.tools');nv.classList.t
   for(const b of nv.querySelectorAll('[data-che]'))b.classList.toggle('on',b.dataset.che===c);
   tool=c==='cs'?'den':'cot';noiA=null;roadStart=null;
   for(const x of nv.querySelectorAll('[data-tool]'))x.classList.toggle('on',tool==='den'?x.dataset.den===(DB.denBut||'L100'):x.dataset.tool==='cot');
-  if(dau)return;closeRoad();finishSheet();saveNow();draw()}
+  veNhanh();if(dau)return;closeRoad();finishSheet();saveNow();draw()}
 for(const b of document.querySelectorAll('[data-che]'))b.addEventListener('click',()=>datChe(b.dataset.che));
-if(DB.che==='cs'||DB.che==='tt')datChe(DB.che,true);
+if(DB.che==='cs'||DB.che==='tt')datChe(DB.che,true);else veNhanh();
 $('#status').addEventListener('click',e=>{
   const s=e.target.dataset&&e.target.dataset.st;if(!s)return;const r=selRoad&&D.roads.find(x=>x.id===selRoad);
   if(s==='new'){finishSheet();D.active=null;save();draw();toast('Cột tiếp theo bắt đầu đoạn mới')}
@@ -1673,7 +1771,7 @@ $('#status').addEventListener('click',e=>{
   else if(s==='nd0'){const l=nenLech();l[0]=0;l[1]=0;nenDoi=false;save();nenVe();status();toast('Ảnh nền về chỗ cũ')}
 });
 $('#b-undo').addEventListener('click',()=>{const s=undoSt.pop();if(!s){toast('Không còn gì để hoàn tác');return}
-  Object.assign(D,JSON.parse(s));editId=null;F=null;sheet.hidden=true;closeRoad();if(denId)veDen();save();draw();toast('Đã hoàn tác')});
+  Object.assign(D,JSON.parse(s));editId=null;F=null;sheet.hidden=true;closeRoad();if(denId)(qsheet.hidden?veDen:veCot)();save();draw();toast('Đã hoàn tác')});
 $('#b-cad').addEventListener('click',()=>showNen('cad'));
 function cadNut(){const b=$('#b-cad');if(b)b.classList.toggle('on',!!(D&&D.cad&&D.cad.some(m=>m.bat)))}
 $('#b-fit').addEventListener('click',()=>{V=fitView(W,H,40);persistView();draw()});
@@ -2118,11 +2216,11 @@ function giongGop(list,them,ghiDe){
 /* 🎤 KHẨU LỆNH ở CUỐI câu nói (07/11): «điền» · «tiếp» (= Tiếp ▸) · «dừng» (= Dừng) · «đoạn mới» · «nói lại» / «xoá câu»
    → {lenh:'dien'|'tiep'|'dung'|'doan'|'xoa'|null, con: phần câu trước lệnh}. Chỉ nhận ở CUỐI câu, có chốt chặn:
    «tiếp địa», «nối tiếp», «trạm dừng», «xã Quảng Điền» không thành lệnh */
-const BAN_APP='kstuyen-34';
+const BAN_APP='kstuyen-35';
 /* 🎤 chờ bao lâu (ms) rồi mới làm khẩu lệnh cuối câu (07/11 rút ngắn ⚑): máy đã chốt câu → làm gần như ngay;
    còn chữ tạm → chờ ngắn xem có nói tiếp không («tiếp», «dừng» chờ lâu hơn chút vì hay đi tiếp chữ, vd «tiếp địa»);
    gõ tay / 🎤 bàn phím chờ lâu nhất; lai = nghỉ trước khi mở phiên nghe mới */
-const GIONG_CHO={chot:30,tam:{dien:450,xoa:450,doan:450,tiep:700,dung:700},go:800,lai:60};
+const GIONG_CHO={chot:30,tam:{dien:450,xoa:450,doan:450,tiep:700,dung:700},go:800,lai:60,tu:3000};   /* tu: câu đứng yên 3 giây là tự điền (22/11) */
 function giongCho(lenh,tam){return tam?(GIONG_CHO.tam[lenh]||700):GIONG_CHO.chot}
 const GIONG_TEN=/^(?:Quảng|Phong|Phú|Hải|Văn|Tân|Thanh|Mỹ|Long|Vĩnh|Hưng|Gia|Ngọc|Kim)$/;
 /* tu = cụm Truong dạy (DB.giongTu): cụm «hiểu là» một khẩu lệnh (vd «điên» là «điền») nói ở cuối câu = nói lệnh đó.
@@ -2413,6 +2511,31 @@ function denDat(code,k){code=String(code||'');const a=code.split(';').map(x=>x.t
   return t.length||code.includes(';')?[so,...t].join(';')+';':so}
 function denDem(ps){const c={L60:0,L100:0,L150:0,L200:0,SD:0,hong:0,tong:0};
   for(const p of ps||[]){const d=denDoc(p.code);if(!d.loai&&!d.hong)continue;if(d.loai)c[d.loai]+=d.n;if(d.hong)c.hong+=d.n;c.tong+=d.n}return c}   /* đếm theo BÓNG */
+/* 🎤 đổi phần + đèn trong câu nói (22/11). che = phần đang khảo sát. Trả {che,loai,n,hong,bo,hieu,con}: con = phần câu còn lại cho giongMa.
+   Đổi phần ⚑ chỉ khi nói đầu câu («trung thế cột ly tâm 12…») hoặc sau «sang / qua / phần / chế độ» — «tủ điều khiển chiếu sáng», «dây hạ thế» giữa câu không đổi.
+   Loại LED cần «đèn / bóng / led» đứng trước hoặc «W / oát» đứng sau («cột 12» không phải đèn). «hỏng / cháy» chỉ là đèn hỏng khi đang ở Chiếu sáng hoặc câu có «đèn / bóng». */
+function giongDen(text,che){const goc=String(text||'').trim();let t=' '+goc.normalize('NFC').toLowerCase().replace(/[,.;:!?…“”"«»()]/g,' ').replace(/\s+/g,' ').trim()+' ';
+  const r={che:'',loai:'',n:0,hong:null,bo:false,hieu:[],con:goc},R=(re,f)=>{t=t.replace(re,(...a)=>{f(a);return ' '}).replace(/ {2,}/g,' ')};
+  const PH={'chiếu sáng':'cs','hạ áp':'ha','hạ thế':'ha','trung thế':'tt','trung áp':'tt'},PT={cs:'Chiếu sáng',ha:'Hạ áp',tt:'Trung thế'};
+  R(/ (?:(?:chuyển |đổi )?(?:sang|qua) |phần |chế độ )(chiếu sáng|hạ áp|hạ thế|trung thế|trung áp)(?= )/,a=>{r.che=PH[a[1]]});
+  if(!r.che)R(/^ (?:chuyển |đổi )?(chiếu sáng|hạ áp|hạ thế|trung thế|trung áp)(?= )/,a=>{r.che=PH[a[1]]});
+  const den=r.che||che,coDen=/ (?:đèn|bóng)(?= )/.test(t);
+  R(/ (?:bỏ|tháo|thu hồi|xoá|xóa|không có) (?:bóng |cái )?đèn(?= )/,()=>{r.bo=true});
+  R(/ (?:đèn |bóng )?(?:sợi đốt|sợi tóc|dây tóc)(?= )/,()=>{r.loai='SD'});
+  const W={'60':'L60','sáu mươi':'L60','100':'L100','một trăm':'L100','150':'L150','một trăm năm mươi':'L150','một trăm rưỡi':'L150','trăm rưỡi':'L150','200':'L200','hai trăm':'L200'},
+    SO='(60|100|150|200|sáu mươi|một trăm năm mươi|một trăm rưỡi|trăm rưỡi|một trăm|hai trăm)',OAT='(?: ?(?:w|oát|oắt|wat|watt))';
+  R(new RegExp(' (?:(?:đèn|bóng) (?:led |lét |lết )?|led |lét |lết )'+SO+OAT+'?(?= )'),a=>{r.loai=W[a[1]]});
+  if(!r.loai)R(new RegExp(' '+SO+OAT+'(?= )'),a=>{r.loai=W[a[1]]});
+  const SB={'1':1,'một':1,'2':2,'hai':2,'3':3,'ba':3,'4':4,'bốn':4,'5':5,'năm':5,'6':6,'sáu':6};
+  R(/ (1|2|3|4|5|6|một|hai|ba|bốn|năm|sáu) bóng(?= )/,a=>{r.n=SB[a[1]]});
+  if(!r.n)R(/ (?:bóng|đèn) (đôi|đơn)(?= )/,a=>{r.n=a[1]==='đôi'?2:1});
+  R(/ (?:đèn |bóng )?(?:hết hỏng|sáng lại|còn sáng|còn tốt)(?= )/,()=>{r.hong=false});
+  if(r.hong==null&&(den==='cs'||coDen))R(/ (?:đèn |bóng )?(?:hỏng|cháy|không sáng|mất sáng)(?: đèn| bóng)?(?= )/,()=>{r.hong=true});
+  const coTin=!!(r.loai||r.n||r.hong!=null||r.bo);
+  if(coTin)R(/ (?:đèn|bóng|led)(?= )/g,()=>{});
+  if(r.che)r.hieu.push('Phần '+PT[r.che]);
+  if(r.bo)r.hieu.push('Bỏ đèn');else{if(r.loai)r.hieu.push(r.loai==='SD'?'Sợi đốt':'LED '+r.loai.slice(1)+'W');if(r.n)r.hieu.push(r.n+' bóng');if(r.hong!=null)r.hieu.push(r.hong?'Đèn hỏng':'Đèn hết hỏng')}
+  if(r.che||coTin)r.con=t.trim();return r}
 /* === HẾT HÀM THUẦN === */
 /* 📖 nâng cấp một lần lúc mở app: cụm dạy bản cũ «cuộc» → «ghi chú cột» thành thay chữ (giongSuaCu) — lưu ở lần lưu sau */
 {const L=giongSuaCu(DB.giongTu);if(L!==DB.giongTu)DB.giongTu=L}
@@ -2439,7 +2562,7 @@ function vnCot(p,tb){
 }
 function vnOf(p,tb){const v=vnCot(p,tb);return v&&{x:+v.x.toFixed(3),y:+v.y.toFixed(3),h:v.h,goc:v.goc,phac:v.phac}}
 function gpsLab(){$('#gps-lab').textContent=fix?`±${vn1(fix.acc)} m`:'GPS'}
-function placeGps(){dropAuto();closeSheet();const xy=geoToXY(fix.lat,fix.lon);
+function placeGps(){dropAuto();closeSheet();const xy=geoToXY(fix.lat,fix.lon),kb=cotBut();if(kb){cotNhanh(xy.x,xy.y,fix,kb);return}if(DB.che!=='cs')dongDen();
   if(DB.che==='cs'){const q=denGan(xy,Math.max(12,(fix.acc||0)*1.5));if(q)denApDung(q,DB.denBut||'L100');else denThem(xy.x,xy.y,fix);return}
   addPole(xy.x,xy.y,null,fix)}
 function gpsCheDo(){return GPS_CHE_DO[DB.gpsCheDo]?DB.gpsCheDo:'chuan'}
@@ -2949,7 +3072,7 @@ $('#b-list').addEventListener('click',showList);
 $('#b-export').addEventListener('click',showExport);
 $('#b-table').addEventListener('click',showTable);
 $('#b-gpsp').addEventListener('click',()=>{nanCho=null;showGps()});
-function switchTo(d){saveNow();cadDoi=null;denId=null;dsheet.hidden=true;D=d;D.poles=D.poles||[];D.roads=D.roads||[];D.mocs=D.mocs||[];D.edges=D.edges||[];D.mocDo=D.mocDo||[];mocCho=null;nanCho=null;DB.cur=d.id;undoSt=[];editId=null;F=null;noiA=null;selRoad=null;sheet.hidden=true;rsheet.hidden=true;V=D.view||fitView(W,H,40);saveNow();title();draw()}
+function switchTo(d){saveNow();cadDoi=null;denId=null;dsheet.hidden=true;qsheet.hidden=true;D=d;D.poles=D.poles||[];D.roads=D.roads||[];D.mocs=D.mocs||[];D.edges=D.edges||[];D.mocDo=D.mocDo||[];mocCho=null;nanCho=null;DB.cur=d.id;undoSt=[];editId=null;F=null;noiA=null;selRoad=null;sheet.hidden=true;rsheet.hidden=true;V=D.view||fitView(W,H,40);saveNow();title();draw()}
 
 /* ================= toast / khởi động ================= */
 let toastT=null;

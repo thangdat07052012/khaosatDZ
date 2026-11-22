@@ -387,6 +387,18 @@ console.log('17. Bản vẽ CAD phủ lên: VN-2000 → WGS-84, đọc DXF');
   ok(/<section id="dsheet"/.test(html)&&/if\(denCo\(q\)&&k!=='hong'\)moDen\(q\)/.test(html)&&/\$\('#ds-xoa'\)/.test(html)&&/if\(ke\.length===2&&!hasEdge\(ke\[0\],ke\[1\]\)\)D\.edges\.push/.test(html)&&
      /\(p\.id===editId\|\|p\.id===denId\)&&!o\.print/.test(html)&&/\(editId\|\|''\)\+\(denId\|\|''\)/.test(html),'chạm đèn mở bảng chi tiết (đổi loại / số bóng / hỏng / bỏ đèn / xoá cột nối lại dây), vòng chọn + khoá vẽ theo denId');
   ok(/'SO_BONG'\]\[i\]/.test(html)&&/c\[k\]\.n\+=d\.n/.test(html)&&/'Số bóng','Tình trạng'/.test(html)&&/\(d\.n>1\?'×'\+d\.n:''\)/.test(html)&&/!denLoai\(t\)&&!denSlTok\(t\)/.test(html),'số bóng: thẻ ×n, Excel cột Số bóng, DXF thuộc tính SO_BONG + bảng đếm theo bóng, nhãn màn hình không lặp');
+  ok(/<section id="qsheet"/.test(html)&&/<div id="nhanh"/.test(html)&&/if\(q&&DB\.che!=='cs'\)\{moCot\(q\);return\}/.test(html)&&/const kb=cotBut\(\);if\(kb\)\{cotNhanh\(q\.x,q\.y,null,kb\);return\}/.test(html)&&
+     /kb=cotBut\(\);if\(kb\)\{cotNhanh\(xy\.x,xy\.y,fix,kb\);return\}/.test(html)&&/function xoaCotNoi\(p\)/.test(html)&&(html.match(/xoaCotNoi\(p\)\}\);/g)||[]).length===2,
+     'Hạ / Trung: chạm cột mở bảng gọn (loại cột, dây, đặc điểm, nhổ bỏ, thu hồi, xoá cột nối dây), chọn sẵn loại cột ở phím phải → chạm trống / GPS thêm cột loại đó');
+  ok(/function veNhanh\(\)/.test(html)&&/veNhanh\(\);if\(dau\)return/.test(html)&&/data-nh="mic"/.test(html)&&/data-nh="doan"/.test(html)&&/\$\('#nhanh \.mic'\)\?\.classList\.add\('on'\)/.test(html),'phím nhanh bên phải: 🎤 + loại cột + đoạn mới, vẽ lại khi đổi phần, 🎤 sáng cùng ô nhập');
+  {const G=new Function(html.slice(html.indexOf('const VN=(()=>{'),html.indexOf('/* === HẾT HÀM THUẦN === */'))+';return {giongDen,GIONG_CHO}')();const d=G.giongDen;
+   const a=d('đèn led 150 hai bóng','cs'),b=d('trung thế cột ly tâm 12 dây ac 70','ha'),c=d('tủ điều khiển chiếu sáng','ha'),e=d('đèn hỏng','ha'),f=d('sợi đốt','cs'),
+     g=d('bỏ đèn','cs'),h=d('cột lt10 néo','cs'),i=d('chuyển sang chiếu sáng','tt'),j=d('đèn 200 oát','ha'),k=d('hết hỏng','cs'),l=d('Đèn một trăm rưỡi','cs'),m=d('cột 12 hỏng','ha'),o=d('cột 100 mét','cs');
+   ok(a.loai==='L150'&&a.n===2&&a.con===''&&b.che==='tt'&&b.con==='cột ly tâm 12 dây ac 70'&&!b.loai&&c.che===''&&c.con==='tủ điều khiển chiếu sáng'&&e.hong===true&&e.con===''&&
+      f.loai==='SD'&&g.bo&&h.con==='cột lt10 néo'&&!h.loai&&h.hong==null&&i.che==='cs'&&i.con===''&&j.loai==='L200'&&k.hong===false&&l.loai==='L150'&&m.hong==null&&!o.loai&&G.GIONG_CHO.tu>=2500&&G.GIONG_CHO.tu<=3500,
+      'giongDen: đổi phần đầu câu / sau «sang», LED 60–200 W, số bóng, sợi đốt, hỏng / hết hỏng, bỏ đèn; «cột 12», «tủ điều khiển chiếu sáng» không đụng; chờ tự điền ~3 s')}
+  ok(/giongCho\(k,!!t\.trim\(\)\)\);giongTuHen\(\)\};/.test(html)&&/function giongTuDien\(\)/.test(html)&&/if\(giongLam\(v\)\)return;giongXoa\(\);apGiong\(v\);giongMoi\(\)/.test(html)&&/const dn=giongDen\(text,DB\.che\)/.test(html)&&/clearTimeout\(giongTuH\);giongTuH=null\}/.test(html),
+     '🎤 im 3 giây là tự điền (đếm lại mỗi lần câu đổi, huỷ khi xoá / tắt), apGiong đọc đổi phần + đèn trước');
   /* chốt trong code */
   ok(/function nenVe\(\)\{nenNen\(\);if\(D&&D\.cad&&D\.cad\.length\)try\{cadVe\(/.test(html),'nenVe vẽ thêm bản vẽ CAD sau ảnh nền');
   ok(!/nenCv\.style\.opacity=String\(DB\.nenMo/.test(html),'độ đậm ảnh nền dùng globalAlpha (không làm mờ nét CAD)');
