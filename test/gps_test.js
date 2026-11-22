@@ -416,6 +416,20 @@ console.log('17. Bản vẽ CAD phủ lên: VN-2000 → WGS-84, đọc DXF');
   ok(/photon\.komoot\.io\/reverse\?lat=\$\{p\.lat\}&lon=\$\{p\.lon\}&lang=default/.test(html),'Photon có lang=default (không đổi tên sang tiếng Anh)');
   ok(/'Xã \/ phường \(mới\)','Đường \(© OpenStreetMap\)'/.test(html),'Excel sheet GPS có cột xã + đường ghi nguồn OSM');
   ok(/'\.\/xa\/38\.json'/.test(fs.readFileSync(path.join(__dirname,'..','sw.js'),'utf8')),'sw.js lưu sẵn xa/38.json (mất mạng vẫn tra xã)');
+  /* 22/11 KTT theo GPS */
+  {const K=new Function(html.slice(html.indexOf('const VN=(()=>{'),html.indexOf('/* === HẾT HÀM THUẦN === */'))+';return {VN,kttGoiY,tinhKhop}')();
+    ok(K.VN.TINH.length===63&&new Set(K.VN.TINH.map(r=>r[0])).size===63,'VN.TINH đủ 63 tỉnh cũ, không trùng tên');
+    const kt=n=>(K.VN.TINH.find(r=>r[0]===n)||[])[1];
+    ok(kt('Thanh Hóa')===105&&kt('Nghệ An')===104.75&&kt('Nam Định')===105.5&&kt('Lạng Sơn')===107.25&&kt('Cà Mau')===104.5&&kt('Lai Châu')===103,'KTT mẫu đúng TT 973/2001 (Thanh Hóa, Nghệ An, Nam Định, Lạng Sơn, Cà Mau, Lai Châu)');
+    ok(K.VN.TINH.every(r=>r[2]>=r[4][0]&&r[2]<=r[4][1]&&r[3]>=r[4][2]&&r[3]<=r[4][3]),'tâm tỉnh nằm trong khung bao');
+    const a=K.kttGoiY(19.8067,105.7852,'Tỉnh Thanh Hóa');ok(a&&a.t==='Thanh Hóa'&&a.v===105&&a.chac,'TP Thanh Hóa + tỉnh mới tra từ ranh xã → 105°, chắc');
+    const b=K.kttGoiY(19.0,105.4);ok(b&&b.t==='Nghệ An'&&b.v===104.75&&b.chac,'giữa Nghệ An → 104°45′, chắc');
+    const v=K.kttGoiY(18.68,105.68);ok(v&&!v.chac&&v.ds.includes(104.75)&&v.ds.includes(105.5),'Vinh sát ranh Hà Tĩnh → không chắc, nêu cả hai KTT (chỉ báo, không tự đổi)');
+    const c=K.kttGoiY(20.42,106.17,'Ninh Bình');ok(c&&!c.chac,'Ninh Bình mới có 2 KTT (105 / 105°30′) → không tự chắc theo tỉnh mới');
+    const e=K.kttGoiY(21.03,105.85);ok(e&&e.v===105,'Hà Nội → 105°');
+    ok(K.kttGoiY(13.5,100.5)===null,'ngoài Việt Nam → null');
+    ok(K.tinhKhop('Thanh Hoá','Tỉnh Thanh Hóa')&&K.tinhKhop('Thừa Thiên Huế','Huế')&&!K.tinhKhop('Hà Nam','Nam Định'),'tinhKhop so tên mềm')}
+  ok(/kttXet\(p\);duongTra\(p\)/.test(html)&&/function kttXet\(p\)/.test(html),'cột GPS gọi kttXet (tự đổi KTT khi chắc)');
   /* chốt trong code */
   ok(/function nenVe\(\)\{nenNen\(\);if\(D&&D\.cad&&D\.cad\.length\)try\{cadVe\(/.test(html),'nenVe vẽ thêm bản vẽ CAD sau ảnh nền');
   ok(!/nenCv\.style\.opacity=String\(DB\.nenMo/.test(html),'độ đậm ảnh nền dùng globalAlpha (không làm mờ nét CAD)');

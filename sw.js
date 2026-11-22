@@ -1,5 +1,5 @@
 // Đổi PHIEN mỗi lần cập nhật app để máy tải bản mới.
-const PHIEN = 'kstuyen-37';
+const PHIEN = 'kstuyen-38';
 const FILES = ['./', './index.html', './xlsx.full.min.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './xa/38.json'];
 
 self.addEventListener('install', e => {
