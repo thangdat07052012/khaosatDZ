@@ -460,7 +460,7 @@ console.log('17. Bản vẽ CAD phủ lên: VN-2000 → WGS-84, đọc DXF');
   ok(/closest\('#status,#mapctl,#nhanh'\)/.test(html),'bấm ✂ / L+1 / loại cột ở thanh phải: chạm không lọt xuống bản vẽ thành cột mới');
   {const K=new Function(html.slice(html.indexOf('const VN=(()=>{'),html.indexOf('/* === HẾT HÀM THUẦN === */'))+';return {khoaVi}')().khoaVi,N=Date.UTC(2026,10,22),d=864e5;
     ok(K(N,N-13*d,N,14)===''&&K(N,N-15*d,N,14)==='han'&&K(N-2*d,N-3*d,N,14)==='lui'&&K(N,0,0,14)==='','khoaVi: 13 ngày dùng được, 15 ngày khoá, đồng hồ lùi 2 ngày khoá, lần đầu không khoá')}
-  ok(/HAN_NGAY=14,NHA_MOI=''/.test(html)&&/fetch\('sw\.js\?kq='/.test(html)&&/redirect:'manual'/.test(html),'kiểm bản quyền: hỏi sw.js?kq= (không qua cache), Access chuyển hướng → báo đăng nhập lại');
+  ok(/HAN_NGAY=14,NHA_MOI='https:\/\/khaosatdz\.pages\.dev\/'/.test(html)&&/fetch\('sw\.js\?kq='/.test(html)&&/redirect:'manual'/.test(html),'kiểm bản quyền: hỏi sw.js?kq= (không qua cache), Access chuyển hướng → báo đăng nhập lại');
   ok(/searchParams\.has\('kq'\)/.test(fs.readFileSync(path.join(__dirname,'..','sw.js'),'utf8')),'sw.js: yêu cầu kiểm bản quyền đi thẳng máy chủ, không lấy bản lưu');
   ok(/o\.kieu==='sao-luu'&&Array\.isArray\(o\.ds\)/.test(html)&&/data-a="saoluu"/.test(html),'Sao lưu tất cả bản vẽ + Mở file nhận file sao lưu');
   ok(/rel="manifest" href="manifest\.webmanifest" crossorigin="use-credentials"/.test(html),'manifest tải kèm cookie đăng nhập (sau cổng Cloudflare Access vẫn cài app ra màn hình chính được)');

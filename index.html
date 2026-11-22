@@ -2367,7 +2367,7 @@ function giongGop(list,them,ghiDe){
 /* 🎤 KHẨU LỆNH ở CUỐI câu nói (07/11): «điền» · «tiếp» (= Tiếp ▸) · «dừng» (= Dừng) · «đoạn mới» · «nói lại» / «xoá câu»
    → {lenh:'dien'|'tiep'|'dung'|'doan'|'xoa'|null, con: phần câu trước lệnh}. Chỉ nhận ở CUỐI câu, có chốt chặn:
    «tiếp địa», «nối tiếp», «trạm dừng», «xã Quảng Điền» không thành lệnh */
-const BAN_APP='kstuyen-44';
+const BAN_APP='kstuyen-45';
 /* 🎤 chờ bao lâu (ms) rồi mới làm khẩu lệnh cuối câu (07/11 rút ngắn ⚑): máy đã chốt câu → làm gần như ngay;
    còn chữ tạm → chờ ngắn xem có nói tiếp không («tiếp», «dừng» chờ lâu hơn chút vì hay đi tiếp chữ, vd «tiếp địa»);
    gõ tay / 🎤 bàn phím chờ lâu nhất; lai = nghỉ trước khi mở phiên nghe mới */
@@ -3328,7 +3328,7 @@ function napSaoLuu(o){let them=0,co=0;
    App đặt sau cổng đăng nhập Cloudflare Access: định kỳ hỏi máy chủ (sw.js?kq=…). Vào được → gia hạn.
    Không mạng quá HAN_NGAY ngày, hoặc đồng hồ máy bị lùi → khoá (bản vẽ vẫn giữ, sao lưu được). ⚑ HAN_NGAY 14
    NHA_MOI = link app mới (Cloudflare Pages); đặt xong thì máy còn mở link GitHub cũ thấy màn «App đã chuyển». */
-const HAN_NGAY=14,NHA_MOI='',KQK='kstuyen_kq';
+const HAN_NGAY=14,NHA_MOI='https://khaosatdz.pages.dev/',KQK='kstuyen_kq';
 function kqDoc(){try{return JSON.parse(localStorage.getItem(KQK))||{}}catch(e){return {}}}
 function kqGhi(o){try{localStorage.setItem(KQK,JSON.stringify(o))}catch(e){}}
 function daChuyen(){try{return !!NHA_MOI&&new URL(NHA_MOI).origin!==location.origin&&/github\.io$/.test(location.hostname)}catch(e){return false}}
@@ -3342,7 +3342,7 @@ async function kiemQuyen(){if(location.protocol!=='https:'||kqDang)return;kqDang
   catch(e){}kqDang=false;kqXet()}
 function hienKhoa(v){let el=$('#khoa');if(!v){if(el)el.remove();return}
   if(!el){el=document.createElement('div');el.id='khoa';document.body.appendChild(el)}
-  const tx=v==='chuyen'?'App đã chuyển sang link mới. Bấm «Sao lưu tất cả bản vẽ» trước, rồi «Mở link mới», đăng nhập bằng email đã được cấp, vào «Bản vẽ → Mở file» chọn file sao lưu.'
+  const tx=v==='chuyen'?'App đã chuyển sang link mới. Bấm «Sao lưu tất cả bản vẽ» trước, rồi «Mở link mới», đăng nhập bằng email đã được cấp (chưa vào được thì nhờ người gửi link thêm email của mình), vào «Bản vẽ → Mở file» chọn file sao lưu.'
     :v==='lui'?'Ngày giờ trên điện thoại đang bị lùi. Chỉnh lại ngày giờ đúng rồi bấm «Thử lại».'
     :`Đã quá ${HAN_NGAY} ngày app chưa kiểm được bản quyền. Bật mạng (4G / Wi-Fi) rồi bấm «Thử lại».`;
   el.innerHTML=`<div class="kh"><h2>${v==='chuyen'?'📦 App đã chuyển link':'🔒 Tạm khoá app'}</h2><p>${tx}</p>
