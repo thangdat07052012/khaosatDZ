@@ -436,7 +436,13 @@ console.log('17. Bản vẽ CAD phủ lên: VN-2000 → WGS-84, đọc DXF');
     ok(L(['L1.01','L1.02'],'L1.02')==='L2.01'&&L(['L1-5','L2-3'],'L1-5')==='L3-1','có L<n> → lộ lớn nhất + 1, số về 1');
     ok(L(['T1.L1.C05','T1.L2.C03'],'T1.L2.C03')==='T1.L3.C01','T1.L2.C03 → T1.L3.C01')}
   ok(/if\(prev&&!khongDay\(\)\)D\.edges\.push/.test(html)&&/data-nh="day"/.test(html)&&/data-nh="doanso"/.test(html),'nút Có dây / Không dây + Số tiếp / Lộ mới; addPole bỏ dây khi tắt');
-  ok((html.match(/D\.doanMoi=1/g)||[]).length===3&&/lo=!!D\.doanMoi&&DB\.doanSo==='lo'/.test(html),'ba lối «đoạn mới» (nút, giọng nói, bảng cột) đều đặt cờ cho đèn đầu đoạn');
+  ok((html.match(/D\.doanMoi=1/g)||[]).length===3&&/md=D\.doanMoi\?DB\.doanSo\|\|'':''/.test(html),'ba lối «đoạn mới» (nút, giọng nói, bảng cột) đều đặt cờ cho đèn đầu đoạn');
+  {const Q=new Function(html.slice(html.indexOf('const VN=(()=>{'),html.indexOf('/* === HẾT HÀM THUẦN === */'))+';return {soLoMoi,soTuMoi}')();
+    ok(Q.soLoMoi(['T1.L1.05','T1.L2.03','T2.L1.04'],'T2.L1.04')==='T2.L2.01','lộ mới chỉ xét lộ cùng tủ: T2.L1 → T2.L2 (không T2.L3)');
+    ok(Q.soTuMoi(['1','2'],'2')==='T2.L1.1'&&Q.soTuMoi(['L1.05','L2.03'],'L2.03')==='T2.L1.01','tủ mới từ dãy chưa có T → T2.L1.1 / T2.L1.01');
+    ok(Q.soTuMoi(['T1.L1.C05','T1.L2.C03'],'T1.L2.C03')==='T2.L1.C01'&&Q.soTuMoi(['T1.L1.05','T3.L2.07'],'T1.L1.05')==='T4.L1.01','tủ mới: tủ lớn nhất + 1, lộ 1, số về 1')}
+  ok(/const HINH_NH=\[\['tba'/.test(html)&&/data-nh="hinh"/.test(html)&&/CẦUDAO\)\//.test(html),'nút TBA / Cột đơn / Cột đôi / Cầu dao (Hạ, Trung); «Cầu dao» là dạng cột');
+  ok(/#nhanh button\{width:34px/.test(html)&&/\.mb\{width:34px/.test(html),'nút bên phải thu ×0,6 (34 px)');
   /* chốt trong code */
   ok(/function nenVe\(\)\{nenNen\(\);if\(D&&D\.cad&&D\.cad\.length\)try\{cadVe\(/.test(html),'nenVe vẽ thêm bản vẽ CAD sau ảnh nền');
   ok(!/nenCv\.style\.opacity=String\(DB\.nenMo/.test(html),'độ đậm ảnh nền dùng globalAlpha (không làm mờ nét CAD)');
