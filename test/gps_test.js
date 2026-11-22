@@ -356,7 +356,7 @@ console.log('17. Bản vẽ CAD phủ lên: VN-2000 → WGS-84, đọc DXF');
      /Math\.max\(12,Math\.min\(26,10\*V\.s\)\)/.test(html)&&/const lk=denLoai\(v\);if\(lk&&lk!=='hong'\)/.test(html),
      'chiếu sáng (soát 21/11): đèn sau cột hạ áp không chép dây / số hạ áp (Đ1…), Hỏng chỗ trống không nối dây, GPS theo phần CS cả khi chọn Dời, chạm thu nhỏ không đổi nhầm đèn, chip ô nhập một loại đèn');
   ok(/<div id="mapctl"><button id="b-nen" class="mb"/.test(html)&&/<button id="b-cad" class="mb"/.test(html)&&/<button id="b-fit" class="mb"/.test(html)&&!/<header class="top">[\s\S]{0,600}id="b-nen"[\s\S]{0,200}<\/header>/.test(html),'nút 🛰 / 📐 CAD / ⤢ nổi trên bản đồ, không còn trong đầu trang');
-  ok(/closest\('#status,#mapctl'\)/.test(html),'chạm nút nổi không đặt cột');
+  ok(/closest\('#status,#mapctl,#nhanh'\)/.test(html),'chạm nút nổi (thanh trạng thái, cụm Ảnh / CAD, thanh nút phải) không đặt cột');
   ok(/\$\('#b-cad'\)\.addEventListener\('click',\(\)=>showNen\('cad'\)\)/.test(html)&&/if\(nenChe==='cad'\)\{showCad\(\);return\}/.test(html)&&/function showCad\(\)\{[\s\S]{0,700}\$\{cadPhan\(\)\}/.test(html),'nút 📐 mở thẳng bảng CAD (nạp .dxf)');
   ok(/accept="\.json,\.dxf,application\/json"/.test(html)&&/if\(e\.target\.id==='imp'\)\{\s*if\(\/\\\.\(dxf\|dwg\)\$\/i\.test\(fl\[0\]\.name\)\)\{closePanel\(\);await cadNap\(fl\[0\]\);return\}/.test(html),'☰ Mở file nhận .dxf → nạp CAD');
   ok(/function khungVe\(v,w,h\)/.test(html)&&/const CL=o\.print\?null:khungVe\(v,w,h\)/.test(html)&&/sorted\(\)\.filter\(p=>inW\(p\.x,p\.y\)\)/.test(html)&&/const pre=s\+'#'\+k\+'#'\+kk\+/.test(html),'tốc độ: chỉ dựng phần trong khung nhìn, khoá nhãn theo ô khung');
@@ -456,6 +456,14 @@ console.log('17. Bản vẽ CAD phủ lên: VN-2000 → WGS-84, đọc DXF');
   ok(!/data-nh="doanso"/.test(html)&&!/DOAN_SO/.test(html)&&/D\.doanMoi='lo'/.test(html)&&/md==='lo'\?denSoLo\(\):md\?denSoDau\(\):denSoMoi\(\)/.test(html),'CS: ✂ đoạn mới đánh lại từ đầu, nút riêng L+1 Lộ mới (cùng tủ); bỏ nút xoay Số tiếp');
   ok(/code:dm\?'1;':nextCode\(prev,kc\)/.test(html),'Hạ / Trung: cột đầu đoạn mới số 1');
   ok(/data-nh="dayma"/.test(html)&&/const db=dayBut\(\);if\(db\)\{const f=parse\(p\.code\);f\.dayHT\[0\]=db/.test(html)&&/function dayBut\(\)/.test(html),'Hạ / Trung: 4 phím mã dây chọn sẵn, cột chấm sau mang dây');
+  /* 22/11 bấm nút thanh phải không thêm cột; giữ bản quyền */
+  ok(/closest\('#status,#mapctl,#nhanh'\)/.test(html),'bấm ✂ / L+1 / loại cột ở thanh phải: chạm không lọt xuống bản vẽ thành cột mới');
+  {const K=new Function(html.slice(html.indexOf('const VN=(()=>{'),html.indexOf('/* === HẾT HÀM THUẦN === */'))+';return {khoaVi}')().khoaVi,N=Date.UTC(2026,10,22),d=864e5;
+    ok(K(N,N-13*d,N,14)===''&&K(N,N-15*d,N,14)==='han'&&K(N-2*d,N-3*d,N,14)==='lui'&&K(N,0,0,14)==='','khoaVi: 13 ngày dùng được, 15 ngày khoá, đồng hồ lùi 2 ngày khoá, lần đầu không khoá')}
+  ok(/HAN_NGAY=14,NHA_MOI=''/.test(html)&&/fetch\('sw\.js\?kq='/.test(html)&&/redirect:'manual'/.test(html),'kiểm bản quyền: hỏi sw.js?kq= (không qua cache), Access chuyển hướng → báo đăng nhập lại');
+  ok(/searchParams\.has\('kq'\)/.test(fs.readFileSync(path.join(__dirname,'..','sw.js'),'utf8')),'sw.js: yêu cầu kiểm bản quyền đi thẳng máy chủ, không lấy bản lưu');
+  ok(/o\.kieu==='sao-luu'&&Array\.isArray\(o\.ds\)/.test(html)&&/data-a="saoluu"/.test(html),'Sao lưu tất cả bản vẽ + Mở file nhận file sao lưu');
+  ok(/rel="manifest" href="manifest\.webmanifest" crossorigin="use-credentials"/.test(html),'manifest tải kèm cookie đăng nhập (sau cổng Cloudflare Access vẫn cài app ra màn hình chính được)');
   /* chốt trong code */
   ok(/function nenVe\(\)\{nenNen\(\);if\(D&&D\.cad&&D\.cad\.length\)try\{cadVe\(/.test(html),'nenVe vẽ thêm bản vẽ CAD sau ảnh nền');
   ok(!/nenCv\.style\.opacity=String\(DB\.nenMo/.test(html),'độ đậm ảnh nền dùng globalAlpha (không làm mờ nét CAD)');

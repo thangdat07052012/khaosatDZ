@@ -1,5 +1,5 @@
 // Đổi PHIEN mỗi lần cập nhật app để máy tải bản mới.
-const PHIEN = 'kstuyen-43';
+const PHIEN = 'kstuyen-44';
 const FILES = ['./', './index.html', './xlsx.full.min.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './xa/38.json'];
 
 self.addEventListener('install', e => {
@@ -14,6 +14,8 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   // Ảnh nền vệ tinh (máy chủ ngoài): để trình duyệt tự tải, không lưu vào bộ nhớ app.
   if (new URL(e.request.url).origin !== location.origin) return;
+  // Kiểm bản quyền (sw.js?kq=…): luôn hỏi thẳng máy chủ, không trả bản đã lưu.
+  if (new URL(e.request.url).searchParams.has('kq')) return;
   // Trang chính: có mạng thì lấy bản mới, mất mạng thì dùng bản đã lưu.
   // cache:'no-cache' = hỏi lại máy chủ mỗi lần mở, không dùng bản HTTP cache 10 phút của GitHub Pages.
   if (e.request.mode === 'navigate') {
