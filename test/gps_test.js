@@ -435,8 +435,8 @@ console.log('17. Bản vẽ CAD phủ lên: VN-2000 → WGS-84, đọc DXF');
     ok(L(['1','2','3'],'3')==='L2.1'&&L(['01','02'],'02')==='L2.01','dãy số trơn → lộ mới L2.1 (giữ độ rộng số)');
     ok(L(['L1.01','L1.02'],'L1.02')==='L2.01'&&L(['L1-5','L2-3'],'L1-5')==='L3-1','có L<n> → lộ lớn nhất + 1, số về 1');
     ok(L(['T1.L1.C05','T1.L2.C03'],'T1.L2.C03')==='T1.L3.C01','T1.L2.C03 → T1.L3.C01')}
-  ok(/if\(prev&&!khongDay\(\)\)D\.edges\.push/.test(html)&&/data-nh="day"/.test(html)&&/data-nh="doanso"/.test(html),'nút Có dây / Không dây + Số tiếp / Lộ mới; addPole bỏ dây khi tắt');
-  ok((html.match(/D\.doanMoi=1/g)||[]).length===3&&/md=D\.doanMoi\?DB\.doanSo\|\|'':''/.test(html),'ba lối «đoạn mới» (nút, giọng nói, bảng cột) đều đặt cờ cho đèn đầu đoạn');
+  ok(/if\(prev&&!khongDay\(\)\)D\.edges\.push/.test(html)&&/data-nh="day"/.test(html)&&/data-nh="lomoi"/.test(html),'nút Có dây / Không dây + Lộ mới; addPole bỏ dây khi tắt');
+  ok((html.match(/D\.doanMoi=1/g)||[]).length===3&&/md=D\.doanMoi\|\|0;D\.doanMoi=0/.test(html),'ba lối «đoạn mới» (nút, giọng nói, bảng cột) đều đặt cờ cho đèn đầu đoạn');
   {const Q=new Function(html.slice(html.indexOf('const VN=(()=>{'),html.indexOf('/* === HẾT HÀM THUẦN === */'))+';return {soLoMoi,soTuMoi}')();
     ok(Q.soLoMoi(['T1.L1.05','T1.L2.03','T2.L1.04'],'T2.L1.04')==='T2.L2.01','lộ mới chỉ xét lộ cùng tủ: T2.L1 → T2.L2 (không T2.L3)');
     ok(Q.soTuMoi(['1','2'],'2')==='T2.L1.1'&&Q.soTuMoi(['L1.05','L2.03'],'L2.03')==='T2.L1.01','tủ mới từ dãy chưa có T → T2.L1.1 / T2.L1.01');
@@ -447,8 +447,15 @@ console.log('17. Bản vẽ CAD phủ lên: VN-2000 → WGS-84, đọc DXF');
   ok(/fname\('_SoDoPhac\.dxf'\)/.test(html)&&/fname\('_VN2000\.dxf'\)/.test(html),'hai file DXF khác đuôi: _SoDoPhac / _VN2000');
   ok(/return co\?vn\+/.test(html)&&/KHÔNG khớp bản đồ/.test(html),'có GPS: nút VN-2000 đứng đầu, nút phác ghi rõ không khớp bản đồ');
   /* 22/11 bố cục thanh nút Hạ / Trung: 2 cột + lưới hình, không chồng nút Ảnh / CAD */
-  ok(/<div class="nh2"><div class="nhc">\$\{cot\}<\/div><div class="nhc">\$\{mic\+doan\+day\}<\/div><\/div><div class="nhg">/.test(html)&&/function nhanhNe\(\)/.test(html)&&/#mapctl\.trai\{/.test(html),'Hạ / Trung: 2 cột (loại cột | 🎤 ✂ dây) + lưới 2×2 nút hình; chồng cụm Ảnh / CAD thì cụm đó sang trái');
+  ok(/<div class="nh2"><div class="nhc">\$\{cot\}<i class="nhv"><\/i>\$\{dm\}<\/div><div class="nhc">\$\{mic\+doan\+day\}<i class="nhv"><\/i>\$\{hinh\}<\/div><\/div>/.test(html)&&/function nhanhNe\(\)/.test(html)&&/#mapctl\.trai\{/.test(html),'Hạ / Trung: 2 cột (loại cột | 🎤 ✂ dây) + lưới 2×2 nút hình; chồng cụm Ảnh / CAD thì cụm đó sang trái');
   ok(/khongDay\(\)\?' · không dây':''/.test(html),'đang Không dây: nhãn «Vẽ tiếp từ …» trên bản đồ ghi thêm «· không dây»');
+  /* 22/11 đoạn mới đánh lại từ đầu, lộ mới nút riêng, 4 mã dây Hạ / Trung */
+  {const S=new Function(html.slice(html.indexOf('const VN=(()=>{'),html.indexOf('/* === HẾT HÀM THUẦN === */'))+';return {soDauMoi}')().soDauMoi;
+    ok(S(['1','2','15'],'15')==='1'&&S(['01','02'],'02')==='01'&&S(['Đ5'],'Đ5')==='Đ1','đoạn mới: số trơn đánh lại 1 (giữ tiền tố, độ rộng)');
+    ok(S(['L1.03','L2.05'],'L2.05')==='L1.01'&&S(['T1.L2.C03'],'T1.L2.C03')==='T2.L1.C01','đoạn mới: L2.05 → L1.01; T1.L2.C03 → tủ mới T2.L1.C01')}
+  ok(!/data-nh="doanso"/.test(html)&&!/DOAN_SO/.test(html)&&/D\.doanMoi='lo'/.test(html)&&/md==='lo'\?denSoLo\(\):md\?denSoDau\(\):denSoMoi\(\)/.test(html),'CS: ✂ đoạn mới đánh lại từ đầu, nút riêng L+1 Lộ mới (cùng tủ); bỏ nút xoay Số tiếp');
+  ok(/code:dm\?'1;':nextCode\(prev,kc\)/.test(html),'Hạ / Trung: cột đầu đoạn mới số 1');
+  ok(/data-nh="dayma"/.test(html)&&/const db=dayBut\(\);if\(db\)\{const f=parse\(p\.code\);f\.dayHT\[0\]=db/.test(html)&&/function dayBut\(\)/.test(html),'Hạ / Trung: 4 phím mã dây chọn sẵn, cột chấm sau mang dây');
   /* chốt trong code */
   ok(/function nenVe\(\)\{nenNen\(\);if\(D&&D\.cad&&D\.cad\.length\)try\{cadVe\(/.test(html),'nenVe vẽ thêm bản vẽ CAD sau ảnh nền');
   ok(!/nenCv\.style\.opacity=String\(DB\.nenMo/.test(html),'độ đậm ảnh nền dùng globalAlpha (không làm mờ nét CAD)');

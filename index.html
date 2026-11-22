@@ -180,6 +180,8 @@ button{font:inherit;color:inherit;cursor:pointer}
 #nhanh .nhg{display:grid;grid-template-columns:34px 34px;gap:4px;margin-top:4px}#nhanh .nh2 .phu,#nhanh .nhg .phu{margin-top:0}
 #nhanh .day.tat{border:1.5px dashed #E0412F;color:#E0412F;opacity:1}
 #mapctl.trai{right:auto;left:6px}
+#nhanh .nhv{display:block;height:3px}#nhanh .dm{font-size:9px;letter-spacing:-.3px}#nhanh .dm small{color:var(--hi)}#nhanh .dm.on small{color:inherit}
+#nhanh .lo{font-size:11px}
 #nhanh .mic.on{background:#E0412F;color:#fff;border-color:#E0412F;animation:nhm 1.2s infinite}
 @keyframes nhm{50%{box-shadow:0 0 0 7px rgba(224,65,47,.28)}}
 .btn.armed{background:var(--warn);color:#fff;border-color:var(--warn)}
@@ -539,8 +541,10 @@ function addPole(x,y,shape,gps,auto,im){
   const prev=activeP();
   if(prev){prev.code=chuanHoa(prev.code);prev.auto=false}
   let kc='';if(gps&&prev&&prev.lat!=null)kc=Math.round(haversine(prev,gps));
-  const p={id:uid(),x,y,shape:shape||inheritShape(prev),doi:!!(prev&&prev.doi&&prev.shape!=='tba'),code:nextCode(prev,kc),from:prev?prev.id:null,t:Date.now()};
+  const dm=!prev&&D.doanMoi&&DB.che!=='cs';D.doanMoi=0;   /* Hạ / Trung: cột đầu đoạn mới đánh lại từ 1 */
+  const p={id:uid(),x,y,shape:shape||inheritShape(prev),doi:!!(prev&&prev.doi&&prev.shape!=='tba'),code:dm?'1;':nextCode(prev,kc),from:prev?prev.id:null,t:Date.now()};
   if(gps){p.lat=+gps.lat.toFixed(8);p.lon=+gps.lon.toFixed(8);p.acc=+gps.acc.toFixed(1);p.gt=gps.t||Date.now();if(gps.n)p.gn=gps.n}
+  {const db=dayBut();if(db){const f=parse(p.code);f.dayHT[0]=db;p.code=chuanHoa(codeOf(f))}}   /* mã dây chọn sẵn ở phím phải */
   if(auto){p.auto=true;p.autoCode=p.code}
   D.poles.push(p);if(prev&&!khongDay())D.edges.push([prev.id,p.id]);if(gps)diaDiem(p);
   D.active=p.id;save();draw();if(!im)openSheet(p);
@@ -747,7 +751,7 @@ function status(){
     h=`<span class="pill solo">${k==='hong'?'Chạm đèn: đánh / bỏ hỏng':'Chạm trống: thêm đèn · chạm đèn: sửa / xoá'} · ${c.tong} đèn${c.tong?` (60W ${c.L60} · 100W ${c.L100} · 150W ${c.L150} · 200W ${c.L200} · SĐ ${c.SD} · hỏng ${c.hong})`:''}</span>`}
   else if(ed&&ed.auto)h=`<span class="pill solo">Cột tự đặt thẳng tuyến — chạm chỗ khác để dời tới đó</span>`;
   else if(a){const so=parse(a.code).so;h=`<span class="pill solo">${so?'Vẽ tiếp từ '+esc(so):'Vẽ tiếp từ cột chưa đánh số'}${khongDay()?' · không dây':''}</span>`}
-  else h=`<span class="pill solo">${D.poles.length?'Đoạn mới — cột sau không nối':'Chạm lên bảng để đặt cột đầu tiên'}</span>`;
+  else h=`<span class="pill solo">${D.poles.length?(D.doanMoi==='lo'?'Lộ mới (cùng tủ) — đèn sau không nối':D.doanMoi?'Đoạn mới — đánh lại từ đầu, cột sau không nối':'Đoạn mới — cột sau không nối'):'Chạm lên bảng để đặt cột đầu tiên'}</span>`;
   if(cadDoi&&cadMuc(cadDoi)){const c=cadMuc(cadDoi),l=c.lech||[0,0],m=v=>vn1(Math.abs(v));
     h=`<span class="pill">Dời CAD: ${m(l[0])} m ${l[0]<0?'Tây':'Đông'}, ${m(l[1])} m ${l[1]<0?'Bắc':'Nam'}${c.kieu==='rieng'?'<button data-st="cq-">⟲ 1°</button><button data-st="cq+">⟳ 1°</button>':''}<button data-st="cdx">Xong</button><button data-st="cd0">Bỏ dời</button></span>`}
   else if(nenDoi){const l=nenLech(),m=v=>vn1(Math.abs(v));
@@ -1181,10 +1185,10 @@ function denSoMoi(){const b=denGanNhat();if(!b)return D.poles.some(p=>parse(p.co
   return s.pre+String(max+1).padStart(s.w,'0')}
 function denSoLo(tu){const b=denGanNhat();if(!b)return denSoMoi();
   return (tu?soTuMoi:soLoMoi)(D.poles.filter(denCo).map(p=>parse(p.code).so),parse(b.code).so)}
-const DOAN_SO={'':['n+1','Số tiếp'],lo:['L+1','Lộ mới'],tu:['T+1','Tủ mới']};
-const doanSoMau=m=>m==='lo'?(denGanNhat()?denSoLo():'L2.1'):m==='tu'?(denGanNhat()?denSoLo(true):'T2.L1.1'):denSoMoi();
-function denThem(x,y,gps){const k=DB.denBut||'L100',a=activeP(),noi=!!a&&denCo(a)&&k!=='hong',md=D.doanMoi?DB.doanSo||'':'';D.doanMoi=0;
-  if(!noi)D.active=null;const so=noi?'':md==='lo'?denSoLo():md==='tu'?denSoLo(true):denSoMoi();
+function denSoDau(){const b=denGanNhat();return b?soDauMoi(D.poles.filter(denCo).map(p=>parse(p.code).so),parse(b.code).so):denSoMoi()}
+/* cờ D.doanMoi: 'lo' = lộ mới cùng tủ; 1 = đoạn mới (tủ / tuyến khác) đánh lại từ đầu */
+function denThem(x,y,gps){const k=DB.denBut||'L100',a=activeP(),noi=!!a&&denCo(a)&&k!=='hong',md=D.doanMoi||0;D.doanMoi=0;
+  if(!noi)D.active=null;const so=noi?'':md==='lo'?denSoLo():md?denSoDau():denSoMoi();
   addPole(x,y,'cs',gps,false,true);const p=activeP();if(!p)return;
   const r=parse(p.code),kc=r.toks.filter(t=>t.k==='kc').map(t=>t.t);
   p.code=denDat([noi?r.so||denSoMoi():so,...kc].join(';')+';',k);save();draw();
@@ -1233,6 +1237,7 @@ const NHANH={ha:{cot:['LT8,5','LT10','LT12','H7,5','H8,5'],day:['ABC4x50','ABC4x
 let qXoaT=null;
 const nhanhCua=()=>NHANH[DB.che==='tt'?'tt':'ha'];
 function cotBut(){return DB.che==='cs'?'':(DB.cotBut||{})[DB.che]||''}
+function dayBut(){return DB.che==='cs'?'':(DB.dayBut||{})[DB.che]||''}
 function moCot(p){if(editId)finishSheet();rsheet.hidden=true;dsheet.hidden=true;denId=p.id;D.active=p.id;qsheet.hidden=false;veCot();draw()}
 function veCot(){const p=denId&&byId(denId);if(!p){dongDen();return}
   const f=parse(p.code),N=nhanhCua(),cot=f.cotHT[0]||'',day=f.dayHT[0]||'',L=(a,v)=>v&&!a.some(x=>norm(x)===norm(v))?[v,...a.slice(0,4)]:a;
@@ -1268,21 +1273,22 @@ $('#qs-prev').addEventListener('click',()=>denSang(-1,()=>true,veCot));$('#qs-ne
 /* 22/11 bố cục: Hạ / Trung 2 cột (trái loại cột, phải 🎤 ✂ dây) + 4 nút hình lưới 2×2 — một cột 11 nút chồng lên nút Ảnh / CAD ở máy thấp */
 function veNhanh(){const kb=cotBut(),kd=khongDay();
   const mic=`<button type="button" class="mic${giongNghe?' on':''}" data-nh="mic" aria-label="Nói để điền — im 3 giây là tự điền">🎤</button>`;
-  const doan=`<button type="button" data-nh="doan" aria-label="Cột tiếp theo bắt đầu đoạn mới, không nối dây">✂<small>Đoạn mới</small></button>`;
+  const doan=`<button type="button" data-nh="doan" aria-label="Đoạn mới (tủ / tuyến khác): cột tiếp theo đánh số lại từ đầu, không nối dây">✂<small>Đoạn mới</small></button>`;
   const day=`<button type="button" data-nh="day" class="phu day${kd?' tat':''}" aria-label="${kd?'Đang không vẽ dây — chạm để vẽ dây':'Đang vẽ dây nối cột — chạm để tắt'}">${kd?'⌀':'〰'}<small>${kd?'Không dây':'Có dây'}</small></button>`;
   let h;
-  if(DB.che==='cs'){const m=DOAN_SO[DB.doanSo||'']||DOAN_SO[''];
-    h=mic+doan+`<button type="button" data-nh="doanso" class="phu${DB.doanSo?' on':''}" aria-label="Đèn đầu đoạn mới: Số tiếp / Lộ mới (cùng tủ) / Tủ mới (đánh lại từ đầu) — chạm để đổi">${m[0]}<small>${m[1]}</small></button>`+day}
+  if(DB.che==='cs')h=mic+doan+`<button type="button" data-nh="lomoi" class="phu lo" aria-label="Lộ mới: cùng tủ, lộ khác — đèn tiếp theo số lộ mới, không nối dây">L+1<small>Lộ mới</small></button>`+day;
   else{const cot=nhanhCua().cot.slice(0,4).map(v=>`<button type="button" data-nh="cot" data-v="${esc(v)}" class="${v===kb?'on':''}" aria-label="Chọn sẵn cột ${esc(v)}: chạm chỗ trống là thêm cột loại này">${esc(v)}<small>cột</small></button>`).join('');
+    const db=dayBut(),dm=nhanhCua().day.slice(0,4).map(v=>`<button type="button" data-nh="dayma" data-v="${esc(v)}" class="dm${v===db?' on':''}" aria-label="Chọn sẵn dây ${esc(v)}: cột chấm tiếp mang dây này">${esc(v.replace(/^ABC/i,''))}<small>${/^ABC/i.test(v)?'ABC':'dây'}</small></button>`).join('');
     const hinh=HINH_NH.map(([v,i,t])=>`<button type="button" data-nh="hinh" data-v="${v}" class="phu hinh" aria-label="${t} cho cột đang chọn">${i}<small>${t.replace('Cột đ','Đ')}</small></button>`).join('');
-    h=`<div class="nh2"><div class="nhc">${cot}</div><div class="nhc">${mic+doan+day}</div></div><div class="nhg">${hinh}</div>`}
+    h=`<div class="nh2"><div class="nhc">${cot}<i class="nhv"></i>${dm}</div><div class="nhc">${mic+doan+day}<i class="nhv"></i>${hinh}</div></div>`}
   $('#nhanh').innerHTML=h;nhanhNe()}
 /* thanh nút vẫn chạm cụm Ảnh / CAD / Xem hết (máy thấp, xoay ngang) → cụm đó sang trái */
 function nhanhNe(){const a=$('#nhanh'),b=$('#mapctl');if(!a||!b)return;b.classList.remove('trai');
   const r=a.getBoundingClientRect(),q=b.getBoundingClientRect();if(r.height&&q.height&&r.bottom+6>q.top)b.classList.add('trai')}
 addEventListener('resize',()=>nhanhNe())
-function doanBao(){if(DB.che==='cs')return `✂ Đèn tiếp theo bắt đầu đoạn mới, không nối dây — ${(DOAN_SO[DB.doanSo||'']||DOAN_SO[''])[1].toLowerCase()} ${doanSoMau(DB.doanSo||'')}`;
-  return 'Cột tiếp theo bắt đầu đoạn mới, không nối dây'}
+function doanBao(m){if(DB.che==='cs')return m==='lo'?`L+1 LỘ MỚI (cùng tủ, lộ khác): đèn tiếp theo số ${denGanNhat()?denSoLo():'L2.1'}, không nối dây`
+    :`✂ ĐOẠN MỚI (tủ / tuyến khác): đèn tiếp theo đánh lại từ đầu — số ${denSoDau()}, không nối dây`;
+  return '✂ Đoạn mới: cột tiếp theo đánh lại từ số 1, không nối dây'}
 /* 22/11 Truong: nút hay dùng — đặt cho cột đang chọn (vừa chấm / đang mở); cột sau tự theo hình + đơn/đôi của cột trước */
 const HINH_NH=[['tba','▣','TBA'],['don','○','Cột đơn'],['doi','◎','Cột đôi'],['cd','⏚','Cầu dao']];
 function hinhNhanh(v){if(editId)finishSheet();const p=(denId&&byId(denId))||activeP();
@@ -1299,8 +1305,10 @@ function micNhanh(){if(editId&&!sheet.hidden){$('#sh-mic').click();return}
 $('#nhanh').addEventListener('click',e=>{const b=e.target.closest('[data-nh]');if(!b)return;const k=b.dataset.nh;
   if(k==='mic'){micNhanh();return}
   if(k==='doan'){finishSheet();dongDen();D.active=null;D.doanMoi=1;save();draw();toast(doanBao());return}
-  if(k==='doanso'){DB.doanSo=DB.doanSo==='lo'?'tu':DB.doanSo==='tu'?'':'lo';saveNow();veNhanh();
-    toast(`✂ Đoạn mới: ${DOAN_SO[DB.doanSo][1].toUpperCase()}${DB.doanSo==='tu'?' (tủ ĐKCS khác, đánh lại từ đầu)':DB.doanSo==='lo'?' (cùng tủ)':''} — vd ${doanSoMau(DB.doanSo)}`);return}
+  if(k==='lomoi'){finishSheet();dongDen();D.active=null;D.doanMoi='lo';save();draw();toast(doanBao('lo'));return}
+  if(k==='dayma'){const B=DB.dayBut||(DB.dayBut={}),v=b.dataset.v;B[DB.che]=B[DB.che]===v?'':v;saveNow();
+    const p=B[DB.che]&&denId&&!qsheet.hidden&&byId(denId);if(p)cotSua(f=>{f.dayHT[0]=v});veNhanh();
+    toast(B[DB.che]?`Đã chọn sẵn dây ${v}: cột chấm tiếp mang dây này${p?' (đã đặt cho cột '+(parse(p.code).so||'đang mở')+')':''} — chạm lại phím để thôi`:'Thôi chọn sẵn loại dây');return}
   if(k==='hinh'){hinhNhanh(b.dataset.v);return}
   if(k==='day'){const K=DB.khongDay||(DB.khongDay={}),c=DB.che||'ha';K[c]=!K[c];saveNow();veNhanh();draw();
     toast(K[c]?'Không vẽ dây: cột / đèn chấm tiếp vẫn đánh số tiếp, không nối dây. Cần nối tay: công cụ Nối dây':'Có dây: cột / đèn chấm tiếp nối dây với cột trước');return}
@@ -2356,7 +2364,7 @@ function giongGop(list,them,ghiDe){
 /* 🎤 KHẨU LỆNH ở CUỐI câu nói (07/11): «điền» · «tiếp» (= Tiếp ▸) · «dừng» (= Dừng) · «đoạn mới» · «nói lại» / «xoá câu»
    → {lenh:'dien'|'tiep'|'dung'|'doan'|'xoa'|null, con: phần câu trước lệnh}. Chỉ nhận ở CUỐI câu, có chốt chặn:
    «tiếp địa», «nối tiếp», «trạm dừng», «xã Quảng Điền» không thành lệnh */
-const BAN_APP='kstuyen-42';
+const BAN_APP='kstuyen-43';
 /* 🎤 chờ bao lâu (ms) rồi mới làm khẩu lệnh cuối câu (07/11 rút ngắn ⚑): máy đã chốt câu → làm gần như ngay;
    còn chữ tạm → chờ ngắn xem có nói tiếp không («tiếp», «dừng» chờ lâu hơn chút vì hay đi tiếp chữ, vd «tiếp địa»);
    gõ tay / 🎤 bàn phím chờ lâu nhất; lai = nghỉ trước khi mở phiên nghe mới */
@@ -2714,6 +2722,11 @@ function soTuMoi(ds,gan){const mau=soMau(SO_TU,ds,gan);
   if(mau){let mx=+mau[2];for(const t of ds){const m=String(t||'').trim().match(SO_TU);if(m&&m[1]===mau[1])mx=Math.max(mx,+m[2])}
     return mau[1]+(mx+1)+mau[3]+'1'+mau[5]+'1'.padStart(mau[6].length,'0')}
   const q=String(gan||'').trim().match(/(\d+)$/);return 'T2.L1.'+'1'.padStart(q?q[1].length:1,'0')}
+/* số đèn đầu ĐOẠN MỚI (tủ / tuyến khác): đánh lại từ đầu. Có T<n> → tủ lớn nhất + 1, lộ 1, số 1; có L<n> → L1, số 1; số trơn → 1 (giữ tiền tố, độ rộng) */
+function soDauMoi(ds,gan){if(soMau(SO_TU,ds,gan))return soTuMoi(ds,gan);
+  const w=d=>d.length>1&&d[0]==='0'?d.length:1;   /* giữ độ rộng chỉ khi số có 0 đầu (05 → 01; 15 → 1) */
+  const g=String(gan||'').trim(),ml=g.match(SO_LO);if(ml)return ml[1]+'1'+ml[3]+'1'.padStart(w(ml[4]),'0');
+  const q=g.match(/^(.*?)(\d+)$/);return q?q[1]+'1'.padStart(w(q[2]),'0'):'1'}
 /* === HẾT HÀM THUẦN === */
 /* 📖 nâng cấp một lần lúc mở app: cụm dạy bản cũ «cuộc» → «ghi chú cột» thành thay chữ (giongSuaCu) — lưu ở lần lưu sau */
 {const L=giongSuaCu(DB.giongTu);if(L!==DB.giongTu)DB.giongTu=L}
