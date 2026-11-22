@@ -173,6 +173,8 @@ button{font:inherit;color:inherit;cursor:pointer}
 #nhanh button.on{background:var(--fg);color:var(--paper);border-color:var(--fg)}
 #nhanh small{display:block;font-size:9.5px;font-weight:700;opacity:.8}
 #nhanh .mic{font-size:22px;min-height:52px}
+#nhanh .phu{min-height:34px;margin-top:-3px;font-size:11px}
+#nhanh .phu.tat{border-style:dashed;opacity:.85}
 #nhanh .mic.on{background:#E0412F;color:#fff;border-color:#E0412F;animation:nhm 1.2s infinite}
 @keyframes nhm{50%{box-shadow:0 0 0 7px rgba(224,65,47,.28)}}
 .btn.armed{background:var(--warn);color:#fff;border-color:var(--warn)}
@@ -524,6 +526,8 @@ function diaDiemBu(){let co=false;for(const p of D.poles)if(p.lat!=null&&!p.xa){
   if(!D.kttXet){const p=D.poles.find(c=>c.lat!=null);if(p)kttXet(p)}if(co){const x=D.poles.filter(p=>p.xa).pop();toast(`📍 ${x.xa}, ${x.tinh}`);save()}}
 function diaDiemText(){const u=a=>[...new Set(a.filter(Boolean))];const xa=u(D.poles.map(p=>p.xa)),ti=u(D.poles.map(p=>p.tinh)),du=u(D.poles.map(p=>p.duong));
   return {xa:xa.join(', '),tinh:ti.join(', '),duong:du.join(', ')}}
+/* 22/11 Truong: tắt vẽ dây (nhớ riêng CS / Hạ / Trung) — cột tiếp vẫn đánh số tiếp, chỉ không nối dây */
+const khongDay=()=>!!(DB.khongDay||{})[DB.che||'ha'];
 function addPole(x,y,shape,gps,auto,im){
   snap();
   const prev=activeP();
@@ -532,7 +536,7 @@ function addPole(x,y,shape,gps,auto,im){
   const p={id:uid(),x,y,shape:shape||inheritShape(prev),doi:!!(prev&&prev.doi&&prev.shape!=='tba'),code:nextCode(prev,kc),from:prev?prev.id:null,t:Date.now()};
   if(gps){p.lat=+gps.lat.toFixed(8);p.lon=+gps.lon.toFixed(8);p.acc=+gps.acc.toFixed(1);p.gt=gps.t||Date.now();if(gps.n)p.gn=gps.n}
   if(auto){p.auto=true;p.autoCode=p.code}
-  D.poles.push(p);if(prev)D.edges.push([prev.id,p.id]);if(gps)diaDiem(p);
+  D.poles.push(p);if(prev&&!khongDay())D.edges.push([prev.id,p.id]);if(gps)diaDiem(p);
   D.active=p.id;save();draw();if(!im)openSheet(p);
 }
 function removePole(id){
@@ -1163,11 +1167,16 @@ function denApDung(p,k){const cu=denDoc(p.code),so=parse(p.code).so||'Cột chư
    Nối dây + số tiếp theo đèn vừa chấm; cột trước không phải đèn (cột hạ áp) hoặc chấm «Đèn hỏng» vào chỗ trống (đèn sáng chưa chấm)
    thì không nối dây, số = số đèn lớn nhất + 1 (bản vẽ đã có cột khác mà chưa có đèn: Đ1). */
 const denCo=p=>{const d=denDoc(p.code);return !!(d.loai||d.hong)};
-function denSoMoi(){let pre=null,max=-1,w=1;
-  for(const p of D.poles){if(!denCo(p))continue;const s=parseSo(parse(p.code).so);if(s&&s.num>max){max=s.num;pre=s.pre;w=s.w}}
-  if(pre!==null)return pre+String(max+1).padStart(w,'0');return D.poles.some(p=>parse(p.code).so)?'Đ1':'1'}
-function denThem(x,y,gps){const k=DB.denBut||'L100',a=activeP(),noi=!!a&&denCo(a)&&k!=='hong';
-  if(!noi)D.active=null;const so=noi?'':denSoMoi();
+/* số tiếp = số lớn nhất + 1 của DÃY đèn chấm gần nhất (cùng tiền tố: lộ L2.x thì tiếp L2.x, không nhảy về lộ 1) */
+function denGanNhat(){let b=null;for(const p of D.poles)if(denCo(p)&&parseSo(parse(p.code).so)&&(!b||(p.t||0)>=(b.t||0)))b=p;return b}
+function denSoMoi(){const b=denGanNhat();if(!b)return D.poles.some(p=>parse(p.code).so)?'Đ1':'1';
+  const s=parseSo(parse(b.code).so);let max=s.num;
+  for(const p of D.poles){if(!denCo(p))continue;const q=parseSo(parse(p.code).so);if(q&&q.pre===s.pre&&q.num>max)max=q.num}
+  return s.pre+String(max+1).padStart(s.w,'0')}
+function denSoLo(){const b=denGanNhat();if(!b)return denSoMoi();
+  return soLoMoi(D.poles.filter(denCo).map(p=>parse(p.code).so),parse(b.code).so)}
+function denThem(x,y,gps){const k=DB.denBut||'L100',a=activeP(),noi=!!a&&denCo(a)&&k!=='hong',lo=!!D.doanMoi&&DB.doanSo==='lo';D.doanMoi=0;
+  if(!noi)D.active=null;const so=noi?'':lo?denSoLo():denSoMoi();
   addPole(x,y,'cs',gps,false,true);const p=activeP();if(!p)return;
   const r=parse(p.code),kc=r.toks.filter(t=>t.k==='kc').map(t=>t.t);
   p.code=denDat([noi?r.so||denSoMoi():so,...kc].join(';')+';',k);save();draw();
@@ -1250,14 +1259,23 @@ $('#qs-prev').addEventListener('click',()=>denSang(-1,()=>true,veCot));$('#qs-ne
 /* phím nhanh bên phải: 🎤 (nghe ở cả ba phần), loại cột chọn sẵn (Hạ / Trung), đoạn mới */
 function veNhanh(){const kb=cotBut();let h=`<button type="button" class="mic${giongNghe?' on':''}" data-nh="mic" aria-label="Nói để điền — im 3 giây là tự điền">🎤</button>`;
   if(DB.che!=='cs')h+=nhanhCua().cot.slice(0,4).map(v=>`<button type="button" data-nh="cot" data-v="${esc(v)}" class="${v===kb?'on':''}" aria-label="Chọn sẵn cột ${esc(v)}: chạm chỗ trống là thêm cột loại này">${esc(v)}<small>cột</small></button>`).join('');
-  h+=`<button type="button" data-nh="doan" aria-label="Cột tiếp theo bắt đầu đoạn mới, không nối dây">✂<small>Đoạn mới</small></button>`;$('#nhanh').innerHTML=h}
+  h+=`<button type="button" data-nh="doan" aria-label="Cột tiếp theo bắt đầu đoạn mới, không nối dây">✂<small>Đoạn mới</small></button>`;
+  if(DB.che==='cs')h+=`<button type="button" data-nh="doanso" class="phu${DB.doanSo==='lo'?' on':''}" aria-label="Đèn đầu đoạn mới: đánh số tiếp hay số lộ mới — chạm để đổi">${DB.doanSo==='lo'?'L+1':'n+1'}<small>${DB.doanSo==='lo'?'Lộ mới':'Số tiếp'}</small></button>`;
+  const kd=khongDay();h+=`<button type="button" data-nh="day" class="phu${kd?' tat':''}" aria-label="${kd?'Đang không vẽ dây — chạm để vẽ dây':'Đang vẽ dây nối cột — chạm để tắt'}">${kd?'⌀':'〰'}<small>${kd?'Không dây':'Có dây'}</small></button>`;
+  $('#nhanh').innerHTML=h}
+function doanBao(){if(DB.che==='cs')return `✂ Đèn tiếp theo bắt đầu đoạn mới, không nối dây — số ${DB.doanSo==='lo'?'lộ mới '+(denGanNhat()?denSoLo():''):'tiếp '+denSoMoi()}`;
+  return 'Cột tiếp theo bắt đầu đoạn mới, không nối dây'}
 function micNhanh(){if(editId&&!sheet.hidden){$('#sh-mic').click();return}
   const p=(denId&&byId(denId))||activeP()||D.poles[D.poles.length-1];
   if(!p){toast('Chấm cột trước (GPS hoặc chạm bản đồ) rồi bấm 🎤');return}
   dongDen();D.active=p.id;save();openSheet(p);$('#sh-mic').click()}
 $('#nhanh').addEventListener('click',e=>{const b=e.target.closest('[data-nh]');if(!b)return;const k=b.dataset.nh;
   if(k==='mic'){micNhanh();return}
-  if(k==='doan'){finishSheet();dongDen();D.active=null;save();draw();toast('Cột tiếp theo bắt đầu đoạn mới, không nối dây');return}
+  if(k==='doan'){finishSheet();dongDen();D.active=null;D.doanMoi=1;save();draw();toast(doanBao());return}
+  if(k==='doanso'){DB.doanSo=DB.doanSo==='lo'?'':'lo';saveNow();veNhanh();
+    toast(DB.doanSo==='lo'?`✂ Đoạn mới sẽ đánh số LỘ MỚI (vd ${denGanNhat()?denSoLo():'L2.1'})`:`✂ Đoạn mới đánh số TIẾP (vd ${denSoMoi()})`);return}
+  if(k==='day'){const K=DB.khongDay||(DB.khongDay={}),c=DB.che||'ha';K[c]=!K[c];saveNow();veNhanh();
+    toast(K[c]?'Không vẽ dây: cột / đèn chấm tiếp vẫn đánh số tiếp, không nối dây. Cần nối tay: công cụ Nối dây':'Có dây: cột / đèn chấm tiếp nối dây với cột trước');return}
   const B=DB.cotBut||(DB.cotBut={});B[DB.che]=B[DB.che]===b.dataset.v?'':b.dataset.v;saveNow();
   if(B[DB.che]){tool='cot';noiA=null;roadStart=null;for(const x of document.querySelectorAll('[data-tool]'))x.classList.toggle('on',x.dataset.tool==='cot')}
   veNhanh();draw();toast(B[DB.che]?`Đã chọn sẵn cột ${B[DB.che]}: chạm chỗ trống hoặc bấm GPS là thêm cột — chạm lại phím để thôi`:'Thôi chọn sẵn loại cột')});
@@ -1536,7 +1554,7 @@ function giongNut(lenh,con){
     else if(ghi)toast(ghi+'Đi tới cột sau rồi bấm GPS');
     return}
   finishSheet();
-  if(lenh==='doan'){D.active=null;save();draw();toast(ghi+'Cột tiếp theo bắt đầu đoạn mới, không nối dây');return}
+  if(lenh==='doan'){D.active=null;D.doanMoi=1;save();draw();toast(ghi+doanBao());return}
   if(ghi||nghe)toast(ghi+'■ Dừng — đã lưu cột')}
 function giongMoLai(hien,nghe,foc){if(hien||nghe)$('#sh-noi').hidden=false;
   if(nghe&&SR){giongNghe=true;giongLuc=Date.now();giongHong=0;$('#sh-mic').classList.add('on');$('#nhanh .mic')?.classList.add('on');giongBat()}else if(foc)$('#o-noi').focus()}
@@ -1792,7 +1810,7 @@ for(const b of document.querySelectorAll('[data-che]'))b.addEventListener('click
 if(DB.che==='cs'||DB.che==='tt')datChe(DB.che,true);else veNhanh();
 $('#status').addEventListener('click',e=>{
   const s=e.target.dataset&&e.target.dataset.st;if(!s)return;const r=selRoad&&D.roads.find(x=>x.id===selRoad);
-  if(s==='new'){finishSheet();D.active=null;save();draw();toast('Cột tiếp theo bắt đầu đoạn mới')}
+  if(s==='new'){finishSheet();D.active=null;D.doanMoi=1;save();draw();toast(doanBao())}
   else if(s==='rx'){roadStart=null;draw()}
   else if(s==='gstop'){if(gpsM&&gpsM.ds.length)gpsXong();else{gpsDung();toast('Đã huỷ đo GPS')}}
   else if(s==='ndx'){nenDoi=false;save();status();const l=nenLech();toast(l[0]||l[1]?'Đã lưu độ dời ảnh nền cho bản vẽ này':'Ảnh nền giữ nguyên chỗ')}
@@ -2310,7 +2328,7 @@ function giongGop(list,them,ghiDe){
 /* 🎤 KHẨU LỆNH ở CUỐI câu nói (07/11): «điền» · «tiếp» (= Tiếp ▸) · «dừng» (= Dừng) · «đoạn mới» · «nói lại» / «xoá câu»
    → {lenh:'dien'|'tiep'|'dung'|'doan'|'xoa'|null, con: phần câu trước lệnh}. Chỉ nhận ở CUỐI câu, có chốt chặn:
    «tiếp địa», «nối tiếp», «trạm dừng», «xã Quảng Điền» không thành lệnh */
-const BAN_APP='kstuyen-38';
+const BAN_APP='kstuyen-39';
 /* 🎤 chờ bao lâu (ms) rồi mới làm khẩu lệnh cuối câu (07/11 rút ngắn ⚑): máy đã chốt câu → làm gần như ngay;
    còn chữ tạm → chờ ngắn xem có nói tiếp không («tiếp», «dừng» chờ lâu hơn chút vì hay đi tiếp chữ, vd «tiếp địa»);
    gõ tay / 🎤 bàn phím chờ lâu nhất; lai = nghỉ trước khi mở phiên nghe mới */
@@ -2654,6 +2672,12 @@ function kttGoiY(lat,lon,tinhMoi){const L=VN.TINH,k=Math.cos(lat*Math.PI/180),d=
   const c=L.filter(r=>{const b=r[4];return lat>=b[0]&&lat<=b[1]&&lon>=b[2]&&lon<=b[3]});
   if(!c.length){const t=gan(L);return d(t)<1.2?kq(t,false,[t]):null}
   const t=gan(c);return kq(t,c.every(r=>r[1]===t[1]),c)}
+/* số đèn đầu LỘ MỚI. ds = số các đèn đã có, gan = số đèn chấm gần nhất.
+   Có dạng …L<n><dấu><số> (L1.05, T1.L2.C03) → lộ lớn nhất + 1, số về 1 giữ độ rộng; chưa có → L2.1 (dãy cũ coi là lộ 1) */
+function soLoMoi(ds,gan){const R=/^(.*?L)(\d+)(\D+?)(\d+)$/i;let mx=0,mau=null;
+  for(const t of ds){const m=String(t||'').trim().match(R);if(m){mx=Math.max(mx,+m[2]);if(!mau||String(t).trim()===String(gan||'').trim())mau=m}}
+  if(mau)return mau[1]+(mx+1)+mau[3]+'1'.padStart(mau[4].length,'0');
+  const q=String(gan||'').trim().match(/(\d+)$/);return 'L2.'+'1'.padStart(q?q[1].length:1,'0')}
 /* === HẾT HÀM THUẦN === */
 /* 📖 nâng cấp một lần lúc mở app: cụm dạy bản cũ «cuộc» → «ghi chú cột» thành thay chữ (giongSuaCu) — lưu ở lần lưu sau */
 {const L=giongSuaCu(DB.giongTu);if(L!==DB.giongTu)DB.giongTu=L}

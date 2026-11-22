@@ -430,6 +430,13 @@ console.log('17. Bản vẽ CAD phủ lên: VN-2000 → WGS-84, đọc DXF');
     ok(K.kttGoiY(13.5,100.5)===null,'ngoài Việt Nam → null');
     ok(K.tinhKhop('Thanh Hoá','Tỉnh Thanh Hóa')&&K.tinhKhop('Thừa Thiên Huế','Huế')&&!K.tinhKhop('Hà Nam','Nam Định'),'tinhKhop so tên mềm')}
   ok(/kttXet\(p\);duongTra\(p\)/.test(html)&&/function kttXet\(p\)/.test(html),'cột GPS gọi kttXet (tự đổi KTT khi chắc)');
+  /* 22/11 đoạn mới: số tiếp / lộ mới, có / không dây */
+  {const L=new Function(html.slice(html.indexOf('const VN=(()=>{'),html.indexOf('/* === HẾT HÀM THUẦN === */'))+';return {soLoMoi}')().soLoMoi;
+    ok(L(['1','2','3'],'3')==='L2.1'&&L(['01','02'],'02')==='L2.01','dãy số trơn → lộ mới L2.1 (giữ độ rộng số)');
+    ok(L(['L1.01','L1.02'],'L1.02')==='L2.01'&&L(['L1-5','L2-3'],'L1-5')==='L3-1','có L<n> → lộ lớn nhất + 1, số về 1');
+    ok(L(['T1.L1.C05','T1.L2.C03'],'T1.L2.C03')==='T1.L3.C01','T1.L2.C03 → T1.L3.C01')}
+  ok(/if\(prev&&!khongDay\(\)\)D\.edges\.push/.test(html)&&/data-nh="day"/.test(html)&&/data-nh="doanso"/.test(html),'nút Có dây / Không dây + Số tiếp / Lộ mới; addPole bỏ dây khi tắt');
+  ok((html.match(/D\.doanMoi=1/g)||[]).length===3&&/lo=!!D\.doanMoi&&DB\.doanSo==='lo'/.test(html),'ba lối «đoạn mới» (nút, giọng nói, bảng cột) đều đặt cờ cho đèn đầu đoạn');
   /* chốt trong code */
   ok(/function nenVe\(\)\{nenNen\(\);if\(D&&D\.cad&&D\.cad\.length\)try\{cadVe\(/.test(html),'nenVe vẽ thêm bản vẽ CAD sau ảnh nền');
   ok(!/nenCv\.style\.opacity=String\(DB\.nenMo/.test(html),'độ đậm ảnh nền dùng globalAlpha (không làm mờ nét CAD)');
