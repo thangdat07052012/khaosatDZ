@@ -399,6 +399,9 @@ console.log('17. Bản vẽ CAD phủ lên: VN-2000 → WGS-84, đọc DXF');
       'giongDen: đổi phần đầu câu / sau «sang», LED 60–200 W, số bóng, sợi đốt, hỏng / hết hỏng, bỏ đèn; «cột 12», «tủ điều khiển chiếu sáng» không đụng; chờ tự điền ~3 s')}
   ok(/giongCho\(k,!!t\.trim\(\)\)\);giongTuHen\(\)\};/.test(html)&&/function giongTuDien\(\)/.test(html)&&/if\(giongLam\(v\)\)return;giongXoa\(\);apGiong\(v\);giongMoi\(\)/.test(html)&&/const dn=giongDen\(text,DB\.che\)/.test(html)&&/clearTimeout\(giongTuH\);giongTuH=null\}/.test(html),
      '🎤 im 3 giây là tự điền (đếm lại mỗi lần câu đổi, huỷ khi xoá / tắt), apGiong đọc đổi phần + đèn trước');
+  ok(/function zpCot\(\)/.test(html)&&/function zpDay\(\)/.test(html)&&/'0_ZP_0-COT_Hien_trang'/.test(html)&&/'0_ZP_0-COT_Thu_hoi'/.test(html)&&/0_ZP_0-DZ_\$\{cap\}_/.test(html)&&
+     /a\(0,'POLYLINE',8,d\.ly/.test(html)&&/a\(0,'POINT',8,'KS_DIEM'/.test(html)&&/,'0_ZP_TEN_COT'\);/.test(html)&&!/'KS_DAY'/.test(html)&&/book_append_sheet\(wb,wsK,'Khoi luong'\)/.test(html),
+     'DXF chuẩn LispcadZP: block ZP_COT_*, layer 0_ZP_0-COT_ / 0_ZP_0-DZ_ (polyline theo tuyến), tên cột 0_ZP_TEN_COT, vẫn giữ POINT KS_DIEM; Excel thêm sheet Khoi luong');
   /* chốt trong code */
   ok(/function nenVe\(\)\{nenNen\(\);if\(D&&D\.cad&&D\.cad\.length\)try\{cadVe\(/.test(html),'nenVe vẽ thêm bản vẽ CAD sau ảnh nền');
   ok(!/nenCv\.style\.opacity=String\(DB\.nenMo/.test(html),'độ đậm ảnh nền dùng globalAlpha (không làm mờ nét CAD)');

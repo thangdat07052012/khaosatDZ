@@ -2216,7 +2216,7 @@ function giongGop(list,them,ghiDe){
 /* 🎤 KHẨU LỆNH ở CUỐI câu nói (07/11): «điền» · «tiếp» (= Tiếp ▸) · «dừng» (= Dừng) · «đoạn mới» · «nói lại» / «xoá câu»
    → {lenh:'dien'|'tiep'|'dung'|'doan'|'xoa'|null, con: phần câu trước lệnh}. Chỉ nhận ở CUỐI câu, có chốt chặn:
    «tiếp địa», «nối tiếp», «trạm dừng», «xã Quảng Điền» không thành lệnh */
-const BAN_APP='kstuyen-35';
+const BAN_APP='kstuyen-36';
 /* 🎤 chờ bao lâu (ms) rồi mới làm khẩu lệnh cuối câu (07/11 rút ngắn ⚑): máy đã chốt câu → làm gần như ngay;
    còn chữ tạm → chờ ngắn xem có nói tiếp không («tiếp», «dừng» chờ lâu hơn chút vì hay đi tiếp chữ, vd «tiếp địa»);
    gõ tay / 🎤 bàn phím chờ lâu nhất; lai = nghỉ trước khi mở phiên nghe mới */
@@ -2769,7 +2769,19 @@ async function xuatXlsx(){
     ...(D.mocDo||[]).map(m=>[m.ten,new Date(m.t).toLocaleString('vi-VN'),m.lat,m.lon,m.acc,m.Xd,m.Yd,m.X,m.Y,m.dX,m.dY,+Math.hypot(m.dX,m.dY).toFixed(3),kttTen(m.kt||105)]),
     [],['Ghi chú: dX = X thật − X GPS, dY = Y thật − Y GPS. Cột GPS dùng mốc trong 1 km và 60 phút quanh giờ đo; nhiều mốc thì nội suy nghịch đảo bình phương khoảng cách gộp (1 km ≈ 60 phút).']]);
   ws3['!cols']=[10,18,12,12,10,14,14,14,14,9,9,9,8].map(w=>({wch:w}));
-  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Bang ke');XLSX.utils.book_append_sheet(wb,ws2,'Toa do');if((D.mocDo||[]).length)XLSX.utils.book_append_sheet(wb,ws3,'Moc hieu chinh');
+  /* tổng hợp khối lượng dễ đọc (22/11): cột theo loại × hiện trạng / nhổ bỏ; dây theo loại × mét hiện trạng / thu hồi (mét = khoảng cột ghi ở cột phía sau) */
+  const KC={},KD={},cong=(T,k,i,v)=>{(T[k]=T[k]||[0,0])[i]+=v};
+  for(const p of D.poles){const r=parse(p.code);if(p.shape==='tba')continue;cong(KC,(r.cotHT[0]||'(chưa ghi loại)')+(isDoi(p,r)?' (đôi)':''),r.cotTT[0]==='Nhổ bỏ'?1:0,1);
+    const m=+String(r.kc).replace(',','.')||0,dy=r.dayHT[0];if(m&&p.from&&byId(p.from))cong(KD,dy||'(chưa ghi loại)',r.dayTT[0]==='Thu hồi'?1:0,m)}
+  const xs=T=>Object.entries(T).sort((a,b)=>a[0].localeCompare(b[0],'vi'));
+  const wsK=XLSX.utils.aoa_to_sheet([[`TỔNG HỢP KHỐI LƯỢNG KHẢO SÁT: ${D.ten}`],[],['CỘT','Loại cột','Hiện trạng giữ lại','Nhổ bỏ','Tổng'],
+    ...xs(KC).map(([k,[g,b]],i)=>[i+1,k,g-0||'',b||'',g+b]),['','Cộng',xs(KC).reduce((s,x)=>s+x[1][0],0),xs(KC).reduce((s,x)=>s+x[1][1],0),D.poles.filter(p=>p.shape!=='tba').length],[],
+    ['DÂY','Loại dây','Hiện trạng giữ lại (m)','Thu hồi (m)','Tổng (m)'],
+    ...xs(KD).map(([k,[g,b]],i)=>[i+1,k,+g.toFixed(1)||'',+b.toFixed(1)||'',+(g+b).toFixed(1)]),
+    [],['','TBA',D.poles.filter(p=>p.shape==='tba').length],[],
+    ['','Ghi chú','Mét dây = khoảng cột ghi ở cột phía sau (cột đầu đoạn không có khoảng). Cột đôi tách dòng riêng. Bản vẽ DXF cùng lần xuất có layer chuẩn LispcadZP: KEDUONGDAY đối chiếu được số này.']]);
+  wsK['!cols']=[6,22,18,12,10].map(w=>({wch:w}));
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,wsK,'Khoi luong');XLSX.utils.book_append_sheet(wb,ws,'Bang ke');XLSX.utils.book_append_sheet(wb,ws2,'Toa do');if((D.mocDo||[]).length)XLSX.utils.book_append_sheet(wb,ws3,'Moc hieu chinh');
   const dsDen=sorted().filter(p=>{const d=denDoc(p.code);return d.loai||d.hong});
   if(dsDen.length){const c=denDem(D.poles);
     const ws4=XLSX.utils.aoa_to_sheet([[`ĐÈN CHIẾU SÁNG: ${D.ten}`],['STT','Số cột','Loại đèn','Số bóng','Tình trạng','Ký hiệu cột','Vĩ độ','Kinh độ','X_VN2000 (Bắc)','Y_VN2000 (Đông)'],
@@ -2797,7 +2809,10 @@ function buildDxf(that){
      → QSELECT / LAYISO theo lớp, BCOUNT đếm, DATAEXTRACTION / ATTOUT ra bảng; hỏng thêm vòng nét đứt lớp KS_DEN_HONG; bảng thống kê đèn cạnh bản vẽ */
   const DL={L60:['KS_DEN_LED60',6],L100:['KS_DEN_LED100',3],L150:['KS_DEN_LED150',5],L200:['KS_DEN_LED200',34],SD:['KS_DEN_SOIDOT',30],x:['KS_DEN_CHUA_RO',8]};
   const dsDen=sorted().map(p=>({p,d:denDoc(p.code)})).filter(o=>o.d.loai||o.d.hong);
-  const LY=[['KS_DIEM',7],['KS_COT',1],['KS_DAY',5],['KS_CHU',7],['KS_KHOANG',3],['KS_DUONG',8],['KS_MOC',6]].concat(that?[['KS_COT_KHONG_GPS',30],['KS_MOC_HIEU_CHINH',6]]:[])
+  /* 22/11 đồng bộ LispcadZP: layer / block theo thư viện ZP (ChuanBanVe\ThuVien_Layer_KyHieu.dwg) → mở DXF là KEDUONGDAY / XUATDUONGDAY /
+     DOITRANGTHAI chạy được; bản vẽ đã có block thư viện cùng tên thì AutoCAD dùng ký hiệu thư viện. Vẫn giữ POINT KS_DIEM + chữ số cột KS_CHU (VVETUYENTUCOT) */
+  const zc=zpCot(),zd=zpDay(),LZ=[...new Set([...D.poles.map(p=>zc[p.id].ly),...zd.map(d=>d.ly)])].map(n=>[n,/Thu_hoi/.test(n)?8:/_22_/.test(n)?1:/_CS_/.test(n)?3:/DZ/.test(n)?5:7]);
+  const LY=[['KS_DIEM',7],...LZ,['0_ZP_TEN_COT',7],['KS_CHU',7],['KS_KHOANG',3],['KS_DUONG',8],['KS_MOC',6]].concat(that?[['KS_COT_KHONG_GPS',30],['KS_MOC_HIEU_CHINH',6]]:[])
     .concat(dsDen.length?[...Object.values(DL),['KS_DEN_HONG',1],['KS_DEN_THONG_KE',7]]:[]);
   a(0,'TABLE',2,'LAYER',70,LY.length);for(const [n,c] of LY)a(0,'LAYER',2,n,70,0,62,c,6,'CONTINUOUS');a(0,'ENDTAB');
   a(0,'TABLE',2,'STYLE',70,1,0,'STYLE',2,'KS',70,0,40,'0.0',41,'1.0',50,'0.0',71,0,42,'1.0',3,'arial.ttf',4,'',0,'ENDTAB');
@@ -2807,10 +2822,10 @@ function buildDxf(that){
   const sq=(x,y,r,ly)=>{const c=[[x-r,y-r],[x+r,y-r],[x+r,y+r],[x-r,y+r]];for(let k=0;k<4;k++)line(c[k][0],c[k][1],c[(k+1)%4][0],c[(k+1)%4][1],ly)};
   /* Ký hiệu cột = BLOCK (INSERT, gốc tại tâm cột) để LISP CAD nhận được (Truong 01/11: ô vuông nét rời không phải block / point) */
   const KH=(cx,ly)=>({vuong:()=>sq(cx,0,R,ly),tron:()=>circ(cx,0,R,ly),cs:()=>{circ(cx,0,R,ly);const d=R*0.7;line(cx-d,-d,cx+d,d,ly);line(cx-d,d,cx+d,-d,ly)}});
-  const BL={KS_COT_VUONG:()=>KH(0,'0').vuong(),KS_COT_TRON:()=>KH(0,'0').tron(),KS_COT_CS:()=>KH(0,'0').cs(),
-    KS_COT_DOI_VUONG:()=>{KH(-R*0.95,'0').vuong();KH(R*0.95,'0').vuong()},KS_COT_DOI_TRON:()=>{KH(-R*0.95,'0').tron();KH(R*0.95,'0').tron()},
-    KS_COT_DOI_CS:()=>{KH(-R*0.95,'0').cs();KH(R*0.95,'0').cs()},
-    KS_TBA:()=>{const s=R*1.5;sq(0,0,s,'0');a(0,'SOLID',8,'0',10,f(-s),20,f(-s),30,'0.0',11,f(s),21,f(-s),31,'0.0',12,f(s),22,f(s),32,'0.0',13,f(s),23,f(s),33,'0.0')}};
+  const BL={ZP_COT_VUONG_HT:()=>KH(0,'0').vuong(),ZP_COT_TRON_HT:()=>KH(0,'0').tron(),ZP_COT_BT_HT_DEN_MOI:()=>KH(0,'0').cs(),
+    ZP_COT_VUONG_DOI_HT:()=>{KH(-R*0.95,'0').vuong();KH(R*0.95,'0').vuong()},ZP_COT_TRON_DOI_HT:()=>{KH(-R*0.95,'0').tron();KH(R*0.95,'0').tron()},
+    ZP_COT_THU_HOI:()=>{KH(0,'0').tron();const d=R*1.25;line(-d,-d,d,d,'0');line(-d,d,d,-d,'0')},
+    ZP_TBA_HT:()=>{const s=R*1.5;sq(0,0,s,'0');a(0,'SOLID',8,'0',10,f(-s),20,f(-s),30,'0.0',11,f(s),21,f(-s),31,'0.0',12,f(s),22,f(s),32,'0.0',13,f(s),23,f(s),33,'0.0')}};
   /* block đèn: gốc = tâm cột; thẻ ở trên-trái cột (bên phải là số cột); 3 thuộc tính ẩn */
   const TH=(t)=>{const w=t.length*0.75+0.7,x0=-0.45-w,y0=0.9;sq2(x0,y0,x0+w,y0+1.4);
     a(0,'TEXT',8,'0',10,f(x0+w/2),20,f(y0+0.7),30,'0.0',40,'0.9',1,dxfTxt(t),7,'KS',72,1,73,2,11,f(x0+w/2),21,f(y0+0.7),31,'0.0');
@@ -2832,20 +2847,19 @@ function buildDxf(that){
     line(x,y+s,x+s*.87,y-s/2,'KS_MOC_HIEU_CHINH');line(x+s*.87,y-s/2,x-s*.87,y-s/2,'KS_MOC_HIEU_CHINH');line(x-s*.87,y-s/2,x,y+s,'KS_MOC_HIEU_CHINH');
     txt(x+1.6,y-0.5,'1.5',m.ten,'KS_MOC_HIEU_CHINH')}
   const XY={};for(const p of D.poles)XY[p.id]=PP(p);
+  /* dây: mỗi chuỗi cột liền nhau cùng loại / trạng thái = MỘT polyline qua tâm cột (XUATDUONGDAY: một polyline = một tuyến, cột cách dây ≤ 1,5 m) */
+  for(const d of zd){a(0,'POLYLINE',8,d.ly,66,1,10,'0.0',20,'0.0',30,'0.0',70,0);for(const id of d.ids){const [x,y]=XY[id];a(0,'VERTEX',8,d.ly,10,f(x),20,f(y),30,'0.0')}a(0,'SEQEND',8,d.ly)}
   for(const [i,j] of D.edges){const A=byId(i),B=byId(j);if(!A||!B)continue;
-    const [ax,ay]=XY[A.id],[bx,by]=XY[B.id],dx=bx-ax,dy=by-ay,l=Math.hypot(dx,dy);if(l<=2*R)continue;const ux=dx/l,uy=dy/l;
-    line(ax+ux*R,ay+uy*R,bx-ux*R,by-uy*R,'KS_DAY');
+    const [ax,ay]=XY[A.id],[bx,by]=XY[B.id];
     const kc=parse(B.from===A.id?B.code:A.from===B.id?A.code:'').kc;
     if(kc)txt((ax+bx)/2,(ay+by)/2+0.4,'1.0',String(kc).replace('.',','),'KS_KHOANG');}
   for(const p of D.poles){const [x,y]=XY[p.id],r=parse(p.code),doi=isDoi(p,r)&&p.shape!=='tba';
-    const LC=that&&p.lat==null&&!p.nan?'KS_COT_KHONG_GPS':'KS_COT';   /* cột vẽ tay không GPS: layer riêng màu cam để kiểm lại */
-    const kieu=p.shape==='vuong'?'VUONG':p.shape==='cs'?'CS':'TRON';
-    let w=R;
-    if(p.shape==='tba'){ins('KS_TBA',x,y,LC);w=R*1.5}
-    else if(doi){ins('KS_COT_DOI_'+kieu,x,y,LC);w=R*2}else ins('KS_COT_'+kieu,x,y,LC);
+    const LC=that&&p.lat==null&&!p.nan?'KS_COT_KHONG_GPS':'';   /* cột vẽ tay không GPS: vòng + ghi chú layer riêng màu cam để kiểm lại */
+    const z=zc[p.id];let w=p.shape==='tba'?R*1.5:doi?R*2:R;ins(z.bl,x,y,z.ly);if(LC)circ(x,y,w+0.8,LC);
     if(p.shape!=='tba')a(0,'POINT',8,'KS_DIEM',10,f(x),20,f(y),30,'0.0');   /* POINT tâm cột: VVETUYENTUCOT chỉ lấy POINT (không nhầm mốc / TBA làm cột), tên = số cột gần nhất */
     txt(x+w+0.4,y+0.9,'1.5',r.so||(p.shape==='tba'?'TBA':'?'),'KS_CHU');
-    if(LC!=='KS_COT')txt(x+w+0.4,y+2.6,'1.0','(cột không có GPS - vị trí phác)',LC);
+    if(r.so&&p.shape!=='tba')txt(x+w+0.4,y+0.9,'1.5',r.so,'0_ZP_TEN_COT');   /* trùng chỗ chữ KS_CHU: XUATDUONGDAY lấy tên cột trên TEN_COT (VVETUYENTUCOT bỏ layer này nên vẫn đọc chữ KS_CHU) */
+    if(LC)txt(x+w+0.4,y+2.6,'1.0','(cột không có GPS - vị trí phác)',LC);
     let yy=y-1.1;for(const l of labelLines(p,r)){txt(x+w+0.4,yy,'1.0',l,'KS_CHU');yy-=1.4}}
   if(dsDen.length){const c={},ds=Object.keys(DL);for(const k of ds)c[k]={n:0,h:0};
     for(const {p,d} of dsDen){const k=d.loai||'x',[ly]=DL[k],[x,y]=XY[p.id];c[k].n+=d.n;if(d.hong)c[k].h+=d.n;
@@ -2866,6 +2880,25 @@ function buildDxf(that){
   a(0,'ENDSEC',0,'EOF');
   return L.join('\r\n')+'\r\n';
 }
+/* cột → block + layer ZP: nhổ bỏ = ZP_COT_THU_HOI (0-COT_Thu_hoi); còn lại hiện trạng theo hình (tròn / vuông / CS, đôi) */
+function zpCot(){const o={};for(const p of D.poles){const r=parse(p.code),doi=isDoi(p,r);
+  if(p.shape==='tba'){o[p.id]={bl:'ZP_TBA_HT',ly:'0_ZP_0-TBA_Hien_trang'};continue}
+  if(r.cotTT[0]==='Nhổ bỏ'){o[p.id]={bl:'ZP_COT_THU_HOI',ly:'0_ZP_0-COT_Thu_hoi'};continue}
+  const bl=p.shape==='vuong'?(doi?'ZP_COT_VUONG_DOI_HT':'ZP_COT_VUONG_HT'):p.shape==='cs'&&!doi?'ZP_COT_BT_HT_DEN_MOI':doi?'ZP_COT_TRON_DOI_HT':'ZP_COT_TRON_HT';
+  o[p.id]={bl,ly:'0_ZP_0-COT_Hien_trang'}}return o}
+/* khoảng dây (cạnh) → cấp + trạng thái theo cột phía sau (cột có «from» là cột kia): ⚑ dây AC… = 22 kV; cột có đèn / cột CS mà dây không phải ABC = chiếu sáng;
+   còn lại 0,4 kV. Dây «Thu hồi» ở cột sau = _Thu_hoi. Gom các cạnh liền nhau cùng layer thành chuỗi (mỗi chuỗi một polyline) */
+function zpDay(){const lop=e=>{const A=byId(e[0]),B=byId(e[1]);if(!A||!B)return '';const c=B.from===A.id?B:A.from===B.id?A:B,k=c===B?A:B,
+    rc=parse(c.code),rk=parse(k.code),den=x=>{const d=denDoc(x.code);return d.loai||d.hong||x.shape==='cs'},ca=(dy,x)=>/^AC/i.test(dy)?'22':!/^ABC/i.test(dy)&&den(x)?'CS':'04';
+    const cap=rc.dayHT[0]?ca(rc.dayHT[0],c):den(c)?'CS':ca(rk.dayHT[0]||'',k);   /* cột sau không ghi dây: cột đèn = CS, không thì theo dây cột trước */return `0_ZP_0-DZ_${cap}_${rc.dayTT[0]==='Thu hồi'?'Thu_hoi':'Hien_trang'}`};
+  const E=D.edges.map(e=>({e,ly:lop(e),xong:false})).filter(x=>x.ly),ke={};
+  for(const x of E)for(const id of x.e)(ke[id]=ke[id]||[]).push(x);
+  const bac=(id,ly)=>(ke[id]||[]).filter(x=>x.ly===ly).length,out=[];
+  const di=(x,tu)=>{const ids=[tu];let cur=x,dau=tu;while(cur){cur.xong=true;const toi=cur.e[0]===dau?cur.e[1]:cur.e[0];ids.push(toi);dau=toi;
+      cur=bac(toi,x.ly)===2?(ke[toi]||[]).find(y=>!y.xong&&y.ly===x.ly):null}return {ly:x.ly,ids}};
+  for(const x of E)if(!x.xong){const dau=x.e.find(id=>bac(id,x.ly)!==2);if(dau)out.push(di(x,dau))}
+  for(const x of E)if(!x.xong)out.push(di(x,x.e[0]));   /* vòng kín còn lại */
+  return out}
 function xuatDxf(that){
   if(that){const n=D.poles.filter(p=>p.lat!=null).length,k=D.poles.length-n;
     if(!n||!D.geo){toast('Chưa có cột nào lấy GPS — không xuất được toạ độ thật VN-2000');return}
@@ -2977,8 +3010,8 @@ function showExport(){
     <div class="row" style="align-items:center"><h2 style="flex:1 1 auto">Xuất · ${esc(D.ten)}</h2><button class="btn" data-a="close" style="flex:0 0 auto">Đóng</button></div>
     <button class="big pri" data-a="png"><b>Gửi ảnh sơ đồ</b><span>Mở Zalo / Messenger gửi ngay ảnh sơ đồ có ghi chú.</span></button>
     <button class="big" data-a="xlsx"><b>Bảng kê Excel (.xlsx)</b><span>Đúng mẫu tờ "Bảng tổng kê khối lượng hiện trạng và thay thế", kèm sheet tọa độ.</span></button>
-    <button class="big" data-a="dxf"><b>Bản vẽ AutoCAD (.dxf) — sơ đồ phác</b><span>Cột, TBA, dây nối, đường, mốc, số cột và ghi chú. 1 đơn vị = 1 m. Đèn: mỗi loại một lớp KS_DEN_… + block có thuộc tính, đèn hỏng lớp KS_DEN_HONG, bảng thống kê đèn.</span></button>
-    <button class="big" data-a="dxfvn"><b>Bản vẽ AutoCAD (.dxf) — toạ độ thật VN-2000</b><span>Cột có GPS đặt đúng toạ độ VN-2000 (X = Đông, Y = Bắc). Cột vẽ tay không có GPS giữ vị trí phác, để riêng layer KS_COT_KHONG_GPS. Đèn tách lớp + bảng thống kê như bản phác.</span></button>
+    <button class="big" data-a="dxf"><b>Bản vẽ AutoCAD (.dxf) — sơ đồ phác</b><span>Cột, TBA, dây nối, đường, mốc, số cột và ghi chú. 1 đơn vị = 1 m. Layer / block theo thư viện LispcadZP (0_ZP_0-COT_…, 0_ZP_0-DZ_…, ZP_COT_…): mở ra chạy được KEDUONGDAY, XUATDUONGDAY. Đèn: mỗi loại một lớp KS_DEN_… + block có thuộc tính, đèn hỏng lớp KS_DEN_HONG, bảng thống kê đèn.</span></button>
+    <button class="big" data-a="dxfvn"><b>Bản vẽ AutoCAD (.dxf) — toạ độ thật VN-2000</b><span>Cột có GPS đặt đúng toạ độ VN-2000 (X = Đông, Y = Bắc). Cột vẽ tay không có GPS giữ vị trí phác, khoanh vòng cam layer KS_COT_KHONG_GPS. Layer / block chuẩn LispcadZP như bản phác. Đèn tách lớp + bảng thống kê như bản phác.</span></button>
     <label class="sl vn"><span class="k">Tỉnh / kinh tuyến trục VN-2000</span><select id="ex-ktt">${VN.TINH.map(([t,v])=>`<option value="${v}"${Math.abs(v-ktt())<1e-9&&t===(DB.tinh||'Thanh Hoá')?' selected':''}>${t} — ${kttTen(v)}</option>`).join('')}
       <option value="khac"${VN.TINH.some(([t,v])=>Math.abs(v-ktt())<1e-9&&t===(DB.tinh||'Thanh Hoá'))?'':' selected'}>Khác — tự nhập (${kttTen(ktt())})</option></select></label>
     <button class="big" data-a="anh"><b>📷 Gửi ảnh cột</b><span>Mọi ảnh chụp ở các cột của bản vẽ này, ảnh đầu là sơ đồ tuyến có số cột, các ảnh sau xếp theo số cột, mỗi ảnh in sẵn số cột, ngày giờ, toạ độ. Bản gốc đủ nét đã tự lưu vào Tải xuống lúc chụp. Gửi qua Zalo / Drive, hoặc tải về máy.</span></button>
