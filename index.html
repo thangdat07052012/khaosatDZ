@@ -493,6 +493,31 @@ function snapToRoad(x,y){
   const b=nearestRoad(x,y,Math.max(6,26/V.s));if(!b)return {x,y};
   const o=b.r.w/2+1.5,n=b.n;return {x:n.px+n.side*o*(-n.uy),y:n.py+n.side*o*n.ux};
 }
+/* 22/11 tự ghi địa điểm theo GPS (việc Anti RXD): xã / phường MỚI + tỉnh tra offline trong xa/<mã>.json; tên đường hỏi Photon (OSM) khi có mạng */
+const XA_TINH=[{m:'38',b:[104.37,19.28,106.08,20.68]}];   /* thêm tỉnh: lam_xa.py → xa/<mã>.json + một dòng ở đây + FILES trong sw.js */
+const XA={};   /* mã tỉnh → {t, ds} | 'dang' | null */
+function xaTinhCua(lat,lon){const t=XA_TINH.find(t=>lon>=t.b[0]&&lon<=t.b[2]&&lat>=t.b[1]&&lat<=t.b[3]);return t?t.m:null}
+function xaNap(m){if(XA[m]!==undefined)return;XA[m]='dang';
+  fetch('xa/'+m+'.json').then(r=>r.ok?r.json():Promise.reject()).then(o=>{XA[m]={t:o.t,ds:xaGiai(o)};diaDiemBu()}).catch(()=>{delete XA[m]})}
+const DUONG_O={};   /* ô ~50 m → {duong, kv} | 'dang' */
+function duongTra(p){if(p.duong!==undefined||!navigator.onLine||DB.khongTraDuong)return;
+  const k=Math.round(p.lat/5e-4)+','+Math.round(p.lon/5e-4),o=DUONG_O[k];
+  if(o&&o!=='dang'){p.duong=o.duong;p.kv=o.kv;return}if(o)return;DUONG_O[k]='dang';
+  fetch(`https://photon.komoot.io/reverse?lat=${p.lat}&lon=${p.lon}&lang=default&limit=1`).then(r=>r.ok?r.json():Promise.reject())
+    .then(j=>{const q=(j.features&&j.features[0]&&j.features[0].properties)||{};
+      DUONG_O[k]={duong:q.street||(q.type==='street'?q.name:'')||'',kv:q.district||''};
+      for(const d of Object.values(DB.ds))for(const c of d.poles||[])if(c.lat!=null&&c.duong===undefined&&Math.round(c.lat/5e-4)+','+Math.round(c.lon/5e-4)===k){c.duong=DUONG_O[k].duong;c.kv=DUONG_O[k].kv}
+      save()}).catch(()=>{delete DUONG_O[k]})}
+function diaDiem(p,im){if(p.lat==null)return;const m=xaTinhCua(p.lat,p.lon);
+  if(m){const o=XA[m];if(o&&o.ds){const x=xaTim(o.ds,p.lat,p.lon);
+      if(x&&p.xa!==x.n){const tr=D.poles.filter(c=>c!==p&&c.xa).pop();p.xa=x.n;p.tinh=o.t;
+        if(/^Tuyến \d{4}-\d\d-\d\d$/.test(D.ten||'')){D.ten=D.ten.replace(/^Tuyến /,'Tuyến '+x.n.replace(/^(Xã|Phường) /,'')+' ');title()}
+        if(!im&&(!tr||tr.xa!==x.n))toast(`📍 ${tr?'Sang ':''}${x.n}, ${o.t}`)}}
+    else xaNap(m)}
+  duongTra(p)}
+function diaDiemBu(){let co=false;for(const p of D.poles)if(p.lat!=null&&!p.xa){diaDiem(p,true);co=co||!!p.xa}if(co){const x=D.poles.filter(p=>p.xa).pop();toast(`📍 ${x.xa}, ${x.tinh}`);save()}}
+function diaDiemText(){const u=a=>[...new Set(a.filter(Boolean))];const xa=u(D.poles.map(p=>p.xa)),ti=u(D.poles.map(p=>p.tinh)),du=u(D.poles.map(p=>p.duong));
+  return {xa:xa.join(', '),tinh:ti.join(', '),duong:du.join(', ')}}
 function addPole(x,y,shape,gps,auto,im){
   snap();
   const prev=activeP();
@@ -501,7 +526,7 @@ function addPole(x,y,shape,gps,auto,im){
   const p={id:uid(),x,y,shape:shape||inheritShape(prev),doi:!!(prev&&prev.doi&&prev.shape!=='tba'),code:nextCode(prev,kc),from:prev?prev.id:null,t:Date.now()};
   if(gps){p.lat=+gps.lat.toFixed(8);p.lon=+gps.lon.toFixed(8);p.acc=+gps.acc.toFixed(1);p.gt=gps.t||Date.now();if(gps.n)p.gn=gps.n}
   if(auto){p.auto=true;p.autoCode=p.code}
-  D.poles.push(p);if(prev)D.edges.push([prev.id,p.id]);
+  D.poles.push(p);if(prev)D.edges.push([prev.id,p.id]);if(gps)diaDiem(p);
   D.active=p.id;save();draw();if(!im)openSheet(p);
 }
 function removePole(id){
@@ -2216,7 +2241,7 @@ function giongGop(list,them,ghiDe){
 /* 🎤 KHẨU LỆNH ở CUỐI câu nói (07/11): «điền» · «tiếp» (= Tiếp ▸) · «dừng» (= Dừng) · «đoạn mới» · «nói lại» / «xoá câu»
    → {lenh:'dien'|'tiep'|'dung'|'doan'|'xoa'|null, con: phần câu trước lệnh}. Chỉ nhận ở CUỐI câu, có chốt chặn:
    «tiếp địa», «nối tiếp», «trạm dừng», «xã Quảng Điền» không thành lệnh */
-const BAN_APP='kstuyen-36';
+const BAN_APP='kstuyen-37';
 /* 🎤 chờ bao lâu (ms) rồi mới làm khẩu lệnh cuối câu (07/11 rút ngắn ⚑): máy đã chốt câu → làm gần như ngay;
    còn chữ tạm → chờ ngắn xem có nói tiếp không («tiếp», «dừng» chờ lâu hơn chút vì hay đi tiếp chữ, vd «tiếp địa»);
    gõ tay / 🎤 bàn phím chờ lâu nhất; lai = nghỉ trước khi mở phiên nghe mới */
@@ -2536,6 +2561,19 @@ function giongDen(text,che){const goc=String(text||'').trim();let t=' '+goc.norm
   if(r.che)r.hieu.push('Phần '+PT[r.che]);
   if(r.bo)r.hieu.push('Bỏ đèn');else{if(r.loai)r.hieu.push(r.loai==='SD'?'Sợi đốt':'LED '+r.loai.slice(1)+'W');if(r.n)r.hieu.push(r.n+' bóng');if(r.hong!=null)r.hieu.push(r.hong?'Đèn hỏng':'Đèn hết hỏng')}
   if(r.che||coTin)r.con=t.trim();return r}
+/* Ranh xã mới (xa/<mã tỉnh>.json do lam_xa.py dựng): vòng = số nguyên delta độ×1e5 → Float64Array [lon,lat,…] */
+function xaGiai(o){return o.x.map(([n,c,b,P])=>({n,c,b,P:P.map(R=>R.map(r=>{const a=new Float64Array(r.length);let x=0,y=0;
+  for(let i=0;i<r.length;i+=2){x+=r[i];y+=r[i+1];a[i]=x/1e5;a[i+1]=y/1e5}return a}))}))}
+function xaTrongVong(lon,lat,a){let c=false;for(let i=0,j=a.length-2;i<a.length;j=i,i+=2){const xi=a[i],yi=a[i+1],xj=a[j],yj=a[j+1];
+  if((yi>lat)!==(yj>lat)&&lon<(xj-xi)*(lat-yi)/(yj-yi)+xi)c=!c}return c}
+/* xã chứa điểm; rơi vào khe giản lược giữa hai xã (≤ ~300 m) thì lấy xã có đỉnh gần nhất, đánh dấu gan:true */
+function xaTim(ds,lat,lon){if(!ds)return null;
+  for(const x of ds){const b=x.b;if(lon<b[0]||lon>b[2]||lat<b[1]||lat>b[3])continue;
+    for(const R of x.P)if(xaTrongVong(lon,lat,R[0])&&!R.slice(1).some(h=>xaTrongVong(lon,lat,h)))return x}
+  const k=Math.cos(lat*Math.PI/180);let bt=null,bd=0.003*0.003;
+  for(const x of ds){const b=x.b;if(lon<b[0]-0.004||lon>b[2]+0.004||lat<b[1]-0.004||lat>b[3]+0.004)continue;
+    for(const R of x.P)for(const a of R)for(let i=0;i<a.length;i+=2){const dx=(a[i]-lon)*k,dy=a[i+1]-lat,d=dx*dx+dy*dy;if(d<bd){bd=d;bt=x}}}
+  return bt?{...bt,gan:true}:null}
 /* === HẾT HÀM THUẦN === */
 /* 📖 nâng cấp một lần lúc mở app: cụm dạy bản cũ «cuộc» → «ghi chú cột» thành thay chữ (giongSuaCu) — lưu ở lần lưu sau */
 {const L=giongSuaCu(DB.giongTu);if(L!==DB.giongTu)DB.giongTu=L}
@@ -2749,7 +2787,7 @@ async function xuatXlsx(){
     return [i+1,r.so,ddText(p,r).join(', '),r.kc===''?'':r.kc,J(r.cotHT),J(r.cotTT),J(r.dayHT),J(r.dayTT),n(r.h1),n(r.h2),n(r.h4),n(r.p3),
       r.tuCu?tuText(r):n(r.tuMoi),J(r.sau),r.gc.join('; ')]});
   const sum=(k)=>D.poles.reduce((s,p)=>s+(+parse(p.code)[k]||0),0);
-  const aoa=[[`BẢNG TỔNG KÊ KHỐI LƯỢNG HIỆN TRẠNG VÀ THAY THẾ: ${D.ten}`],[`Ngày khảo sát: ${D.ngay||''}`],
+  const aoa=[[`BẢNG TỔNG KÊ KHỐI LƯỢNG HIỆN TRẠNG VÀ THAY THẾ: ${D.ten}`],[`Ngày khảo sát: ${D.ngay||''}`+(()=>{const d=diaDiemText();return (d.xa?` · Địa điểm: ${d.xa}${d.tinh?' – '+d.tinh:''}`:'')+(d.duong?` · Đường: ${d.duong}`:'')})()],
     ['STT','Số cột','Đặc điểm cột','Khoảng cột (m)','Loại cột','','Dây dẫn','','CT hiện trạng','','','','Tủ mới','Dây sau công tơ','Ghi chú'],
     ['','','','','Hiện trạng','Thay thế','Hiện trạng','Thay thế','H1','H2','H4','3 pha','','',''],...rows,
     ['','Cộng','',sum('kc')||'','','','','',sum('h1')||'',sum('h2')||'',sum('h4')||'',sum('p3')||'',sum('tuMoi')||'','','']];
@@ -2758,10 +2796,10 @@ async function xuatXlsx(){
   ws['!cols']=[5,10,14,9,12,12,22,22,5,5,5,6,12,20,22].map(w=>({wch:w}));
   const tb=hcTB(),MT={xanh:'Xanh (< 3 m)',vang:'Vàng (3–6 m)',do:'Đỏ (> 6 m)'};
   const ws2=XLSX.utils.aoa_to_sheet([['STT','Số cột','Mã nhập','Ký hiệu','X (m)','Y (m)','Vĩ độ','Kinh độ','Sai số GPS (m)','Chất lượng GPS',
-      'X_VN2000 (Bắc)','Y_VN2000 (Đông)','Hiệu chỉnh theo mốc','Nắn theo khoảng đo','X_VN2000 gốc GPS','Y_VN2000 gốc GPS','Khoảng đo thật (m)'],
+      'X_VN2000 (Bắc)','Y_VN2000 (Đông)','Hiệu chỉnh theo mốc','Nắn theo khoảng đo','X_VN2000 gốc GPS','Y_VN2000 gốc GPS','Khoảng đo thật (m)','Xã / phường (mới)','Đường (© OpenStreetMap)','Khu vực cũ (OSM)'],
     ...sorted().map((p,i)=>{const v=vnOf(p,tb),r=parse(p.code);return [i+1,r.so,p.code,SHAPE_NAME[p.shape||'tron']+(isDoi(p)&&p.shape!=='tba'?' đôi':''),+p.x.toFixed(2),+(-p.y).toFixed(2),
       p.lat??'',p.lon??'',p.acc??'',p.lat!=null?MT[gpsMau(p.acc)]||'':'',v?v.x:'',v?v.y:'',p.lat!=null?(v&&v.h?v.h.ten:'không'):'',
-      p.nan?(p.lat!=null?'có':'có (cột vẽ tay)'):'',v&&v.goc?+v.goc.x.toFixed(3):'',v&&v.goc?+v.goc.y.toFixed(3):'',p.kcThat&&r.kc!==''?r.kc:'']}),
+      p.nan?(p.lat!=null?'có':'có (cột vẽ tay)'):'',v&&v.goc?+v.goc.x.toFixed(3):'',v&&v.goc?+v.goc.y.toFixed(3):'',p.kcThat&&r.kc!==''?r.kc:'',p.xa||'',p.duong||'',p.kv||'']}),
     ...D.mocs.map(m=>['','Mốc',m.ten,'Mốc',+m.x.toFixed(2),+(-m.y).toFixed(2),'','','','','','','','','','','']),
     [],['','Ghi chú',`X, Y (m): sơ đồ phác. X_VN2000 = Bắc, Y_VN2000 = Đông: VN-2000 múi 3°, kinh tuyến trục ${kttTen(ktt())}, k0 0,9999, 7 tham số QĐ 05/2007 — đã cộng hiệu chỉnh theo mốc${D.hcTat?' (đang TẮT)':''} và nắn theo khoảng đo (nếu có); cột "gốc GPS" là toạ độ chưa sửa. Cột vẽ tay chỉ có toạ độ khi đã nắn.`]]);
   ws2['!cols']=[5,10,40,12,10,10,12,12,10,13,14,14,16,14,14,14,10].map(w=>({wch:w}));
@@ -3105,7 +3143,7 @@ $('#b-list').addEventListener('click',showList);
 $('#b-export').addEventListener('click',showExport);
 $('#b-table').addEventListener('click',showTable);
 $('#b-gpsp').addEventListener('click',()=>{nanCho=null;showGps()});
-function switchTo(d){saveNow();cadDoi=null;denId=null;dsheet.hidden=true;qsheet.hidden=true;D=d;D.poles=D.poles||[];D.roads=D.roads||[];D.mocs=D.mocs||[];D.edges=D.edges||[];D.mocDo=D.mocDo||[];mocCho=null;nanCho=null;DB.cur=d.id;undoSt=[];editId=null;F=null;noiA=null;selRoad=null;sheet.hidden=true;rsheet.hidden=true;V=D.view||fitView(W,H,40);saveNow();title();draw()}
+function switchTo(d){saveNow();cadDoi=null;denId=null;dsheet.hidden=true;qsheet.hidden=true;D=d;D.poles=D.poles||[];D.roads=D.roads||[];D.mocs=D.mocs||[];D.edges=D.edges||[];D.mocDo=D.mocDo||[];mocCho=null;nanCho=null;DB.cur=d.id;undoSt=[];editId=null;F=null;noiA=null;selRoad=null;sheet.hidden=true;rsheet.hidden=true;V=D.view||fitView(W,H,40);saveNow();title();draw();setTimeout(diaDiemBu,0)}
 
 /* ================= toast / khởi động ================= */
 let toastT=null;

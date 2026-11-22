@@ -391,7 +391,7 @@ console.log('17. Bản vẽ CAD phủ lên: VN-2000 → WGS-84, đọc DXF');
      /kb=cotBut\(\);if\(kb\)\{cotNhanh\(xy\.x,xy\.y,fix,kb\);return\}/.test(html)&&/function xoaCotNoi\(p\)/.test(html)&&(html.match(/xoaCotNoi\(p\)\}\);/g)||[]).length===2,
      'Hạ / Trung: chạm cột mở bảng gọn (loại cột, dây, đặc điểm, nhổ bỏ, thu hồi, xoá cột nối dây), chọn sẵn loại cột ở phím phải → chạm trống / GPS thêm cột loại đó');
   ok(/function veNhanh\(\)/.test(html)&&/veNhanh\(\);if\(dau\)return/.test(html)&&/data-nh="mic"/.test(html)&&/data-nh="doan"/.test(html)&&/\$\('#nhanh \.mic'\)\?\.classList\.add\('on'\)/.test(html),'phím nhanh bên phải: 🎤 + loại cột + đoạn mới, vẽ lại khi đổi phần, 🎤 sáng cùng ô nhập');
-  {const G=new Function(html.slice(html.indexOf('const VN=(()=>{'),html.indexOf('/* === HẾT HÀM THUẦN === */'))+';return {giongDen,GIONG_CHO}')();const d=G.giongDen;
+  {const G=new Function(html.slice(html.indexOf('const VN=(()=>{'),html.indexOf('/* === HẾT HÀM THUẦN === */'))+';return {giongDen,GIONG_CHO,xaGiai,xaTim}')();const d=G.giongDen;
    const a=d('đèn led 150 hai bóng','cs'),b=d('trung thế cột ly tâm 12 dây ac 70','ha'),c=d('tủ điều khiển chiếu sáng','ha'),e=d('đèn hỏng','ha'),f=d('sợi đốt','cs'),
      g=d('bỏ đèn','cs'),h=d('cột lt10 néo','cs'),i=d('chuyển sang chiếu sáng','tt'),j=d('đèn 200 oát','ha'),k=d('hết hỏng','cs'),l=d('Đèn một trăm rưỡi','cs'),m=d('cột 12 hỏng','ha'),o=d('cột 100 mét','cs');
    ok(a.loai==='L150'&&a.n===2&&a.con===''&&b.che==='tt'&&b.con==='cột ly tâm 12 dây ac 70'&&!b.loai&&c.che===''&&c.con==='tủ điều khiển chiếu sáng'&&e.hong===true&&e.con===''&&
@@ -402,6 +402,20 @@ console.log('17. Bản vẽ CAD phủ lên: VN-2000 → WGS-84, đọc DXF');
   ok(/function zpCot\(\)/.test(html)&&/function zpDay\(\)/.test(html)&&/'0_ZP_0-COT_Hien_trang'/.test(html)&&/'0_ZP_0-COT_Thu_hoi'/.test(html)&&/0_ZP_0-DZ_\$\{cap\}_/.test(html)&&
      /a\(0,'POLYLINE',8,d\.ly/.test(html)&&/a\(0,'POINT',8,'KS_DIEM'/.test(html)&&/,'0_ZP_TEN_COT'\);/.test(html)&&!/'KS_DAY'/.test(html)&&/book_append_sheet\(wb,wsK,'Khoi luong'\)/.test(html),
      'DXF chuẩn LispcadZP: block ZP_COT_*, layer 0_ZP_0-COT_ / 0_ZP_0-DZ_ (polyline theo tuyến), tên cột 0_ZP_TEN_COT, vẫn giữ POINT KS_DIEM; Excel thêm sheet Khoi luong');
+  /* 22/11 tự ghi xã mới theo GPS */
+  {const o={t:'Tỉnh T',x:[['Xã Vuông','1',[105,19,105.01,19.01],[[[10500000,1900000,1000,0,0,1000,-1000,0]]]],
+      ['Phường Lỗ','2',[105.02,19,105.05,19.03],[[[10502000,1900000,3000,0,0,3000,-3000,0],[10503000,1901000,1000,0,0,1000,-1000,0]]]]]};
+    const X=new Function(html.slice(html.indexOf('const VN=(()=>{'),html.indexOf('/* === HẾT HÀM THUẦN === */'))+';return {xaGiai,xaTim}')(),ds=X.xaGiai(o);
+    ok(ds.length===2&&Math.abs(ds[0].P[0][0][2]-105.01)<1e-9,'xaGiai: cộng dồn delta nguyên → độ');
+    ok((X.xaTim(ds,19.005,105.005)||{}).n==='Xã Vuông','xaTim: điểm trong xã');
+    ok((X.xaTim(ds,19.005,105.025)||{}).n==='Phường Lỗ','xaTim: điểm trong phường (ngoài lỗ)');
+    const l=X.xaTim(ds,19.015,105.035);ok(!l||l.gan,'xaTim: điểm trong lỗ không nhận là trong phường');
+    const g=X.xaTim(ds,19.0095,105.0115);ok(g&&g.gan&&g.n==='Xã Vuông','xaTim: khe ~150 m ngoài ranh → xã gần nhất, gan:true');
+    ok(X.xaTim(ds,19.5,105.5)===null,'xaTim: xa mọi xã → null')}
+  ok(/function diaDiem\(/.test(html)&&/if\(gps\)diaDiem\(p\)/.test(html),'chấm cột GPS gọi diaDiem (xã + đường)');
+  ok(/photon\.komoot\.io\/reverse\?lat=\$\{p\.lat\}&lon=\$\{p\.lon\}&lang=default/.test(html),'Photon có lang=default (không đổi tên sang tiếng Anh)');
+  ok(/'Xã \/ phường \(mới\)','Đường \(© OpenStreetMap\)'/.test(html),'Excel sheet GPS có cột xã + đường ghi nguồn OSM');
+  ok(/'\.\/xa\/38\.json'/.test(fs.readFileSync(path.join(__dirname,'..','sw.js'),'utf8')),'sw.js lưu sẵn xa/38.json (mất mạng vẫn tra xã)');
   /* chốt trong code */
   ok(/function nenVe\(\)\{nenNen\(\);if\(D&&D\.cad&&D\.cad\.length\)try\{cadVe\(/.test(html),'nenVe vẽ thêm bản vẽ CAD sau ảnh nền');
   ok(!/nenCv\.style\.opacity=String\(DB\.nenMo/.test(html),'độ đậm ảnh nền dùng globalAlpha (không làm mờ nét CAD)');

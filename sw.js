@@ -1,6 +1,6 @@
 // Đổi PHIEN mỗi lần cập nhật app để máy tải bản mới.
-const PHIEN = 'kstuyen-36';
-const FILES = ['./', './index.html', './xlsx.full.min.js', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
+const PHIEN = 'kstuyen-37';
+const FILES = ['./', './index.html', './xlsx.full.min.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './xa/38.json'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(PHIEN).then(c => c.addAll(FILES)));
