@@ -2056,6 +2056,11 @@ function gpsLoc(ds0){
   return {lat,lon,acc:Math.max(pt,accW/Math.sqrt(k)),pt,accW,n:ok.length,nTot:ok.filter(q=>q.acc<=GPS_VANG).length,tong:ds0.length,boDau:st,boAcc:canh?0:a.length-tot.length,boNgoai:tot.length-ok.length,boTrung,boDiChuyen,diChuyen,canh:canh||diChuyen};
 }
 /* xong sớm khi tốt: sau ≥ 4 s, ≥ 4 lần tốt (đã lọc, sai số máy báo ≤ 6 m), độ phân tán < 2 m và kết quả không đỏ */
+/* 23/11: thời gian đo một cột — GPS đang theo dõi liên tục và vừa có lần đo tốt (≤ 5 s trước, ±≤ 6 m) → 3 s;
+   lần đầu / GPS nguội → đủ theo chế độ (10 s chuẩn); chế độ Kỹ giữ nguyên 20 s */
+const GPS_NONG_MS=3000,GPS_NONG_TUOI=5000;
+function gpsThoiGian(cheDo,cuoi,nay){const ms=(GPS_CHE_DO[cheDo]||GPS_CHE_DO.chuan).ms;if(cheDo==='ky'||!cuoi||!isFinite(cuoi.acc))return ms;
+  return nay-cuoi.t<=GPS_NONG_TUOI&&cuoi.acc<=GPS_VANG?Math.min(GPS_NONG_MS,ms):ms}
 function gpsXongSom(ds,ms){if(ms<GPS_SOM_MS)return false;const r=gpsLoc(ds);return !!r&&!r.canh&&r.nTot>=GPS_SOM_N&&r.pt<GPS_SOM_PT&&r.acc<=GPS_VANG}
 
 /* hiệu chỉnh theo mốc: mốc trong 1 km VÀ trong 60 phút quanh giờ đo cột.
@@ -2367,7 +2372,7 @@ function giongGop(list,them,ghiDe){
 /* 🎤 KHẨU LỆNH ở CUỐI câu nói (07/11): «điền» · «tiếp» (= Tiếp ▸) · «dừng» (= Dừng) · «đoạn mới» · «nói lại» / «xoá câu»
    → {lenh:'dien'|'tiep'|'dung'|'doan'|'xoa'|null, con: phần câu trước lệnh}. Chỉ nhận ở CUỐI câu, có chốt chặn:
    «tiếp địa», «nối tiếp», «trạm dừng», «xã Quảng Điền» không thành lệnh */
-const BAN_APP='kstuyen-45';
+const BAN_APP='kstuyen-46';
 /* 🎤 chờ bao lâu (ms) rồi mới làm khẩu lệnh cuối câu (07/11 rút ngắn ⚑): máy đã chốt câu → làm gần như ngay;
    còn chữ tạm → chờ ngắn xem có nói tiếp không («tiếp», «dừng» chờ lâu hơn chút vì hay đi tiếp chữ, vd «tiếp địa»);
    gõ tay / 🎤 bàn phím chờ lâu nhất; lai = nghỉ trước khi mở phiên nghe mới */
@@ -2763,14 +2768,35 @@ function placeGps(){dropAuto();closeSheet();const xy=geoToXY(fix.lat,fix.lon),kb
   addPole(xy.x,xy.y,null,fix)}
 function gpsCheDo(){return GPS_CHE_DO[DB.gpsCheDo]?DB.gpsCheDo:'chuan'}
 let gpsM=null;   /* phiên đang đo: {t0, ms, muc:'cot'|'moc', ds:[{lat,lon,acc,ts}], kq, tm} */
-function gpsDung(){if(watchId!==null)navigator.geolocation.clearWatch(watchId);watchId=null;if(gpsM)clearInterval(gpsM.tm);gpsM=null;draw()}
+function gpsDung(){if(gpsM)clearInterval(gpsM.tm);gpsM=null;draw()}   /* chỉ hết phiên đo — GPS vẫn theo dõi */
+/* 23/11: GPS theo dõi liên tục từ lần bấm đầu: chấm xanh đi theo người; app ẩn thì tắt (đỡ pin), mở lại thì bật */
+let gpsCuoi=null,gpsVeT=0,gpsTheoBat=false;   /* gpsCuoi: lần đo thô gần nhất {lat,lon,acc,t} */
+function gpsTat(){if(watchId!==null)navigator.geolocation.clearWatch(watchId);watchId=null;gpsTheoBat=false;gpsDung()}
+function gpsTheo(){if(watchId!==null||!('geolocation' in navigator))return;
+  watchId=navigator.geolocation.watchPosition(gpsNhan,
+    err=>{if(err.code===1){gpsTat();toast('Chưa cho phép định vị — bật quyền Vị trí cho trình duyệt')}},   /* lỗi hết giờ: vẫn chờ */
+    {enableHighAccuracy:true,maximumAge:0,timeout:20000})}
+function gpsNhan(pos){
+  const nay=Date.now(),q={lat:pos.coords.latitude,lon:pos.coords.longitude,acc:pos.coords.accuracy,tsd:pos.timestamp||0,v:pos.coords.speed==null?null:pos.coords.speed};
+  if(gpsM){if(pos.timestamp&&pos.timestamp<gpsM.t0-1500)return;   /* vị trí CŨ trong bộ nhớ máy (trước lúc bấm đo) — bỏ */
+    const d={...q,ts:nay-gpsM.t0};gpsM.ds.push(d);gpsCuoi={lat:q.lat,lon:q.lon,acc:q.acc,t:nay};
+    gpsM.kq=gpsLoc(gpsM.ds);fix={...d,lat:gpsM.kq.lat,lon:gpsM.kq.lon,acc:gpsM.kq.acc,t:nay};gpsLab();
+    if(gpsXongSom(gpsM.ds,d.ts))gpsXong();else draw();return}
+  if(pos.timestamp&&nay-pos.timestamp>15000)return;
+  gpsCuoi={lat:q.lat,lon:q.lon,acc:q.acc,t:nay};fix={lat:q.lat,lon:q.lon,acc:q.acc,t:nay,song:true};gpsLab();
+  if(!G&&nay-gpsVeT>=1000){gpsVeT=nay;draw()}   /* chấm xanh: vẽ lại ≤ 1 lần / giây, không vẽ khi đang kéo / phóng */
+}
+document.addEventListener('visibilitychange',()=>{if(document.hidden){if(watchId!==null&&!gpsM){navigator.geolocation.clearWatch(watchId);watchId=null}}else if(gpsTheoBat)gpsTheo()});
+/* đưa màn hình về một điểm (lat, lon): giữa ngang, 40 % chiều cao (chừa chỗ bảng cột phía dưới) */
+function veToi(lat,lon){if(!D.geo||lat==null||lon==null)return false;const m=geoToXY(lat,lon,false);V.tx=W/2-m.x*V.s;V.ty=H*0.4-m.y*V.s;persistView();return true}
+function ngoaiManHinh(lat,lon){if(!D.geo)return false;const m=geoToXY(lat,lon,false),x=V.tx+m.x*V.s,y=V.ty+m.y*V.s;return x<40||x>W-40||y<60||y>H-160}
 function gpsXong(){
   const M=gpsM;if(!M)return;const ds=M.ds,t=Date.now()-M.t0;gpsDung();
   if(!ds.length){toast('Chưa bắt được GPS, ra chỗ thoáng rồi bấm lại');return}
   const r=gpsLoc(ds);fix={lat:r.lat,lon:r.lon,acc:r.acc,t:Date.now(),n:r.n,tong:r.tong,ms:t,canh:r.canh};gpsLab();
   window.__gpsKQ={...fix,muc:M.muc};   /* để kiểm tự động đọc kết quả */
   if(M.muc==='moc'){showMocForm(fix);return}
-  denMsg='';placeGps();
+  denMsg='';placeGps();if(M.veSau||ngoaiManHinh(fix.lat,fix.lon)){veToi(fix.lat,fix.lon);draw()}
   const m=gpsMau(r.acc),dm=denMsg;
   setTimeout(()=>toast(dm+`Đo ${vn1(t/1000)} s · ${r.n}/${r.tong} lần · ±${vn1(r.acc)} m — ${MAU_TEN[m]}${m==='do'?'. '+GPS_NHAC+', rồi đo lại':''}${r.diChuyen?' · Máy đang di chuyển: đứng yên tại chân cột rồi đo lại':r.boDiChuyen?` · bỏ ${r.boDiChuyen} lần đang đi`:''}`),60);
 }
@@ -2789,16 +2815,10 @@ function gpsTxt(){
 function gpsBatDau(muc){
   if(!('geolocation' in navigator)){toast('Máy này không có định vị');return}
   if(gpsM)return;   /* đang đo: dừng bằng nút Dừng sớm */
-  if(watchId!==null)navigator.geolocation.clearWatch(watchId);
-  gpsM={t0:Date.now(),ms:GPS_CHE_DO[gpsCheDo()].ms,muc:muc||'cot',ds:[],kq:null,tm:setInterval(gpsTien,250)};
-  watchId=navigator.geolocation.watchPosition(pos=>{if(!gpsM)return;
-      if(pos.timestamp&&pos.timestamp<gpsM.t0-1500)return;   /* vị trí CŨ trong bộ nhớ máy (trước lúc bấm đo) — bỏ */
-      const q={lat:pos.coords.latitude,lon:pos.coords.longitude,acc:pos.coords.accuracy,ts:Date.now()-gpsM.t0,tsd:pos.timestamp||0,
-        v:pos.coords.speed==null?null:pos.coords.speed};gpsM.ds.push(q);
-      gpsM.kq=gpsLoc(gpsM.ds);fix={...q,lat:gpsM.kq.lat,lon:gpsM.kq.lon,acc:gpsM.kq.acc,t:Date.now()};gpsLab();
-      if(gpsXongSom(gpsM.ds,q.ts))gpsXong();else draw()},
-    err=>{if(err.code===1){gpsDung();toast('Chưa cho phép định vị — bật quyền Vị trí cho trình duyệt')}},   /* lỗi hết giờ: vẫn chờ tới hết phiên đo */
-    {enableHighAccuracy:true,maximumAge:0,timeout:20000});
+  const nay=Date.now(),song=gpsCuoi&&nay-gpsCuoi.t<=60000;
+  const veSau=!(song&&veToi(gpsCuoi.lat,gpsCuoi.lon));   /* bấm GPS → màn hình về vị trí hiện tại */
+  gpsM={t0:nay,ms:gpsThoiGian(gpsCheDo(),gpsCuoi,nay),muc:muc||'cot',ds:[],kq:null,veSau,tm:setInterval(gpsTien,250)};
+  gpsTheoBat=true;gpsTheo();
   draw();
 }
 $('#b-gps').addEventListener('click',()=>gpsBatDau('cot'));

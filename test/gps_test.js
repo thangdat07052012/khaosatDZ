@@ -464,6 +464,17 @@ console.log('17. Bản vẽ CAD phủ lên: VN-2000 → WGS-84, đọc DXF');
   ok(/searchParams\.has\('kq'\)/.test(fs.readFileSync(path.join(__dirname,'..','sw.js'),'utf8')),'sw.js: yêu cầu kiểm bản quyền đi thẳng máy chủ, không lấy bản lưu');
   ok(/o\.kieu==='sao-luu'&&Array\.isArray\(o\.ds\)/.test(html)&&/data-a="saoluu"/.test(html),'Sao lưu tất cả bản vẽ + Mở file nhận file sao lưu');
   ok(/rel="manifest" href="manifest\.webmanifest" crossorigin="use-credentials"/.test(html),'manifest tải kèm cookie đăng nhập (sau cổng Cloudflare Access vẫn cài app ra màn hình chính được)');
+  {const G2=new Function(html.slice(a,b)+';return {gpsThoiGian,GPS_NONG_MS}')(),nay=1e6;
+   ok(G2.gpsThoiGian('chuan',null,nay)===10000,'GPS lần đầu (chưa theo dõi): đo đủ 10 s');
+   ok(G2.gpsThoiGian('chuan',{acc:3,t:nay-2000},nay)===3000,'GPS đang theo dõi, vừa đo tốt: đo cột 3 s');
+   ok(G2.gpsThoiGian('nhanh',{acc:3,t:nay-2000},nay)===3000,'chế độ Nhanh, GPS nóng: 3 s');
+   ok(G2.gpsThoiGian('chuan',{acc:3,t:nay-9000},nay)===10000,'lần đo cuối đã cũ (> 5 s): đo lại đủ 10 s');
+   ok(G2.gpsThoiGian('chuan',{acc:15,t:nay-1000},nay)===10000,'GPS nóng nhưng sai số lớn: đo đủ 10 s');
+   ok(G2.gpsThoiGian('ky',{acc:2,t:nay-1000},nay)===20000,'chế độ Kỹ: giữ 20 s');}
+  ok(/function gpsDung\(\)\{if\(gpsM\)clearInterval\(gpsM\.tm\);gpsM=null;draw\(\)\}/.test(html),'hết phiên đo không tắt GPS theo dõi (chấm xanh vẫn đi theo người)');
+  ok(/gpsTheoBat=true;gpsTheo\(\)/.test(html)&&/watchPosition\(gpsNhan,/.test(html),'bấm GPS bật theo dõi liên tục');
+  ok(/const veSau=!\(song&&veToi\(gpsCuoi\.lat,gpsCuoi\.lon\)\)/.test(html),'bấm GPS: màn hình về vị trí hiện tại');
+  ok(/placeGps\(\);if\(M\.veSau\|\|ngoaiManHinh/.test(html),'chưa có vị trí lúc bấm: đo xong về cột vừa đặt');
   /* chốt trong code */
   ok(/function nenVe\(\)\{nenNen\(\);if\(D&&D\.cad&&D\.cad\.length\)try\{cadVe\(/.test(html),'nenVe vẽ thêm bản vẽ CAD sau ảnh nền');
   ok(!/nenCv\.style\.opacity=String\(DB\.nenMo/.test(html),'độ đậm ảnh nền dùng globalAlpha (không làm mờ nét CAD)');
