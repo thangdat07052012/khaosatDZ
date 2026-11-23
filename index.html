@@ -2372,7 +2372,7 @@ function giongGop(list,them,ghiDe){
 /* 🎤 KHẨU LỆNH ở CUỐI câu nói (07/11): «điền» · «tiếp» (= Tiếp ▸) · «dừng» (= Dừng) · «đoạn mới» · «nói lại» / «xoá câu»
    → {lenh:'dien'|'tiep'|'dung'|'doan'|'xoa'|null, con: phần câu trước lệnh}. Chỉ nhận ở CUỐI câu, có chốt chặn:
    «tiếp địa», «nối tiếp», «trạm dừng», «xã Quảng Điền» không thành lệnh */
-const BAN_APP='kstuyen-46';
+const BAN_APP='kstuyen-47';
 /* 🎤 chờ bao lâu (ms) rồi mới làm khẩu lệnh cuối câu (07/11 rút ngắn ⚑): máy đã chốt câu → làm gần như ngay;
    còn chữ tạm → chờ ngắn xem có nói tiếp không («tiếp», «dừng» chờ lâu hơn chút vì hay đi tiếp chữ, vd «tiếp địa»);
    gõ tay / 🎤 bàn phím chờ lâu nhất; lai = nghỉ trước khi mở phiên nghe mới */
@@ -2737,6 +2737,31 @@ function soDauMoi(ds,gan){if(soMau(SO_TU,ds,gan))return soTuMoi(ds,gan);
   const q=g.match(/^(.*?)(\d+)$/);return q?q[1]+'1'.padStart(w(q[2]),'0'):'1'}
 /* giữ bản quyền: '' = dùng được; 'lui' = đồng hồ máy lùi > 1 ngày so với lần thấy cuối; 'han' = quá han ngày chưa kiểm được máy chủ */
 function khoaVi(nay,ok,thay,han){if(thay&&nay<thay-864e5)return 'lui';if(ok&&nay-ok>han*864e5)return 'han';return ''}
+/* cột NGOÀI ĐOẠN CÁP (23/11 Đông Quang T1: cột 1 không nằm trên cáp mà DXF không cho biết → AI vẽ nối nhầm cột 1 vào tuyến).
+   Nhận từ ghi chú cột (bỏ dấu, chữ thường, xét từng mục cách nhau «;»):
+   • «ngoài cáp» · «ngoài đoạn / tuyến / phạm vi cáp» · «không có / đi / kéo / dùng cáp» → CHÍNH cột đó nằm ngoài cáp;
+   • «cáp … dừng / hết» · «dừng / hết … cáp» → cáp kết thúc Ở cột đó (cột đó vẫn trên cáp): bỏ cột đó ra khỏi dây, phía có ÍT cột hơn = ngoài cáp
+     (phía nhiều cột hơn là phía cáp đến). Hai phía bằng nhau thì KHÔNG đoán: trả vào mo[] để app báo Truong ghi «ngoài cáp» đúng cột cần bỏ.
+   poles: [{id, code}]; edges: [[idA, idB]]. Trả {ngoai: [id…] theo thứ tự poles, mo: [id cột «cáp dừng» chưa phân được]}. */
+function capNgoai(poles,edges){
+  const bd=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d');
+  const NG=/ngoai\s*(doan\s*|tuyen\s*|pham vi\s*)?cap|khong\s*(co|di|keo|dung)\s*cap/,DUNG=/\bcap\b[^;]*\b(dung|het)\b|\b(dung|het)\b[^;]*\bcap\b/;
+  const ids=new Set(poles.map(p=>p.id)),adj=new Map(poles.map(p=>[p.id,[]]));
+  for(const [a,b] of edges||[])if(ids.has(a)&&ids.has(b)&&a!==b){adj.get(a).push(b);adj.get(b).push(a)}
+  const ngoai=new Set(),mo=[];
+  for(const p of poles){const T=String(p.code||'').split(/[;\n]/).map(bd);
+    if(T.some(t=>NG.test(t))){ngoai.add(p.id);continue}
+    if(!T.some(t=>DUNG.test(t)))continue;
+    const seen=new Set([p.id]),comps=[];   /* các phía của cột dừng = các thành phần liên thông của dây khi bỏ cột này */
+    for(const s of adj.get(p.id)){if(seen.has(s))continue;const c=[],st=[s];seen.add(s);
+      while(st.length){const u=st.pop();c.push(u);for(const v of adj.get(u))if(!seen.has(v)){seen.add(v);st.push(v)}}
+      comps.push(c)}
+    if(comps.length<2)continue;
+    const mx=Math.max(...comps.map(c=>c.length));
+    if(comps.filter(c=>c.length===mx).length>1){mo.push(p.id);continue}
+    for(const c of comps)if(c.length<mx)for(const u of c)ngoai.add(u)}
+  return {ngoai:poles.map(p=>p.id).filter(id=>ngoai.has(id)),mo}
+}
 /* === HẾT HÀM THUẦN === */
 /* 📖 nâng cấp một lần lúc mở app: cụm dạy bản cũ «cuộc» → «ghi chú cột» thành thay chữ (giongSuaCu) — lưu ở lần lưu sau */
 {const L=giongSuaCu(DB.giongTu);if(L!==DB.giongTu)DB.giongTu=L}
@@ -3028,7 +3053,9 @@ function buildDxf(that){
   /* 22/11 đồng bộ LispcadZP: layer / block theo thư viện ZP (ChuanBanVe\ThuVien_Layer_KyHieu.dwg) → mở DXF là KEDUONGDAY / XUATDUONGDAY /
      DOITRANGTHAI chạy được; bản vẽ đã có block thư viện cùng tên thì AutoCAD dùng ký hiệu thư viện. Vẫn giữ POINT KS_DIEM + chữ số cột KS_CHU (VVETUYENTUCOT) */
   const zc=zpCot(),zd=zpDay(),LZ=[...new Set([...D.poles.map(p=>zc[p.id].ly),...zd.map(d=>d.ly)])].map(n=>[n,/Thu_hoi/.test(n)?8:/_22_/.test(n)?1:/_CS_/.test(n)?3:/DZ/.test(n)?5:7]);
+  const NGC=new Set(cotNgoaiCap().ngoai);   /* cột ngoài đoạn cáp → thêm POINT + chữ layer KS_NGOAI_CAP (xem capNgoai) */
   const LY=[['KS_DIEM',7],...LZ,['0_ZP_TEN_COT',7],['KS_CHU',7],['KS_KHOANG',3],['KS_DUONG',8],['KS_MOC',6]].concat(that?[['KS_COT_KHONG_GPS',30],['KS_MOC_HIEU_CHINH',6]]:[])
+    .concat(NGC.size?[['KS_NGOAI_CAP',1]]:[])
     .concat(dsDen.length?[...Object.values(DL),['KS_DEN_HONG',1],['KS_DEN_THONG_KE',7]]:[]);
   a(0,'TABLE',2,'LAYER',70,LY.length);for(const [n,c] of LY)a(0,'LAYER',2,n,70,0,62,c,6,'CONTINUOUS');a(0,'ENDTAB');
   a(0,'TABLE',2,'STYLE',70,1,0,'STYLE',2,'KS',70,0,40,'0.0',41,'1.0',50,'0.0',71,0,42,'1.0',3,'arial.ttf',4,'',0,'ENDTAB');
@@ -3073,6 +3100,8 @@ function buildDxf(that){
     const LC=that&&p.lat==null&&!p.nan?'KS_COT_KHONG_GPS':'';   /* cột vẽ tay không GPS: vòng + ghi chú layer riêng màu cam để kiểm lại */
     const z=zc[p.id];let w=p.shape==='tba'?R*1.5:doi?R*2:R;ins(z.bl,x,y,z.ly);if(LC)circ(x,y,w+0.8,LC);
     if(p.shape!=='tba')a(0,'POINT',8,'KS_DIEM',10,f(x),20,f(y),30,'0.0');   /* POINT tâm cột: VVETUYENTUCOT chỉ lấy POINT (không nhầm mốc / TBA làm cột), tên = số cột gần nhất */
+    if(NGC.has(p.id))a(0,'POINT',8,'KS_NGOAI_CAP',10,f(x),20,f(y),30,'0.0'),txt(x+w+0.4,y+(LC?4.2:2.6),'1.2','NGOAI_CAP '+(r.so||'?'),'KS_NGOAI_CAP');
+    /* ^ cột ngoài đoạn cáp: POINT KS_NGOAI_CAP cùng toạ độ POINT KS_DIEM (lệch 0) + chữ «NGOAI_CAP <số cột>»; bên đọc DXF bỏ cột có POINT này trong ~0,05 m khỏi tuyến cáp. Block ZP + KS_DIEM giữ nguyên */
     txt(x+w+0.4,y+0.9,'1.5',r.so||(p.shape==='tba'?'TBA':'?'),'KS_CHU');
     if(r.so&&p.shape!=='tba')txt(x+w+0.4,y+0.9,'1.5',r.so,'0_ZP_TEN_COT');   /* trùng chỗ chữ KS_CHU: XUATDUONGDAY lấy tên cột trên TEN_COT (VVETUYENTUCOT bỏ layer này nên vẫn đọc chữ KS_CHU) */
     if(LC)txt(x+w+0.4,y+2.6,'1.0','(cột không có GPS - vị trí phác)',LC);
@@ -3115,13 +3144,20 @@ function zpDay(){const lop=e=>{const A=byId(e[0]),B=byId(e[1]);if(!A||!B)return 
   for(const x of E)if(!x.xong){const dau=x.e.find(id=>bac(id,x.ly)!==2);if(dau)out.push(di(x,dau))}
   for(const x of E)if(!x.xong)out.push(di(x,x.e[0]));   /* vòng kín còn lại */
   return out}
+/* cột ngoài đoạn cáp (bỏ TBA: không có POINT KS_DIEM) — xem capNgoai */
+function cotNgoaiCap(){const r=capNgoai(D.poles.map(p=>({id:p.id,code:p.code})),D.edges),tba=new Set(D.poles.filter(p=>p.shape==='tba').map(p=>p.id));
+  return {ngoai:r.ngoai.filter(id=>!tba.has(id)),mo:r.mo.filter(id=>!tba.has(id))}}
 function xuatDxf(that){
+  const tin=[],nc=cotNgoaiCap(),so=id=>parse(byId(id).code).so||'?';   /* tin báo lần lượt sau khi xuất */
   if(that){const n=D.poles.filter(p=>p.lat!=null).length,k=D.poles.length-n;
     if(!n||!D.geo){toast('Chưa có cột nào lấy GPS — không xuất được toạ độ thật VN-2000');return}
     giao(new Blob([buildDxf(true)],{type:'application/dxf'}),fname('_VN2000.dxf'));
-    if(k)setTimeout(()=>toast(`${k} cột không có GPS — giữ vị trí phác, layer KS_COT_KHONG_GPS, cần kiểm lại`),3300);return}
-  giao(new Blob([buildDxf()],{type:'application/dxf'}),fname('_SoDoPhac.dxf'));
-  if(D.geo&&D.poles.some(p=>p.lat!=null))setTimeout(()=>toast('⚑ Đây là SƠ ĐỒ PHÁC — toạ độ tự do, mở chồng bản đồ CAD sẽ lệch. Cần khớp bản đồ: chọn «toạ độ thật VN-2000»'),3300)}
+    if(k)tin.push(`${k} cột không có GPS — giữ vị trí phác, layer KS_COT_KHONG_GPS, cần kiểm lại`)}
+  else{giao(new Blob([buildDxf()],{type:'application/dxf'}),fname('_SoDoPhac.dxf'));
+    if(D.geo&&D.poles.some(p=>p.lat!=null))tin.push('⚑ Đây là SƠ ĐỒ PHÁC — toạ độ tự do, mở chồng bản đồ CAD sẽ lệch. Cần khớp bản đồ: chọn «toạ độ thật VN-2000»')}
+  if(nc.ngoai.length)tin.push(`⚑ Cột ${nc.ngoai.map(so).join(', ')} ngoài đoạn cáp — DXF ghi layer KS_NGOAI_CAP để bỏ khỏi tuyến. Sai thì sửa ghi chú cột («ngoài cáp», «cáp dừng»)`);
+  if(nc.mo.length)tin.push(`⚑ Cột ${nc.mo.map(so).join(', ')} ghi «cáp dừng» nhưng hai phía bằng nhau — chưa đánh dấu; ghi «ngoài cáp» vào đúng cột cần bỏ`);
+  tin.forEach((m,i)=>setTimeout(()=>toast(m),3300+i*3400))}
 function xuatJson(){
   const tb=hcTB(),poles=D.poles.map(p=>{const v=vnOf(p,tb);if(!v)return p;const o={...p,X_VN2000:v.x,Y_VN2000:v.y};
     if(v.goc){o.X_VN2000_goc=+v.goc.x.toFixed(3);o.Y_VN2000_goc=+v.goc.y.toFixed(3);o.hieuChinhTheoMoc=v.h?v.h.ten:'không';o.chatLuongGPS=gpsMau(p.acc)}return o});

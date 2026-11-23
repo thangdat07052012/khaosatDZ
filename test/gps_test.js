@@ -480,4 +480,65 @@ console.log('17. Bản vẽ CAD phủ lên: VN-2000 → WGS-84, đọc DXF');
   ok(!/nenCv\.style\.opacity=String\(DB\.nenMo/.test(html),'độ đậm ảnh nền dùng globalAlpha (không làm mờ nét CAD)');
   ok(/indexedDB\.open\('kstuyen_cad',1\)/.test(html)&&!/localStorage\.setItem\([^)]*cad/i.test(html),'nét CAD lưu IndexedDB, không vào localStorage');
 }
+console.log('18. (23/11) Cột ngoài đoạn cáp (capNgoai) + DXF: block ZP trùng POINT KS_DIEM, layer KS_NGOAI_CAP (khảo sát Đông Quang T1, lỗi #8)');
+{let C=null;try{C=new Function(html.slice(a,b)+';return {capNgoai}')().capNgoai}catch(e){}
+ ok(typeof C==='function','capNgoai có trong khối hàm thuần (test chạy được không cần trang)');
+ ok(/function cotNgoaiCap\(\)/.test(html)&&/a\(0,'POINT',8,'KS_NGOAI_CAP',10,f\(x\),20,f\(y\)/.test(html)&&/\['KS_NGOAI_CAP',1\]/.test(html)&&/if\(p\.shape!=='tba'\)a\(0,'POINT',8,'KS_DIEM'/.test(html),
+    'buildDxf: layer KS_NGOAI_CAP khai báo khi có cột ngoài cáp, POINT cùng toạ độ KS_DIEM, vẫn giữ POINT KS_DIEM (L-CAD-023)');
+ if(C){
+  const day=(n,ghi)=>{const P=[],E=[];for(let i=1;i<=n;i++){P.push({id:String(i),code:i+';'+((ghi||{})[i]||'')});if(i>1)E.push([String(i-1),String(i)])}return {P,E}};
+  const kq=(n,ghi)=>{const d=day(n,ghi),r=C(d.P,d.E);return r.ngoai.join(',')+'|'+r.mo.join(',')};
+  ok(kq(5,{2:'Đèn sợi đốt;cáp đến đây là dừng;'})==='1|','Đông Quang T1: cột 2 ghi «cáp đến đây là dừng» → cột 1 (phía ít cột) ngoài cáp, phía 3–5 là phía cáp đến');
+  ok(kq(5,{3:'ngoài cáp;'})==='3|','«ngoài cáp» ghi ở cột nào thì chỉ cột đó ngoài cáp');
+  ok(kq(5,{4:'Không dùng cáp'})==='4|'&&kq(5,{4:'KHÔNG CÓ CÁP'})==='4|'&&kq(5,{4:'ngoài đoạn cáp'})==='4|','«không dùng / có cáp», «ngoài đoạn cáp», chữ HOA có dấu');
+  ok(kq(3,{2:'cáp dừng'})==='|2','«cáp dừng» mà hai phía bằng nhau (1 | 1) → KHÔNG đoán: không đánh dấu, báo vào mo');
+  ok(kq(5,{5:'cáp dừng'})==='|'&&kq(5,{1:'hết cáp'})==='|','«cáp dừng» ở cột đầu / cuối chuỗi (chỉ một phía) → không cột nào ngoài cáp');
+  ok(kq(5,{2:'dừng cáp'})==='1|'&&kq(5,{2:'cáp hết'})==='1|','đảo chữ: «dừng cáp», «cáp hết»');
+  ok(kq(37,{2:'cáp dừng',36:'cáp dừng'})==='1,37|','hai cột «cáp dừng» ở hai đầu (2 và 36) → cột 1 và cột 37 ngoài cáp');
+  ok(kq(5,{2:'Đèn hỏng hết',3:'dừng xe'})==='|'&&kq(5,{2:'Cáp ABC4x95; hết'})==='|','«hết» / «dừng» không đi cùng «cáp» trong một mục thì không phải cáp dừng');
+  ok(kq(5,{})==='|','không ghi chú → không có cột ngoài cáp (DXF giữ nguyên như bản trước)');
+  {const P=['1','2','3','4','5','6','7','8','9'].map(id=>({id,code:id+';'+(id==='1'?'cáp dừng;':'')})),E=[['1','2'],['2','3'],['3','4'],['1','5'],['5','6'],['1','7']],r=C(P,E);
+   ok(r.ngoai.join()==='5,6,7'&&!r.mo.length,'cột dừng có 3 nhánh (3 | 2 | 1 cột): nhánh nhiều cột nhất là phía cáp, hai nhánh ít hơn ngoài cáp, cột rời không dính')}
+  {const P=['1','2','3','4'].map(id=>({id,code:id+';'+(id==='1'?'cáp dừng;':'')})),r=C(P,[['1','2'],['2','3'],['3','1'],['3','4']]);
+   ok(!r.ngoai.length&&!r.mo.length,'cột «cáp dừng» nằm trong vòng kín → các phía vẫn nối nhau, không cột nào ngoài cáp')}
+ }
+ /* DXF thật (buildDxf cần cả trang: D, VN, parse…): chỉ chạy được trong trang — máy không có Node thì dùng test/chay_trinh_duyet.js */
+ if(typeof buildDxf==='function'&&typeof D!=='undefined'){
+  const docDxf=s=>{const t=s.split(/\r?\n/),E=[];let sec='',cur=null;
+    for(let i=0;i+1<t.length;i+=2){const c=t[i].trim(),v=t[i+1];
+      if(c==='0'){cur=null;if(v==='SECTION')sec='?';else if(v==='ENDSEC')sec='';else if(sec==='ENTITIES'){cur={k:v,g:{}};E.push(cur)}continue}
+      if(c==='2'&&sec==='?'){sec=v;continue}
+      if(cur&&!(c in cur.g))cur.g[c]=v}
+    return E.map(e=>({k:e.k,ly:e.g['8'],n:e.g['2'],x:+e.g['10'],y:+e.g['20'],s:e.g['1']}))};
+  const dm=(p,q)=>Math.hypot(p.x-q.x,p.y-q.y),D0=D;
+  try{
+   const lat1=19.8,lon1=105.7,t0=1.8e12,kx=111320*Math.cos(lat1*Math.PI/180);
+   const gps=(id,lat,lon,code,from,dt)=>({id,x:(lon-lon1)*kx,y:-(lat-lat1)*110574,shape:'cs',doi:false,code,from,t:t0+dt,lat,lon,acc:3,gt:t0+dt});
+   const tay=(id,x,y,code,from,dt)=>({id,x,y,shape:'cs',doi:false,code,from,t:t0+dt});
+   /* cột 1 có GPS + một MỐC hiệu chỉnh ~27 m cạnh nó (như mốc KS4II-17 cạnh cột 1); cột 2, 4 vẽ tay không GPS; cột 3 có GPS; cột 2 ghi «cáp đến đây là dừng» */
+   const moc={id:'m1',ten:'KS4II-17',t:t0+12e4,lat:19.7998,lon:105.70015,acc:2,n:10,dX:2.4,dY:-1.6,kt:105};
+   D={id:'thu',ten:'Thử cột ngoài cáp',ngay:'',roads:[],mocs:[],mocDo:[moc],geo:{lat0:lat1,lon0:lon1,x0:0,y0:0},active:null,view:null,capNhat:0,
+      poles:[gps('1',lat1,lon1,'1;Đèn LED 60W;',null,0),tay('2',11.3,-21.9,'2;Đèn sợi đốt;cáp đến đây là dừng;','1',6e4),gps('3',19.8004,105.7001,'3;Đèn sợi đốt;','2',18e4),tay('4',20,-80,'4;Đèn sợi đốt;','3',24e4)],
+      edges:[['1','2'],['2','3'],['3','4']]};
+   const dxf=buildDxf(true),E=docDxf(dxf);
+   const ins=E.filter(e=>e.k==='INSERT'&&/^ZP_COT/.test(e.n)),pt=E.filter(e=>e.k==='POINT'&&e.ly==='KS_DIEM');
+   ok(ins.length===4&&pt.length===4,`DXF: 4 block ZP_COT_* + 4 POINT KS_DIEM, mỗi cột một cái (${ins.length} / ${pt.length})`);
+   ok(ins.every(i=>pt.some(q=>dm(i,q)<0.0005)),'MỖI block ZP nằm đúng toạ độ POINT KS_DIEM của cột (lệch 0 m) — cả cột GPS có mốc hiệu chỉnh lẫn cột vẽ tay');
+   const r1=T.VN.tu84(lat1,lon1,105),x1=r1[1]+moc.dY,y1=r1[0]+moc.dX,rm=T.VN.tu84(moc.lat,moc.lon,105),M={x:rm[1]+moc.dY,y:rm[0]+moc.dX};
+   const b1=ins.find(i=>dm(i,{x:x1,y:y1})<0.01);
+   ok(!!b1&&pt.some(q=>dm(q,{x:x1,y:y1})<0.01),'cột 1: block ZP và POINT ở GPS + hiệu chỉnh mốc');
+   ok(!!b1&&dm(b1,M)>15,`cột 1: block ZP không bị kéo về toạ độ mốc (cách mốc ${b1?dm(b1,M).toFixed(1):'?'} m, mốc KS_MOC_HIEU_CHINH vẫn ở chỗ mốc)`);
+   const ten1=E.find(e=>e.k==='TEXT'&&e.ly==='0_ZP_TEN_COT'&&e.s==='1');
+   ok(!!ten1&&!!b1&&dm(ten1,b1)<3,'tên cột 1 (0_ZP_TEN_COT) nằm cạnh block ZP của chính cột 1 (≤ 3 m)');
+   const nc=E.filter(e=>e.k==='POINT'&&e.ly==='KS_NGOAI_CAP'),nt=E.filter(e=>e.k==='TEXT'&&e.ly==='KS_NGOAI_CAP');
+   ok(nc.length===1&&dm(nc[0],{x:x1,y:y1})<0.0005&&pt.some(q=>dm(q,nc[0])<0.0005),`cột 1 ngoài cáp: đúng MỘT POINT KS_NGOAI_CAP, trùng POINT KS_DIEM của cột 1 (${nc.length} điểm)`);
+   ok(nt.length===1&&nt[0].s==='NGOAI_CAP 1'&&dm(nt[0],nc[0]||{x:0,y:0})<6,'chữ «NGOAI_CAP 1» (layer KS_NGOAI_CAP) cạnh POINT');
+   ok(/\r\n0\r\nLAYER\r\n2\r\nKS_NGOAI_CAP\r\n/.test(dxf),'layer KS_NGOAI_CAP có trong bảng layer');
+   D.poles[1].code='2;Đèn sợi đốt;';const dxf2=buildDxf(true),E2=docDxf(dxf2);
+   ok(!/KS_NGOAI_CAP/.test(dxf2)&&E2.filter(e=>e.k==='POINT'&&e.ly==='KS_DIEM').length===4,'không cột nào ngoài cáp → DXF không có KS_NGOAI_CAP, vẫn đủ 4 POINT KS_DIEM (file như bản trước)');
+   D.poles[3].code='4;Đèn sợi đốt;ngoài cáp;';const E3=docDxf(buildDxf(false)),n3=E3.filter(e=>e.k==='POINT'&&e.ly==='KS_NGOAI_CAP');
+   ok(n3.length===1&&dm(n3[0],{x:20,y:80})<0.0005&&E3.some(e=>e.k==='POINT'&&e.ly==='KS_DIEM'&&dm(e,n3[0])<0.0005),'bản «sơ đồ phác»: cột 4 ghi «ngoài cáp» → POINT KS_NGOAI_CAP trùng POINT KS_DIEM của cột 4');
+  }finally{D=D0}
+ }else console.log('   bỏ qua: phần DXF thật cần chạy trong trang (buildDxf, D) — Node không có trang; chạy bằng test/chay_trinh_duyet.js')
+}
 console.log(`\n${nOk} đạt, ${nSai} sai`);process.exit(nSai?1:0);
