@@ -184,6 +184,8 @@ button{font:inherit;color:inherit;cursor:pointer}
 #mapctl.trai{right:auto;left:6px}
 #nhanh .nhv{display:block;height:3px}#nhanh .dm{font-size:9px;letter-spacing:-.3px}#nhanh .dm small{color:var(--hi)}#nhanh .dm.on small{color:inherit}
 #nhanh .lo{font-size:11px}
+#nhanh .moc{font-size:13px;color:var(--moc)}#nhanh .moc.on{background:var(--moc);color:#fff;border-color:var(--moc)}
+.mtw{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px}
 #nhanh .mic.on{background:#E0412F;color:#fff;border-color:#E0412F;animation:nhm 1.2s infinite}
 @keyframes nhm{50%{box-shadow:0 0 0 7px rgba(224,65,47,.28)}}
 .btn.armed{background:var(--warn);color:#fff;border-color:var(--warn)}
@@ -595,6 +597,7 @@ function nextPos(p){
 /* ================= vẽ ================= */
 const cv=$('#cv'), stage=$('#stage'), nenCv=$('#nen'), nenCx=nenCv.getContext('2d',{alpha:true}), nenAttr=$('#nenattr');
 let DPR=window.devicePixelRatio||1;
+let mocNhanh=null,mocCho2=null;  /* bản 50: ⚑ Mốc thanh phải (công cụ trước khi bấm ⚑ · chỗ chờ đặt tên) */
 let W=0,H=0,V=D.view||null,tool='cot',noiA=null,editId=null,denId=null,selRoad=null,roadStart=null,fix=null,watchId=null,tmpRoad=null;
 function sizeUp(){const r=stage.getBoundingClientRect();W=r.width;H=r.height;cv.setAttribute('viewBox',`0 0 ${W} ${H}`);
   DPR=window.devicePixelRatio||1;const cw=Math.max(1,Math.round(W*DPR)),ch=Math.max(1,Math.round(H*DPR));
@@ -772,7 +775,7 @@ function status(){
   const a=activeP(),ed=editId&&byId(editId);let h='';
   if(tool==='noi')h=`<span class="pill solo">${noiA?'Chạm cột thứ hai để nối / bỏ nối':'Nối dây: chạm cột thứ nhất'}</span>`;
   else if(tool==='chon')h=`<span class="pill solo">Kéo cột, mốc để dời · chạm cột để sửa</span>`;
-  else if(tool==='moc')h=`<span class="pill solo">Chạm để đặt mốc · chạm mốc để đổi tên / xoá</span>`;
+  else if(tool==='moc')h=mocNhanh?`<span class="pill">⚑ Chạm chỗ đặt mốc<button data-st="mx">Thôi</button></span>`:`<span class="pill solo">Chạm để đặt mốc · chạm mốc để đổi tên / xoá</span>`;
   else if(tool==='duong')h=roadStart?`<span class="pill">Chạm điểm cuối của đường<button data-st="rx">Huỷ</button></span>`
       :selRoad?`<span class="pill solo">Kéo chấm vàng để sửa · chạm chỗ trống để bỏ chọn</span>`
       :`<span class="pill solo">Chạm điểm đầu rồi điểm cuối · chạm vào đường để sửa</span>`;
@@ -1178,8 +1181,7 @@ function onTap(pt,h){
   if(tool==='moc'){
     if(h&&h.ten!==undefined){const t=prompt('Tên mốc (xoá hết chữ để bỏ mốc)',h.ten);if(t===null)return;snap();
       if(t.trim())h.ten=t.trim();else D.mocs=D.mocs.filter(m=>m!==h);save();draw();return}
-    const [x,y]=toW(pt);const t=prompt('Tên mốc (vd: Ngã tư chợ, Cổng UBND)','');if(t===null)return;
-    snap();D.mocs.push({id:uid(),x,y,ten:t.trim()||'Mốc'});save();draw();return;
+    const [x,y]=toW(pt);mocTen(x,y);return;
   }
   if((!h||h.ten===undefined)&&(tool==='cot'||tool==='chon')){const sp=hitSpan(pt,h);if(sp){nhapKcThat(sp);return}}
   if(h&&h.ten===undefined){if(h.id!==editId)dropAuto();const q=byId(h.id);if(q&&DB.che!=='cs'){moCot(q);return}D.active=h.id;save();openSheet(q||h);return}
@@ -1307,13 +1309,32 @@ function veNhanh(){const kb=cotBut(),kd=khongDay();
   const mic=`<button type="button" class="mic${giongNghe?' on':''}" data-nh="mic" aria-label="Nói để điền — im 3 giây là tự điền">🎤</button>`;
   const doan=`<button type="button" data-nh="doan" aria-label="Đoạn mới (tủ / tuyến khác): cột tiếp theo đánh số lại từ đầu, không nối dây">✂<small>Đoạn mới</small></button>`;
   const day=`<button type="button" data-nh="day" class="phu day${kd?' tat':''}" aria-label="${kd?'Đang không vẽ dây — chạm để vẽ dây':'Đang vẽ dây nối cột — chạm để tắt'}">${kd?'⌀':'〰'}<small>${kd?'Không dây':'Có dây'}</small></button>`;
+  const moc=`<button type="button" data-nh="moc" class="phu moc${mocNhanh?' on':''}" aria-label="Thêm mốc lưu ý: bấm rồi chạm chỗ trên bản đồ, chọn tên">⚑<small>Mốc</small></button>`;
   let h;
-  if(DB.che==='cs')h=mic+doan+`<button type="button" data-nh="lomoi" class="phu lo" aria-label="Lộ mới: cùng tủ, lộ khác — đèn tiếp theo số lộ mới, không nối dây">L+1<small>Lộ mới</small></button>`+day;
+  if(DB.che==='cs')h=mic+doan+`<button type="button" data-nh="lomoi" class="phu lo" aria-label="Lộ mới: cùng tủ, lộ khác — đèn tiếp theo số lộ mới, không nối dây">L+1<small>Lộ mới</small></button>`+day+moc;
   else{const cot=nhanhCua().cot.slice(0,4).map(v=>`<button type="button" data-nh="cot" data-v="${esc(v)}" class="${v===kb?'on':''}" aria-label="Chọn sẵn cột ${esc(v)}: chạm chỗ trống là thêm cột loại này">${esc(v)}<small>cột</small></button>`).join('');
     const db=dayBut(),dm=nhanhCua().day.slice(0,4).map(v=>`<button type="button" data-nh="dayma" data-v="${esc(v)}" class="dm${v===db?' on':''}" aria-label="Chọn sẵn dây ${esc(v)}: cột chấm tiếp mang dây này">${esc(v.replace(/^ABC/i,''))}<small>${/^ABC/i.test(v)?'ABC':'dây'}</small></button>`).join('');
     const hinh=HINH_NH.map(([v,i,t])=>`<button type="button" data-nh="hinh" data-v="${v}" class="phu hinh" aria-label="${t} cho cột đang chọn">${i}<small>${t.replace('Cột đ','Đ')}</small></button>`).join('');
-    h=`<div class="nh2"><div class="nhc">${cot}<i class="nhv"></i>${dm}</div><div class="nhc">${mic+doan+day}<i class="nhv"></i>${hinh}</div></div>`}
+    h=`<div class="nh2"><div class="nhc">${cot}<i class="nhv"></i>${dm}</div><div class="nhc">${mic+doan+day+moc}<i class="nhv"></i>${hinh}</div></div>`}
   $('#nhanh').innerHTML=h;nhanhNe()}
+/* bản 50 (Truong 24/11): ⚑ Mốc ở thanh phải cả ba phần — bấm rồi chạm bản đồ, chọn tên nhanh; đặt xong về công cụ đang dùng */
+const MOC_SAN=['Cổng UBND','Chợ','Trường học','Nhà văn hoá','Trạm y tế','Đình / chùa','Ngã ba','Ngã tư','Cầu','Cống','Trạm biến áp','Cây to'];
+function nutCongCu(){for(const x of document.querySelectorAll('[data-tool]'))x.classList.toggle('on',tool==='den'?x.dataset.den===(DB.denBut||'L100'):x.dataset.tool===tool)}
+function mocNut(){if(mocNhanh){mocVe();toast('Thôi đặt mốc');return}
+  finishSheet();dongDen();closeRoad();mocNhanh=tool;tool='moc';noiA=null;roadStart=null;nutCongCu();veNhanh();draw();toast('Chạm chỗ trên bản đồ để đặt mốc')}
+function mocVe(){if(!mocNhanh)return;tool=mocNhanh;mocNhanh=null;nutCongCu();veNhanh();draw()}
+function mocTen(x,y){mocCho2={x,y};const gan=(DB.mocGan||[]).slice(0,6),san=MOC_SAN.filter(t=>!gan.includes(t));
+  const nut=t=>`<button class="btn sm" data-a="mt-chon" data-t="${esc(t)}">${esc(t)}</button>`;
+  panel.innerHTML=`<div class="pin">
+    <div class="row" style="align-items:center"><h2 style="flex:1 1 auto">Tên mốc</h2><button class="btn" data-a="mt-huy" style="flex:0 0 auto">Bỏ</button></div>
+    ${gan.length?`<p class="note">Vừa dùng</p><div class="mtw">${gan.map(nut).join('')}</div>`:''}
+    <p class="note">Hay gặp</p><div class="mtw">${san.map(nut).join('')}</div>
+    <div class="row"><input id="mt-ten" class="rin" placeholder="Tên khác, vd: Cổng chợ Bến" autocomplete="off" enterkeyhint="done"><button class="btn pri" data-a="mt-dat" style="flex:0 0 auto">Đặt</button></div>
+  </div>`;panel.hidden=false}
+function mocDat(ten){const c=mocCho2;if(!c)return;mocCho2=null;ten=(ten||'').trim()||'M'+(D.mocs.length+1);
+  snap();D.mocs.push({id:uid(),x:c.x,y:c.y,ten});DB.mocGan=[ten,...(DB.mocGan||[]).filter(t=>t!==ten)].slice(0,6);
+  closePanel();save();mocVe();draw();toast('Đã đặt mốc '+ten+' · chạm mốc để đổi tên / xoá')}
+function mocHuy(){mocCho2=null;closePanel();mocVe()}
 /* thanh nút vẫn chạm cụm Ảnh / CAD / Xem hết (máy thấp, xoay ngang) → cụm đó sang trái */
 function nhanhNe(){const a=$('#nhanh'),b=$('#mapctl');if(!a||!b)return;b.classList.remove('trai');
   const r=a.getBoundingClientRect(),q=b.getBoundingClientRect();if(r.height&&q.height&&r.bottom+6>q.top)b.classList.add('trai')}
@@ -1336,6 +1357,7 @@ function micNhanh(){if(editId&&!sheet.hidden){$('#sh-mic').click();return}
   dongDen();D.active=p.id;save();openSheet(p);$('#sh-mic').click()}
 $('#nhanh').addEventListener('click',e=>{const b=e.target.closest('[data-nh]');if(!b)return;const k=b.dataset.nh;
   if(k==='mic'){micNhanh();return}
+  if(k==='moc'){mocNut();return}
   if(k==='doan'){finishSheet();dongDen();D.active=null;D.doanMoi=1;save();draw();toast(doanBao());return}
   if(k==='lomoi'){finishSheet();dongDen();D.active=null;D.doanMoi='lo';save();draw();toast(doanBao('lo'));return}
   if(k==='dayma'){const B=DB.dayBut||(DB.dayBut={}),v=b.dataset.v;B[DB.che]=B[DB.che]===v?'':v;saveNow();
@@ -1869,13 +1891,13 @@ function showTable(){
 
 /* ================= công cụ ================= */
 for(const b of document.querySelectorAll('[data-tool]'))b.addEventListener('click',()=>{
-  tool=b.dataset.tool;dongDen();if(b.dataset.den){DB.denBut=b.dataset.den;saveNow()}noiA=null;roadStart=null;closeRoad();
+  if(mocNhanh){mocNhanh=null;veNhanh()}tool=b.dataset.tool;dongDen();if(b.dataset.den){DB.denBut=b.dataset.den;saveNow()}noiA=null;roadStart=null;closeRoad();
   for(const x of document.querySelectorAll('[data-tool]'))x.classList.toggle('on',x===b);
   if(tool!=='cot')finishSheet();draw()});
 /* phần khảo sát: Chiếu sáng (thanh nút đèn) · Hạ áp (như cũ) · Trung thế (như Hạ áp, danh sách cột / dây trung thế) */
 function datChe(c,dau){const cu=DB.che;DB.che=c;dongDen();const nv=$('nav.tools');nv.classList.toggle('che-cs',c==='cs');
   for(const b of nv.querySelectorAll('[data-che]'))b.classList.toggle('on',b.dataset.che===c);
-  tool=c==='cs'?'den':'cot';noiA=null;roadStart=null;
+  tool=c==='cs'?'den':'cot';noiA=null;roadStart=null;mocNhanh=null;
   for(const x of nv.querySelectorAll('[data-tool]'))x.classList.toggle('on',tool==='den'?x.dataset.den===(DB.denBut||'L100'):x.dataset.tool==='cot');
   veNhanh();if(dau)return;closeRoad();finishSheet();
   /* bản 49 (Anti THU 24/11, lỗi CHẶN): sang Hạ áp ↔ Trung thế thì cột tiếp KHÔNG nối dây từ cột phần kia (trước nối luôn, chép cả dây AC70) */
@@ -1887,6 +1909,7 @@ $('#status').addEventListener('click',e=>{
   const s=e.target.dataset&&e.target.dataset.st;if(!s)return;const r=selRoad&&D.roads.find(x=>x.id===selRoad);
   if(s==='new'){finishSheet();D.active=null;D.doanMoi=1;save();draw();toast(doanBao())}
   else if(s==='rx'){roadStart=null;draw()}
+  else if(s==='mx'){mocVe();toast('Thôi đặt mốc')}
   else if(s==='gstop'){if(gpsM&&gpsM.ds.length)gpsXong();else{gpsDung();toast('Đã huỷ đo GPS')}}
   else if(s==='ndx'){nenDoi=false;save();status();const l=nenLech();toast(l[0]||l[1]?'Đã lưu độ dời ảnh nền cho bản vẽ này':'Ảnh nền giữ nguyên chỗ')}
   else if(s==='cdx'){cadDoi=null;save();status();toast('Đã lưu chỗ đặt bản vẽ CAD')}
@@ -2410,7 +2433,7 @@ function giongGop(list,them,ghiDe){
 /* 🎤 KHẨU LỆNH ở CUỐI câu nói (07/11): «điền» · «tiếp» (= Tiếp ▸) · «dừng» (= Dừng) · «đoạn mới» · «nói lại» / «xoá câu»
    → {lenh:'dien'|'tiep'|'dung'|'doan'|'xoa'|null, con: phần câu trước lệnh}. Chỉ nhận ở CUỐI câu, có chốt chặn:
    «tiếp địa», «nối tiếp», «trạm dừng», «xã Quảng Điền» không thành lệnh */
-const BAN_APP='kstuyen-49';
+const BAN_APP='kstuyen-50';
 /* 🎤 chờ bao lâu (ms) rồi mới làm khẩu lệnh cuối câu (07/11 rút ngắn ⚑): máy đã chốt câu → làm gần như ngay;
    còn chữ tạm → chờ ngắn xem có nói tiếp không («tiếp», «dừng» chờ lâu hơn chút vì hay đi tiếp chữ, vd «tiếp địa»);
    gõ tay / 🎤 bàn phím chờ lâu nhất; lai = nghỉ trước khi mở phiên nghe mới */
@@ -3342,6 +3365,9 @@ panel.addEventListener('click',e=>{
   else if(a==='mf-huy'){mocCho=null;closePanel();toast('Không lưu mốc')}
   else if(a==='mf-lai'){mocCho=null;closePanel();gpsBatDau('moc')}
   else if(a==='mf-luu')luuMoc();
+  else if(a==='mt-chon')mocDat(b.dataset.t);
+  else if(a==='mt-dat')mocDat($('#mt-ten').value);
+  else if(a==='mt-huy')mocHuy();
   else if(a==='nen-bang')showNen('nen');
   else if(a==='cad-bang')showNen('cad');
   else if(a==='nen-bat'){nenBat(!DB.nen);showNen()}
@@ -3373,6 +3399,7 @@ panel.addEventListener('click',e=>{
 });
 panel.addEventListener('input',e=>{if(e.target.id==='gt-la')giongThu()});
 panel.addEventListener('keydown',e=>{if(e.key!=='Enter')return;
+  if(e.target.id==='mt-ten'){e.preventDefault();mocDat(e.target.value);return}
   if(e.target.id==='gt-noi'){e.preventDefault();$('#gt-la').focus()}else if(e.target.id==='gt-la'){e.preventDefault();panel.querySelector('[data-a="gt-luu"]').click()}});
 panel.addEventListener('change',async e=>{
   if(e.target.id==='gg-key'){DB.ggKey=e.target.value.trim();DB.ggPhien=null;ggDatLai();saveNow();draw();

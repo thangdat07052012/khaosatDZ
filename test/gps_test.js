@@ -447,7 +447,7 @@ console.log('17. Bản vẽ CAD phủ lên: VN-2000 → WGS-84, đọc DXF');
   ok(/fname\('_SoDoPhac\.dxf'\)/.test(html)&&/fname\('_VN2000\.dxf'\)/.test(html),'hai file DXF khác đuôi: _SoDoPhac / _VN2000');
   ok(/return co\?vn\+/.test(html)&&/KHÔNG khớp bản đồ/.test(html),'có GPS: nút VN-2000 đứng đầu, nút phác ghi rõ không khớp bản đồ');
   /* 22/11 bố cục thanh nút Hạ / Trung: 2 cột + lưới hình, không chồng nút Ảnh / CAD */
-  ok(/<div class="nh2"><div class="nhc">\$\{cot\}<i class="nhv"><\/i>\$\{dm\}<\/div><div class="nhc">\$\{mic\+doan\+day\}<i class="nhv"><\/i>\$\{hinh\}<\/div><\/div>/.test(html)&&/function nhanhNe\(\)/.test(html)&&/#mapctl\.trai\{/.test(html),'Hạ / Trung: 2 cột (loại cột | 🎤 ✂ dây) + lưới 2×2 nút hình; chồng cụm Ảnh / CAD thì cụm đó sang trái');
+  ok(/<div class="nh2"><div class="nhc">\$\{cot\}<i class="nhv"><\/i>\$\{dm\}<\/div><div class="nhc">\$\{mic\+doan\+day(\+moc)?\}<i class="nhv"><\/i>\$\{hinh\}<\/div><\/div>/.test(html)&&/function nhanhNe\(\)/.test(html)&&/#mapctl\.trai\{/.test(html),'Hạ / Trung: 2 cột (loại cột | 🎤 ✂ dây ⚑ — ⚑ thêm ở bản 50) + lưới 2×2 nút hình; chồng cụm Ảnh / CAD thì cụm đó sang trái');
   ok(/khongDay\(\)\?' · không dây':''/.test(html),'đang Không dây: nhãn «Vẽ tiếp từ …» trên bản đồ ghi thêm «· không dây»');
   /* 22/11 đoạn mới đánh lại từ đầu, lộ mới nút riêng, 4 mã dây Hạ / Trung */
   {const S=new Function(html.slice(html.indexOf('const VN=(()=>{'),html.indexOf('/* === HẾT HÀM THUẦN === */'))+';return {soDauMoi}')().soDauMoi;
@@ -601,6 +601,32 @@ console.log('20. Bản 49: đổi Hạ ↔ Trung ngắt nối, ảnh Google 512 
    ok(!document.querySelector('#b-nen').classList.contains('on'),'bản vẽ chưa có GPS: nút 🛰 không sáng dù đang bật ảnh');
    DB.nen=false;document.querySelector('#b-nen').click();ok(DB.nen===false,'bấm 🛰 khi chưa có GPS: không bật ảnh, chỉ báo');
   }finally{editId=e0;denId=d0;delete DB.ds.thu49;D=D0;V=V0;DB.che=che0;datChe(che0,true);DB.nen=nen0;nenNut();saveNow();draw()}
+ }
+}
+console.log('21. Bản 50: nút ⚑ Mốc ở thanh phải cả ba phần, chọn tên nhanh, đặt xong về công cụ cũ');
+{ok(/day\+moc;/.test(html)&&/mic\+doan\+day\+moc\}/.test(html),'thanh phải có ⚑ Mốc ở Chiếu sáng và Hạ / Trung');
+ ok(!/prompt\('Tên mốc \(vd: Ngã tư chợ/.test(html)&&/const \[x,y\]=toW\(pt\);mocTen\(x,y\)/.test(html),'đặt mốc mới: bảng chọn tên thay ô gõ prompt');
+ if(typeof mocNut==='function'&&typeof document!=='undefined'){
+  const D0=D,V0=V,che0=DB.che,g0=DB.mocGan,t0=tool,nh=()=>document.querySelector('#nhanh [data-nh="moc"]'),pn=document.querySelector('#panel');
+  const bam=sel=>{const b=pn.querySelector(sel);if(b)b.click();return !!b};
+  try{
+   D={id:'thu50',ten:'Thử bản 50',ngay:'',roads:[],mocs:[],mocDo:[],geo:null,active:null,view:null,capNhat:0,poles:[],edges:[]};DB.ds.thu50=D;DB.mocGan=[];
+   datChe('cs');ok(!!nh(),'Chiếu sáng: có nút ⚑ Mốc ở thanh phải');
+   datChe('tt');ok(!!nh(),'Trung thế: có nút ⚑ Mốc');
+   datChe('ha');ok(!!nh()&&tool==='cot','Hạ áp: có nút ⚑ Mốc, đang công cụ Cột');
+   nh().click();ok(tool==='moc'&&mocNhanh==='cot'&&nh().classList.contains('on'),'bấm ⚑: sang đặt mốc, nút sáng, nhớ công cụ Cột');
+   onTap({x:120,y:140},null);ok(!pn.hidden&&pn.textContent.includes('Cổng UBND')&&pn.textContent.includes('Hay gặp'),'chạm bản đồ: hiện bảng tên mốc hay gặp');
+   ok(bam('[data-t="Chợ"]')&&D.mocs.length===1&&D.mocs[0].ten==='Chợ','chọn «Chợ»: đặt mốc tên Chợ');
+   ok(pn.hidden&&tool==='cot'&&mocNhanh===null&&!nh().classList.contains('on'),'đặt xong: đóng bảng, về công cụ Cột');
+   datChe('cs');const t1=tool;nh().click();onTap({x:160,y:180},null);
+   ok(pn.textContent.includes('Vừa dùng')&&pn.querySelector('.mtw [data-t]').dataset.t==='Chợ','lần sau: tên vừa dùng đứng đầu');
+   pn.querySelector('#mt-ten').value='Cổng chợ Bến';bam('[data-a="mt-dat"]');
+   ok(D.mocs.length===2&&D.mocs[1].ten==='Cổng chợ Bến'&&tool===t1&&t1==='den','gõ tên khác + Đặt: đặt mốc, Chiếu sáng về công cụ Đèn');
+   nh().click();onTap({x:200,y:200},null);bam('[data-a="mt-huy"]');ok(D.mocs.length===2&&tool==='den'&&pn.hidden,'Bỏ: không đặt mốc, về công cụ Đèn');
+   nh().click();nh().click();ok(tool==='den'&&mocNhanh===null,'bấm ⚑ lần hai: thôi đặt mốc');
+   nh().click();document.querySelector('nav.tools [data-tool="chon"]').click();ok(tool==='chon'&&mocNhanh===null&&!nh().classList.contains('on'),'đang chờ đặt mốc mà chọn công cụ khác: bỏ chờ');
+   ok(JSON.stringify(DB.mocGan)==='["Cổng chợ Bến","Chợ"]','nhớ tên vừa dùng (mới nhất trước, không trùng)');
+  }finally{if(!pn.hidden)closePanel();mocCho2=null;mocNhanh=null;delete DB.ds.thu50;D=D0;V=V0;DB.mocGan=g0;DB.che=che0;datChe(che0,true);tool=t0;nutCongCu();veNhanh();saveNow();draw()}
  }
 }
 console.log(`\n${nOk} đạt, ${nSai} sai`);process.exit(nSai?1:0);
