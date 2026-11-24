@@ -340,7 +340,7 @@ console.log('17. Bản vẽ CAD phủ lên: VN-2000 → WGS-84, đọc DXF');
       0,'SECTION',2,'ENTITIES',0,'TEXT',8,'0',10,0,20,0,40,1,1,'lo¹i 1 (QL1A míi)',7,'VN',0,'TEXT',8,'0',10,0,20,0,40,1,1,'tñ ®iÖn',7,'VNH',0,'TEXT',8,'0',10,0,20,0,40,1,1,'lo¹i',7,'AR',
       0,'MTEXT',8,'0',10,0,20,0,40,1,1,'{\\f.VnTime|b0;§­êng}',7,'AR',0,'ENDSEC',0,'EOF']),k2=T.dxfDoc(d2);
     ok(k2.tx.map(t=>t.s).join('|')==='loại 1 (QL1A mới)|TỦ ĐIỆN|lo¹i|Đường',`DXF: chữ kiểu font TCVN3 ra Unicode, kiểu Arial giữ nguyên (${k2.tx.map(t=>t.s).join('|')})`)}
-  ok(/ggt:\{ten:'Google',zMax:20,url:\(z,x,y\)=>`https:\/\/mt\$\{\(x\+y\)&3\}\.google\.com\/vt\/lyrs=s&x=/.test(html)&&/if\(DB\.nenNguon==='ggt'\)return GT\.loi\?'esri':'ggt'/.test(html)&&/src==='ggt'&&\+\+GT\.hong>=6/.test(html),'nguồn Google không khoá (như IRT): mt0-3.google.com, hỏng 6 ô liền thì về Esri');
+  ok(/ggt:\{ten:'Google',zMax:19,ti:512,url:\(z,x,y\)=>`https:\/\/mt\$\{\(x\+y\)&3\}\.google\.com\/vt\/lyrs=s&scale=2&x=/.test(html)&&/if\(DB\.nenNguon==='ggt'\)return GT\.loi\?'esri':'ggt'/.test(html)&&/src==='ggt'&&\+\+GT\.hong>=6/.test(html),'nguồn Google không khoá (như IRT): mt0-3.google.com, hỏng 6 ô liền thì về Esri');
   {const c1=T.denDat('5;LT8,5;','L100'),c2=T.denDat(c1,'L150'),c3=T.denDat(c2,'hong'),c4=T.denDat(c3,'SD'),c5=T.denDat(c4,'hong');
     ok(c1==='5;LT8,5;Đèn LED 100W;'&&c2==='5;LT8,5;Đèn LED 150W;'&&c3==='5;LT8,5;Đèn LED 150W;Đèn hỏng;'&&c4==='5;LT8,5;Đèn sợi đốt;Đèn hỏng;'&&c5==='5;LT8,5;Đèn sợi đốt;',
       `denDat: đổi loại đèn thay ô cũ, giữ dấu hỏng, bấm Hỏng lần hai thì bỏ (${[c1,c2,c3,c4,c5].join(' | ')})`)}
@@ -385,7 +385,7 @@ console.log('17. Bản vẽ CAD phủ lên: VN-2000 → WGS-84, đọc DXF');
        T2.denDat(c3,'L200')==='5;LT8,5;Đèn LED 200W;3 bóng;Đèn hỏng;',
       `số bóng: thêm / bớt «n bóng», bỏ đèn giữ cột + ghi chú, đếm theo bóng, đổi loại giữ số bóng (${c3} · ${b} · ${JSON.stringify(d)})`)}
   ok(/<section id="dsheet"/.test(html)&&/if\(denCo\(q\)&&k!=='hong'\)moDen\(q\)/.test(html)&&/\$\('#ds-xoa'\)/.test(html)&&/if\(ke\.length===2&&!hasEdge\(ke\[0\],ke\[1\]\)\)D\.edges\.push/.test(html)&&
-     /\(p\.id===editId\|\|p\.id===denId\)&&!o\.print/.test(html)&&/\(editId\|\|''\)\+\(denId\|\|''\)/.test(html),'chạm đèn mở bảng chi tiết (đổi loại / số bóng / hỏng / bỏ đèn / xoá cột nối lại dây), vòng chọn + khoá vẽ theo denId');
+     /\(p\.id===editId\|\|p\.id===denId\)&&!o\.print/.test(html)&&/l\.id!==editId&&l\.id!==denId/.test(html),'chạm đèn mở bảng chi tiết (đổi loại / số bóng / hỏng / bỏ đèn / xoá cột nối lại dây), vòng chọn + khoá vẽ theo denId');
   ok(/'SO_BONG'\]\[i\]/.test(html)&&/c\[k\]\.n\+=d\.n/.test(html)&&/'Số bóng','Tình trạng'/.test(html)&&/\(d\.n>1\?'×'\+d\.n:''\)/.test(html)&&/!denLoai\(t\)&&!denSlTok\(t\)/.test(html),'số bóng: thẻ ×n, Excel cột Số bóng, DXF thuộc tính SO_BONG + bảng đếm theo bóng, nhãn màn hình không lặp');
   ok(/<section id="qsheet"/.test(html)&&/<div id="nhanh"/.test(html)&&/if\(q&&DB\.che!=='cs'\)\{moCot\(q\);return\}/.test(html)&&/const kb=cotBut\(\);if\(kb\)\{cotNhanh\(q\.x,q\.y,null,kb\);return\}/.test(html)&&
      /kb=cotBut\(\);if\(kb\)\{cotNhanh\(xy\.x,xy\.y,fix,kb\);return\}/.test(html)&&/function xoaCotNoi\(p\)/.test(html)&&(html.match(/xoaCotNoi\(p\)\}\);/g)||[]).length===2,
@@ -436,7 +436,7 @@ console.log('17. Bản vẽ CAD phủ lên: VN-2000 → WGS-84, đọc DXF');
     ok(L(['L1.01','L1.02'],'L1.02')==='L2.01'&&L(['L1-5','L2-3'],'L1-5')==='L3-1','có L<n> → lộ lớn nhất + 1, số về 1');
     ok(L(['T1.L1.C05','T1.L2.C03'],'T1.L2.C03')==='T1.L3.C01','T1.L2.C03 → T1.L3.C01')}
   ok(/if\(prev&&!khongDay\(\)\)D\.edges\.push/.test(html)&&/data-nh="day"/.test(html)&&/data-nh="lomoi"/.test(html),'nút Có dây / Không dây + Lộ mới; addPole bỏ dây khi tắt');
-  ok((html.match(/D\.doanMoi=1/g)||[]).length===3&&/md=D\.doanMoi\|\|0;D\.doanMoi=0/.test(html),'ba lối «đoạn mới» (nút, giọng nói, bảng cột) đều đặt cờ cho đèn đầu đoạn');
+  ok((html.match(/D\.doanMoi=1/g)||[]).length===4&&/md=D\.doanMoi\|\|0;D\.doanMoi=0/.test(html),'ba lối «đoạn mới» (nút, giọng nói, bảng cột) + đổi phần Hạ ↔ Trung (bản 49) đều đặt cờ đầu đoạn');
   {const Q=new Function(html.slice(html.indexOf('const VN=(()=>{'),html.indexOf('/* === HẾT HÀM THUẦN === */'))+';return {soLoMoi,soTuMoi}')();
     ok(Q.soLoMoi(['T1.L1.05','T1.L2.03','T2.L1.04'],'T2.L1.04')==='T2.L2.01','lộ mới chỉ xét lộ cùng tủ: T2.L1 → T2.L2 (không T2.L3)');
     ok(Q.soTuMoi(['1','2'],'2')==='T2.L1.1'&&Q.soTuMoi(['L1.05','L2.03'],'L2.03')==='T2.L1.01','tủ mới từ dãy chưa có T → T2.L1.1 / T2.L1.01');
@@ -574,5 +574,33 @@ console.log('19. Bản 48: xoá nhầm cột, mét dây «Không dây», lưu tr
    ok(!document.getElementById('luu-loi'),'lưu lại được: băng đỏ tự tắt');
   }finally{Storage.prototype.setItem=set0;window.saoLuuHet=sl0;if(editId)closeSheet();delete DB.ds.thu48;D=D0;V=V0;huyXoa();saveNow();luuView();draw()}
  }else console.log('   bỏ qua phần chạy trong trang (openSheet, D) — chạy bằng test/chay_trinh_duyet.js')
+}
+console.log('20. Bản 49: đổi Hạ ↔ Trung ngắt nối, ảnh Google 512 px, chọn cột không xếp lại nhãn, câu sai, nút 🛰');
+{ok(/cu!==c&&cu!=='cs'&&c!=='cs'&&D\.active\)\{D\.active=null;D\.doanMoi=1/.test(html),'đổi phần Hạ áp ↔ Trung thế: ngắt nối dây, cột tiếp đánh số từ 1');
+ ok(/N\.zMax\+dz\)-dz/.test(html)&&/const T=N\.ti\|\|256/.test(html),'ảnh Google ô 512 px: chọn mức thấp hơn 1 (nét như cũ, ít ô hơn 4 lần), tấm ghép theo cỡ ô thật');
+ ok(/const sig=o\.print\?null:\[s,k,kk,D\.id,D\.poles/.test(html)&&!/\(editId\|\|''\)\+\(denId\|\|''\)/.test(html)&&/function nhanChon\(L,k\)/.test(html),'xếp nhãn không tính cột đang chọn (chạm chọn cột không xếp lại cả bản vẽ)');
+ const sai=['Kiểm ở ☰ Xuất','giữ lâu 🛰 → Dời cho khớp','mở 🛰 bấm «Coi là','thường mới hơn (cần khoá)','vòng lặp ·','gửi Claude chuyển'].filter(t=>html.includes(t));
+ ok(!sai.length,'hết câu sai / lỗi thời'+(sai.length?': '+sai.join(' | '):''));
+ ok(/function nenNut\(\)\{const b=\$\('#b-nen'\),on=!!DB\.nen&&!!D\.geo/.test(html)&&/if\(!D\.geo\)\{toast\('Chưa có cột nào lấy GPS/.test(html),'nút 🛰 không sáng / không bật khi bản vẽ chưa có GPS');
+ if(typeof nhanChon==='function'&&typeof document!=='undefined'){
+  const D0=D,V0=V,che0=DB.che,nen0=DB.nen,e0=editId,d0=denId;
+  try{
+   D={id:'thu49',ten:'Thử bản 49',ngay:'',roads:[],mocs:[],mocDo:[],geo:null,active:null,view:null,capNhat:0,poles:[],edges:[]};DB.ds.thu49=D;
+   datChe('tt');addPole(0,0,null,null,false,true);addPole(30,0,null,null,false,true);
+   ok(D.edges.length===1,'Trung thế: 2 cột nối dây');
+   datChe('ha');ok(D.active===null,'sang Hạ áp: bỏ cột đang nối');
+   addPole(30,20,null,null,false,true);const c=D.poles[2];
+   ok(D.edges.length===1&&!c.from&&/^1;/.test(c.code),`cột Hạ áp đầu tiên không nối từ cột Trung thế, số 1 (mã «${c.code}»)`);
+   addPole(60,20,null,null,false,true);ok(D.edges.length===2,'cột Hạ áp thứ hai nối bình thường với cột Hạ áp trước');
+   DB.che='cs';datChe('ha');ok(D.active===D.poles[3].id,'Chiếu sáng → Hạ áp: không ngắt (chỉ ngắt giữa Hạ ↔ Trung)');
+   const l={id:'a',x:7+5,y:-12,px:0,py:0,Rw:7,Rh:7,bw:20,bh:15},L={PL:[l,{...l,id:'b'}],JL:[],KC:[],sz1:13.5,lh:12.5};
+   editId=null;denId=null;ok(nhanChon(L,1)===L,'không chọn cột: giữ nguyên kết quả xếp nhãn');
+   editId='a';const L2=nhanChon(L,1);
+   ok(L2.PL[0].x===18&&L2.PL[1]===L.PL[1]&&l.x===12,'cột đang chọn: nhãn sát cột lùi thêm 6 ra ngoài vòng chọn, nhãn khác giữ nguyên, bản lưu không bị sửa');
+   editId=null;DB.nen=true;nenNut();
+   ok(!document.querySelector('#b-nen').classList.contains('on'),'bản vẽ chưa có GPS: nút 🛰 không sáng dù đang bật ảnh');
+   DB.nen=false;document.querySelector('#b-nen').click();ok(DB.nen===false,'bấm 🛰 khi chưa có GPS: không bật ảnh, chỉ báo');
+  }finally{editId=e0;denId=d0;delete DB.ds.thu49;D=D0;V=V0;DB.che=che0;datChe(che0,true);DB.nen=nen0;nenNut();saveNow();draw()}
+ }
 }
 console.log(`\n${nOk} đạt, ${nSai} sai`);process.exit(nSai?1:0);

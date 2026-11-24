@@ -545,7 +545,7 @@ function kttXet(p){if(D.kttXet||p.lat==null)return;const m=xaTinhCua(p.lat,p.lon
   const g=kttGoiY(p.lat,p.lon,p.tinh);D.kttXet=true;if(!g)return;D.kttGoi=g;
   if(g.ds.some(v=>Math.abs(v-ktt())<1e-9)){if(g.chac&&!tinhKhop(DB.tinh,g.t)&&Math.abs(g.v-ktt())<1e-9){DB.tinh=g.t;saveNow()}return}
   if(g.chac){DB.ktt=g.v;DB.tinh=g.t;saveNow();toast(`VN-2000: GPS ở ${g.t} → kinh tuyến trục ${kttTen(g.v)} (đã đổi)`)}
-  else toast(`⚑ Gần ranh tỉnh: ${g.c.map(r=>r[0]+' '+kttTen(r[1])).join(' / ')} — đang dùng ${kttTen(ktt())}. Kiểm ở ☰ Xuất`)}
+  else toast(`⚑ Gần ranh tỉnh: ${g.c.map(r=>r[0]+' '+kttTen(r[1])).join(' / ')} — đang dùng ${kttTen(ktt())}. Kiểm ở nút Xuất`)}
 function diaDiem(p,im){if(p.lat==null)return;const m=xaTinhCua(p.lat,p.lon);
   if(m){const o=XA[m];if(o&&o.ds){const x=xaTim(o.ds,p.lat,p.lon);
       if(x&&p.xa!==x.n){const tr=D.poles.filter(c=>c!==p&&c.xa).pop();p.xa=x.n;p.tinh=o.t;
@@ -630,18 +630,18 @@ function catKhung(CL,s){const het=!CL||CL.all;
     segW:(x1,y1,x2,y2)=>het||(Math.max(x1,x2)*s>=CL.x0&&Math.min(x1,x2)*s<=CL.x1&&Math.max(y1,y2)*s>=CL.y0&&Math.min(y1,y2)*s<=CL.y1)}}
 function layout(v,w,h,o,pr,JN,CL){
   const k=o.k||1,s=v.s,X=x=>x*s,Y=y=>y*s,{inW,segW}=catKhung(o.print?null:CL,s),kk=!o.print&&CL?CL.key:'';
-  const sig=o.print?null:[s,k,kk,D.id,(editId||'')+(denId||''),D.poles.map(p=>p.id+','+p.x.toFixed(2)+','+p.y.toFixed(2)+','+p.shape+(p.doi?1:0)+(p.kcThat?'!':'')+','+p.code).join('|'),
+  const sig=o.print?null:[s,k,kk,D.id,D.poles.map(p=>p.id+','+p.x.toFixed(2)+','+p.y.toFixed(2)+','+p.shape+(p.doi?1:0)+(p.kcThat?'!':'')+','+p.code).join('|'),
     D.edges.map(e=>e.join()).join(),JN.map(j=>j.x.toFixed(1)+','+j.y.toFixed(1)).join(),D.mocs.map(m=>m.x.toFixed(1)+m.y.toFixed(1)+m.ten).join(),
     D.roads.map(r=>(r.ten||'')+r.w+':'+r.pts.join()).join()].join('#');
-  if(sig&&LCACHE&&LCACHE.sig===sig)return LCACHE.L;
+  if(sig&&LCACHE&&LCACHE.sig===sig)return nhanChon(LCACHE.L,k);
   /* đang kéo cột / kéo điểm đường: giữ nhãn đã xếp (đỡ nhảy, đỡ tính lại mỗi khung), nhãn + số khoảng cột của cột đang kéo đi theo cột; thả tay mới xếp lại */
-  const pre=s+'#'+k+'#'+kk+'#'+D.id+'#'+(editId||'')+(denId||'');
+  const pre=s+'#'+k+'#'+kk+'#'+D.id;
   if(sig&&LCACHE&&LCACHE.pre===pre&&G&&(G.type==='drag'||G.type==='rdrag')){const L=LCACHE.L;
     if(G.type==='drag'){const p=G.hit,e=L.PL.find(l=>l.id===p.id);
       if(e){const dx=X(p.x)-e.px,dy=Y(p.y)-e.py;e.x+=dx;e.y+=dy;e.px+=dx;e.py+=dy}
       for(const t of L.KC){const a=t.id===p.id?p:byId(t.id),f=a&&a.from&&byId(a.from);
         if(f&&(a===p||f===p)){t.x=(X(a.x)+X(f.x))/2;t.y=(Y(a.y)+Y(f.y))/2-5*k}}}
-    return L}
+    return nhanChon(L,k)}
   const R=7*k,sz1=o.print?20:13.5,sz2=o.print?15:11,szk=o.print?15:11,szj=o.print?14:10.5,szm=o.print?17:12,szr=o.print?16:12,lh=12.5*k,CW=.58;
   /* vật cản chia theo lưới ô 48 điểm: mỗi lần thử chỉ xét vật cản ở các ô chạm khung nhãn (bản cũ quét hết — 300 cột kéo một cột ~77 ms / khung) */
   const GC=48,GR=new Map(),ck=(i,j)=>(i+50000)*100000+j+50000;let st=0;
@@ -660,10 +660,10 @@ function layout(v,w,h,o,pr,JN,CL){
       if(!best||sc<best.sc)best={b,c:cc,sc,i,far:!!c[2]};if(cc===0)break}
     return best};
   const P=sorted().filter(p=>inW(p.x,p.y)).map(p=>{const r=pr[p.id],doi=isDoi(p,r)&&p.shape!=='tba',t=p.shape==='tba';
-    return {p,r,x:X(p.x),y:Y(p.y),Rw:R*(t?1.5:doi?2:1),Rh:R*(t?1.5:1),ed:!o.print&&(p.id===editId||p.id===denId)}});
+    return {p,r,x:X(p.x),y:Y(p.y),Rw:R*(t?1.5:doi?2:1),Rh:R*(t?1.5:1)}});
   /* chỗ đã bị chiếm: ký hiệu cột, nút đường, mốc, tên đường, số khoảng cột, dây.
-     Cột đang sửa có vòng chọn vàng (R+7) nên vùng tránh lấy R+9 để số cột không đè lên vòng. */
-  for(const q of P){const m=q.ed?9:3;add(q.x-q.Rw-m,q.y-q.Rh-m,q.x+q.Rw+m,q.y+q.Rh+m,4);
+     Bản 49: KHÔNG tính cột đang chọn ở đây (nhanChon lo) — chọn cột khác không phải xếp lại nhãn cả bản vẽ. */
+  for(const q of P){const m=3;add(q.x-q.Rw-m,q.y-q.Rh-m,q.x+q.Rw+m,q.y+q.Rh+m,4);
     if(!o.print){const b=denKhung(denDoc(q.p.code),q.x,q.y,q.Rw,q.Rh);if(b)add(b.x-1,b.y-1,b.x+b.w+1,b.y+b.h+1,4)}
     if(!o.print&&(q.p.lat!=null||q.p.nan))add(q.x-q.Rw-9,q.y+q.Rh-3,q.x-q.Rw+3,q.y+q.Rh+9,3)}   /* chấm chất lượng GPS dưới-trái cột */
   JN=JN.filter(j=>inW(j.x,j.y));
@@ -687,7 +687,7 @@ function layout(v,w,h,o,pr,JN,CL){
   for(const q of P){const {p,r}=q,so=r.so||(p.shape==='tba'?'TBA':'?');
     const lines=[];if(!gon)for(const l of labelLines(p,r,!o.print))lines.push(...wrap(l,o.print?34:28));
     const bw=Math.max(so.length*sz1*.62,...lines.map(l=>l.length*sz2*CW))+4,bh=sz1+2*k+lines.length*lh+3;
-    const ty0=q.y-3*k-.85*sz1,g=q.ed?11*k:g5;   /* cột đang sửa: nhãn lùi ra ngoài vòng chọn */
+    const ty0=q.y-3*k-.85*sz1,g=g5;
     const cs=[[q.x+q.Rw+g,ty0],[q.x-q.Rw-g-bw,ty0],[q.x+q.Rw*.4,q.y-q.Rh-g-bh],[q.x+q.Rw*.4,q.y+q.Rh+g],
       [q.x-q.Rw*.4-bw,q.y-q.Rh-g-bh],[q.x-q.Rw*.4-bw,q.y+q.Rh+g]];
     for(const d of gon?[26,50]:[26,50,80,120,170])for(const a of [0,180,-25,25,155,205,-50,50,130,230,-90,90]){
@@ -702,8 +702,14 @@ function layout(v,w,h,o,pr,JN,CL){
     if(b.c<bw*bh*.2){add(b.b.x0,b.b.y0,b.b.x1,b.b.y1,1);JL.push({x:b.b.x0,y:b.b.y0+.85*szj,t})}}
   const L={PL,JL,KC,sz1,lh};
   if(sig)LCACHE={sig,pre,L};
-  return L;
+  return sig?nhanChon(L,k):L;
 }
+/* bản 49: cột đang chọn (vòng vàng R+7) — nhãn sát cột lùi thêm 6 ra ngoài vòng, như bản cũ đặt g = 11.
+   Xếp nhãn cả bản vẽ không còn tính lại mỗi lần chạm chọn cột (1000 cột: 168 → ~40 ms), nhãn các cột khác đứng yên. */
+function nhanChon(L,k){if(!editId&&!denId)return L;const g5=5*k,d=6*k,gan=(a,b)=>Math.abs(a-b)<.6;
+  return {...L,PL:L.PL.map(l=>{if(l.id!==editId&&l.id!==denId)return l;let x=l.x,y=l.y;
+    if(gan(x-(l.px+l.Rw),g5))x+=d;else if(gan(l.px-l.Rw-(x+l.bw),g5))x-=d;else if(gan(l.py-l.Rh-(y+l.bh),g5))y-=d;else if(gan(y-(l.py+l.Rh),g5))y+=d;else return l;
+    return {...l,x,y}})}}
 function svgInner(v,w,h,o={}){
   const X=x=>+(x*v.s+v.tx).toFixed(1), Y=y=>+(y*v.s+v.ty).toFixed(1), k=o.k||1;
   const CL=o.print?null:khungVe(v,w,h),{inW,segW}=catKhung(CL,v.s);
@@ -755,7 +761,7 @@ function svgInner(v,w,h,o={}){
 }
 let rafP=false,rafN=false,Vb=null;   /* Vb: khung nhìn lúc dựng SVG lần cuối */
 function draw(){if(rafP)return;rafP=true;requestAnimationFrame(()=>{rafP=false;render()})}
-function render(){Vb={s:V.s,tx:V.tx,ty:V.ty};cv.style.transform='';cv.innerHTML=svgInner(V,W,H);nenVe();status();cadNut()}
+function render(){Vb={s:V.s,tx:V.tx,ty:V.ty};cv.style.transform='';cv.innerHTML=svgInner(V,W,H);nenVe();status();cadNut();nenNut()}
 /* đang kéo / phóng: chỉ dịch + co giãn lớp SVG đã dựng (GPU) và vẽ lại ảnh nền; thả tay mới dựng lại SVG cho nét chữ chuẩn */
 function nhanh(){if(rafN)return;rafN=true;requestAnimationFrame(()=>{rafN=false;if(rafP||!Vb)return;
   const k=V.s/Vb.s;cv.style.transform=Math.abs(k-1)<1e-9&&V.tx===Vb.tx&&V.ty===Vb.ty?'':`translate(${(V.tx-k*Vb.tx).toFixed(2)}px,${(V.ty-k*Vb.ty).toFixed(2)}px) scale(${k.toFixed(5)})`;nenVe()})}
@@ -802,7 +808,8 @@ const NGUON={
   esri:{ten:'Esri',zMax:18,url:(z,x,y)=>NEN.url(z,x,y)},
   /* 21/11 Truong: «k add thẻ vào google được, sao IRT 4.4 dùng được bản mới nhất» — máy chủ ô Google Maps (lyrs=s), không khoá, như IRT / SAS.Planet.
      ⚑ không phải API chính thức: Google có thể chặn khi tải quá nhiều; hỏng 6 ô liền thì tự về Esri */
-  ggt:{ten:'Google',zMax:20,url:(z,x,y)=>`https://mt${(x+y)&3}.google.com/vt/lyrs=s&x=${x}&y=${y}&z=${z}`},
+  /* bản 49 (Anti NEN 24/11): ô 512 px thật (&scale=2) ở mức 19 = nét như mức 20 mà ít ô hơn 4 lần (trước 98 ô lần đầu, 53 ô / lần kéo) */
+  ggt:{ten:'Google',zMax:19,ti:512,url:(z,x,y)=>`https://mt${(x+y)&3}.google.com/vt/lyrs=s&scale=2&x=${x}&y=${y}&z=${z}`},
   /* ⚑ Google Map Tiles API: cần khoá của anh (Google Cloud), phiên createSession; chưa thử với khoá thật */
   gg:{ten:'Google',zMax:20,url:(z,x,y)=>`https://tile.googleapis.com/v1/2dtiles/${z}/${x}/${y}?session=${encodeURIComponent(GG.s)}&key=${encodeURIComponent(DB.ggKey)}`}
 };
@@ -969,8 +976,8 @@ async function cadNap(f){
       const s=Math.min(Math.max(Math.min(W*0.9/Math.max(x1-x0,1),H*0.8/Math.max(y1-y0,1)),0.05),60);V={s,tx:W/2-(x0+x1)/2*s,ty:H/2-(y0+y1)/2*s};persistView()}}
   save();draw();
   toast(`Đã nạp ${ten}: ${nNet} nét, ${k.tx.length} chữ, ${k.ly.length} lớp${k.cat?' (file lớn — chỉ lấy phần đầu)':''} · `+
-    (kieu==='vn'?`toạ độ VN-2000, kinh tuyến trục ${kttTen(ktt())}`:'toạ độ riêng — giữ lâu 🛰 → Dời cho khớp')+
-    (xa>20?` · ⚠ cách tuyến ${vn1(xa)} km: nếu bản vẽ không phải VN-2000, mở 🛰 bấm «Coi là toạ độ riêng»`:''));
+    (kieu==='vn'?`toạ độ VN-2000, kinh tuyến trục ${kttTen(ktt())}`:'toạ độ riêng — mở 📐 CAD → Dời cho khớp')+
+    (xa>20?` · ⚠ cách tuyến ${vn1(xa)} km: nếu bản vẽ không phải VN-2000, mở 📐 CAD bấm «Coi là toạ độ riêng»`:''));
 }
 function cadXoa(id){snap();D.cad=cadDs().filter(m=>m.id!==id);if(cadDoi===id)cadDoi=null;save();
   const conDung=Object.values(DB.ds).some(d=>(d.cad||[]).some(m=>m.id===id));if(!conDung){CADDB.xoa(id).catch(()=>{});CR.delete(id)}draw()}
@@ -1023,7 +1030,8 @@ function nenNen(){
   /* khung nhìn ra kinh / vĩ độ (đã trừ độ lệch ảnh) */
   const lonOf=x=>g.lon0+(x-l[0]-g.x0)/kx,latOf=y=>g.lat0-(y-l[1]-g.y0)/ky;
   const lonW=lonOf(-V.tx/V.s),lonE=lonOf((W-V.tx)/V.s),latN=latOf(-V.ty/V.s),latS=latOf((H-V.ty)/V.s);
-  const L=NEN.ds(latN,lonW,latS,lonE,NEN.z((latN+latS)/2,1/(V.s*Math.min(DPR,2)),N.zMax),96);
+  const dz=N.ti===512?1:0;   /* ô 512 px: mức z nét bằng ô 256 px mức z+1 */
+  const L=NEN.ds(latN,lonW,latS,lonE,NEN.z((latN+latS)/2,1/(V.s*Math.min(DPR,2)),N.zMax+dz)-dz,96);
   if(!L.length){nenChu('');return}
   const z=L[0].z,n=2**z,x0=L[0].x,y0=L[0].y,x1=L[L.length-1].x,y1=L[L.length-1].y;
   /* mép cột / hàng ô theo điểm ảnh thiết bị, làm tròn chung để hai ô cạnh nhau không hở */
@@ -1031,7 +1039,7 @@ function nenNen(){
   const latT=(t,m)=>Math.atan(Math.sinh(Math.PI*(1-2*t/m)))*180/Math.PI;
   const cx=[],cy=[];for(let x=x0;x<=x1+1;x++)cx.push(SX(x/n*360-180));for(let y=y0;y<=y1+1;y++)cy.push(SY(latT(y,n)));
   c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';
-  const T=256,nc=x1-x0+1,nr=y1-y0+1,ghep=(cx[nc]-cx[0])/(nc*T)>1.3&&nc*T<=4096&&nr*T<=4096,
+  const T=N.ti||256,nc=x1-x0+1,nr=y1-y0+1,ghep=(cx[nc]-cx[0])/(nc*T)>1.3&&nc*T<=4096&&nr*T<=4096,
     khoa=src+'/'+z+'/'+x0+'/'+y0+'/'+x1+'/'+y1+'/'+ocMoi,veLai=!ghep||GH.k!==khoa;
   let dc=c,CX=cx,CY=cy;
   if(ghep&&veLai){if(!GH.cv)GH.cv=document.createElement('canvas');GH.cv.width=nc*T;GH.cv.height=nr*T;
@@ -1865,11 +1873,14 @@ for(const b of document.querySelectorAll('[data-tool]'))b.addEventListener('clic
   for(const x of document.querySelectorAll('[data-tool]'))x.classList.toggle('on',x===b);
   if(tool!=='cot')finishSheet();draw()});
 /* phần khảo sát: Chiếu sáng (thanh nút đèn) · Hạ áp (như cũ) · Trung thế (như Hạ áp, danh sách cột / dây trung thế) */
-function datChe(c,dau){DB.che=c;dongDen();const nv=$('nav.tools');nv.classList.toggle('che-cs',c==='cs');
+function datChe(c,dau){const cu=DB.che;DB.che=c;dongDen();const nv=$('nav.tools');nv.classList.toggle('che-cs',c==='cs');
   for(const b of nv.querySelectorAll('[data-che]'))b.classList.toggle('on',b.dataset.che===c);
   tool=c==='cs'?'den':'cot';noiA=null;roadStart=null;
   for(const x of nv.querySelectorAll('[data-tool]'))x.classList.toggle('on',tool==='den'?x.dataset.den===(DB.denBut||'L100'):x.dataset.tool==='cot');
-  veNhanh();if(dau)return;closeRoad();finishSheet();saveNow();draw()}
+  veNhanh();if(dau)return;closeRoad();finishSheet();
+  /* bản 49 (Anti THU 24/11, lỗi CHẶN): sang Hạ áp ↔ Trung thế thì cột tiếp KHÔNG nối dây từ cột phần kia (trước nối luôn, chép cả dây AC70) */
+  let ngat=false;if(cu!==c&&cu!=='cs'&&c!=='cs'&&D.active){D.active=null;D.doanMoi=1;ngat=true}
+  saveNow();draw();if(ngat)toast(`Sang ${c==='tt'?'Trung thế':'Hạ áp'}: cột tiếp không nối dây với cột trước, đánh số từ 1. Muốn nối thì chạm cột cũ`)}
 for(const b of document.querySelectorAll('[data-che]'))b.addEventListener('click',()=>datChe(b.dataset.che));
 if(DB.che==='cs'||DB.che==='tt')datChe(DB.che,true);else veNhanh();
 $('#status').addEventListener('click',e=>{
@@ -1889,13 +1900,15 @@ $('#b-cad').addEventListener('click',()=>showNen('cad'));
 function cadNut(){const b=$('#b-cad');if(b)b.classList.toggle('on',!!(D&&D.cad&&D.cad.some(m=>m.bat)))}
 $('#b-fit').addEventListener('click',()=>{V=fitView(W,H,40);persistView();draw()});
 /* nút ảnh nền vệ tinh (cài đặt chung của máy, lưu trong DB) */
-function nenNut(){const b=$('#b-nen');b.setAttribute('aria-pressed',DB.nen?'true':'false');b.classList.toggle('on',!!DB.nen)}
+function nenNut(){const b=$('#b-nen'),on=!!DB.nen&&!!D.geo;b.setAttribute('aria-pressed',on?'true':'false');b.classList.toggle('on',on)}   /* bản 49: chưa có GPS thì không sáng (ảnh chưa hiện được) */
 function nenBat(on){DB.nen=on;if(!on)nenDoi=false;saveNow();nenNut();draw()}
 {const b=$('#b-nen');let t=null,dai=false;
   b.addEventListener('pointerdown',()=>{dai=false;clearTimeout(t);t=setTimeout(()=>{dai=true;showNen('nen')},550)});
   for(const ev of ['pointerup','pointerleave','pointercancel'])b.addEventListener(ev,()=>clearTimeout(t));
   b.addEventListener('contextmenu',e=>{e.preventDefault();clearTimeout(t);if(!dai){dai=true;showNen('nen')}});
-  b.addEventListener('click',()=>{if(dai){dai=false;return}nenBat(!DB.nen);
+  b.addEventListener('click',()=>{if(dai){dai=false;return}
+    if(!D.geo){toast('Chưa có cột nào lấy GPS — lấy GPS một cột thì ảnh vệ tinh mới hiện');return}   /* bản 49: không bật khi chưa có GPS */
+    nenBat(!DB.nen);
     if(DB.nen)toast(D.geo?`Ảnh vệ tinh ${NGUON[nenNguon()].ten} (cần mạng) · giữ lâu nút 🛰: đổi nguồn, độ mờ, dời ảnh cho khớp GPS`:'Chưa có cột nào lấy GPS — lấy GPS một cột thì ảnh vệ tinh mới hiện')})}
 /* 21/11 Truong «chưa thấy chỗ thêm file cad dxf»: nút 📐 CAD nổi trên bản đồ mở thẳng bảng này (trước nằm cuối bảng giữ lâu 🛰) */
 let nenChe='nen';
@@ -1923,7 +1936,7 @@ function showNen(che){
     <div class="h3">Cho ảnh khớp GPS</div>
     <button class="big" data-a="nen-doi"><b>Dời ảnh cho khớp cột GPS</b><span>${dl?`Đang dời ${m(l[0])} m ${l[0]<0?'Tây':'Đông'}, ${m(l[1])} m ${l[1]<0?'Bắc':'Nam'}. `:''}Kéo ảnh cho chân cột / góc nhà trên ảnh trùng cột đã đo GPS. Độ dời lưu riêng cho bản vẽ này và nguồn ảnh này.</span></button>
     ${dl?`<button class="btn" data-a="nen-0">Đưa ảnh về chỗ cũ (bỏ dời)</button>`:''}
-    <p class="note">Ảnh vệ tinh tự nó lệch vài mét so với GPS. Toạ độ cột, khoảng cột, file CAD vẫn lấy theo GPS — dời ảnh chỉ để nhìn cho khớp.${!gg&&EN.t?` Ảnh Esri chỗ giữa màn hình chụp ngày ${EN.t}; ảnh Google thường mới hơn (cần khoá).`:''}</p>
+    <p class="note">Ảnh vệ tinh tự nó lệch vài mét so với GPS. Toạ độ cột, khoảng cột, file CAD vẫn lấy theo GPS — dời ảnh chỉ để nhìn cho khớp.${!gg&&EN.t?` Ảnh Esri chỗ giữa màn hình chụp ngày ${EN.t}; ảnh Google thường mới hơn.`:''}</p>
     <button class="btn" data-a="cad-bang">📐 Bản vẽ CAD (.dxf): nạp, ẩn / hiện, dời…</button>
   </div>`;
   panel.hidden=false;
@@ -2397,7 +2410,7 @@ function giongGop(list,them,ghiDe){
 /* 🎤 KHẨU LỆNH ở CUỐI câu nói (07/11): «điền» · «tiếp» (= Tiếp ▸) · «dừng» (= Dừng) · «đoạn mới» · «nói lại» / «xoá câu»
    → {lenh:'dien'|'tiep'|'dung'|'doan'|'xoa'|null, con: phần câu trước lệnh}. Chỉ nhận ở CUỐI câu, có chốt chặn:
    «tiếp địa», «nối tiếp», «trạm dừng», «xã Quảng Điền» không thành lệnh */
-const BAN_APP='kstuyen-48';
+const BAN_APP='kstuyen-49';
 /* 🎤 chờ bao lâu (ms) rồi mới làm khẩu lệnh cuối câu (07/11 rút ngắn ⚑): máy đã chốt câu → làm gần như ngay;
    còn chữ tạm → chờ ngắn xem có nói tiếp không («tiếp», «dừng» chờ lâu hơn chút vì hay đi tiếp chữ, vd «tiếp địa»);
    gõ tay / 🎤 bàn phím chờ lâu nhất; lai = nghỉ trước khi mở phiên nghe mới */
@@ -2899,7 +2912,7 @@ function showGps(){
     <p class="note">Khoảng đo thật (thước / laser): ${nkc} khoảng. Nhập: chạm số khoảng cột (giữa hai cột) trên bản vẽ, hoặc ô Khoảng cột → “Khoảng đo thật”. Số có dấu ✓ là khoảng đo thật.</p>
     ${nc&&nc.loi?`<div class="kq" id="nan-kq" style="color:var(--warn)">${esc(nc.loi)}</div>`:''}
     ${nc&&!nc.loi?(`<div class="kq" id="nan-kq"><b>Xem trước — chưa áp dụng</b>
-      <span>${nc.nodes.length} cột, ${nc.spans.length} khoảng đo · ${nc.vong} vòng lặp · ${Math.round(nc.ms)} ms</span>
+      <span>${nc.nodes.length} cột, ${nc.spans.length} khoảng đo</span>
       <span>Sai khoảng: trước <b class="mono">${vn2(nc.saiTruoc)} m</b> → sau <b class="mono">${vn3(nc.saiSau)} m</b></span>
       <span>Dịch cột: lớn nhất <b class="mono">${vn2(nc.dmax)} m</b> (cột ${esc(nc.top[0].so||'?')}), trung bình ${vn2(nc.dtb)} m</span>
       <span class="note">${nc.top.slice(0,6).map(x=>`${esc(x.so||'?')}: ${vn2(x.d)} m`).join(' · ')}</span>
@@ -3297,7 +3310,7 @@ function showExport(){
       <option value="khac"${VN.TINH.some(([t,v])=>Math.abs(v-ktt())<1e-9&&tinhKhop(t,DB.tinh||'Thanh Hóa'))?'':' selected'}>Khác — tự nhập (${kttTen(ktt())})</option></select></label>
     ${D.kttGoi?`<p class="note">Theo GPS cột đầu: <b>${esc(D.kttGoi.t)}</b>${D.kttGoi.moi&&D.kttGoi.moi!==D.kttGoi.t?' (nay '+esc(D.kttGoi.moi)+')':''} — KTT ${kttTen(D.kttGoi.v)}${D.kttGoi.chac?'':' · ⚑ gần ranh tỉnh: '+esc((D.kttGoi.c||[]).map(r=>r[0]+' '+kttTen(r[1])).join(' / '))}${Math.abs(D.kttGoi.v-ktt())<1e-9?'':' · <b>khác KTT đang chọn</b>'}</p>`:''}
     <button class="big" data-a="anh"><b>📷 Gửi ảnh cột</b><span>Mọi ảnh chụp ở các cột của bản vẽ này, ảnh đầu là sơ đồ tuyến có số cột, các ảnh sau xếp theo số cột, mỗi ảnh in sẵn số cột, ngày giờ, toạ độ. Bản gốc đủ nét đã tự lưu vào Tải xuống lúc chụp. Gửi qua Zalo / Drive, hoặc tải về máy.</span></button>
-    <button class="big" data-a="json"><b>File gốc (.json)</b><span>Để mở lại / gộp trên máy khác hoặc gửi Claude chuyển sang CAD.</span></button>
+    <button class="big" data-a="json"><b>File gốc (.json)</b><span>Để mở lại / gộp trên máy khác hoặc gửi văn phòng chuyển sang CAD.</span></button>
     <p class="note">Excel và JSON có thêm cột X_VN2000 (Bắc), Y_VN2000 (Đông) cho cột có GPS, theo kinh tuyến trục đang chọn (múi 3°) — đã cộng hiệu chỉnh theo mốc và nắn theo khoảng đo (màn ◎ GPS chính xác), kèm toạ độ gốc GPS và cột “Hiệu chỉnh theo mốc”.</p>
     <p class="note">Excel, DXF, JSON lưu vào thư mục <b>Tải xuống (Download)</b>. Gửi qua Zalo: Gửi file → Download.</p>
   </div>`;
