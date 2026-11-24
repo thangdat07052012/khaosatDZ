@@ -387,7 +387,7 @@ console.log('17. Bản vẽ CAD phủ lên: VN-2000 → WGS-84, đọc DXF');
   ok(/<section id="dsheet"/.test(html)&&/if\(denCo\(q\)&&k!=='hong'\)moDen\(q\)/.test(html)&&/\$\('#ds-xoa'\)/.test(html)&&/if\(ke\.length===2&&!hasEdge\(ke\[0\],ke\[1\]\)\)D\.edges\.push/.test(html)&&
      /\(p\.id===editId\|\|p\.id===denId\)&&!o\.print/.test(html)&&/l\.id!==editId&&l\.id!==denId/.test(html),'chạm đèn mở bảng chi tiết (đổi loại / số bóng / hỏng / bỏ đèn / xoá cột nối lại dây), vòng chọn + khoá vẽ theo denId');
   ok(/'SO_BONG'\]\[i\]/.test(html)&&/c\[k\]\.n\+=d\.n/.test(html)&&/'Số bóng','Tình trạng'/.test(html)&&/\(d\.n>1\?'×'\+d\.n:''\)/.test(html)&&/!denLoai\(t\)&&!denSlTok\(t\)/.test(html),'số bóng: thẻ ×n, Excel cột Số bóng, DXF thuộc tính SO_BONG + bảng đếm theo bóng, nhãn màn hình không lặp');
-  ok(/<section id="qsheet"/.test(html)&&/<div id="nhanh"/.test(html)&&/if\(q&&DB\.che!=='cs'\)\{moCot\(q\);return\}/.test(html)&&/const kb=cotBut\(\);if\(kb\)\{cotNhanh\(q\.x,q\.y,null,kb\);return\}/.test(html)&&
+  ok(/<section id="qsheet"/.test(html)&&/<div id="nhanh"/.test(html)&&/if\(q&&\(DB\.che!=='cs'\|\|q\.le\)\)\{moCot\(q\);return\}/.test(html)&&/const kb=cotBut\(\);if\(kb\)\{cotNhanh\(q\.x,q\.y,null,kb\);return\}/.test(html)&&
      /kb=cotBut\(\);if\(kb\)\{cotNhanh\(xy\.x,xy\.y,fix,kb\);return\}/.test(html)&&/function xoaCotNoi\(p\)/.test(html)&&(html.match(/xoaCotNoi\(p\)\}\);/g)||[]).length===2,
      'Hạ / Trung: chạm cột mở bảng gọn (loại cột, dây, đặc điểm, nhổ bỏ, thu hồi, xoá cột nối dây), chọn sẵn loại cột ở phím phải → chạm trống / GPS thêm cột loại đó');
   ok(/function veNhanh\(\)/.test(html)&&/veNhanh\(\);if\(dau\)return/.test(html)&&/data-nh="mic"/.test(html)&&/data-nh="doan"/.test(html)&&/\$\('#nhanh \.mic'\)\?\.classList\.add\('on'\)/.test(html),'phím nhanh bên phải: 🎤 + loại cột + đoạn mới, vẽ lại khi đổi phần, 🎤 sáng cùng ô nhập');
@@ -447,7 +447,7 @@ console.log('17. Bản vẽ CAD phủ lên: VN-2000 → WGS-84, đọc DXF');
   ok(/fname\('_SoDoPhac\.dxf'\)/.test(html)&&/fname\('_VN2000\.dxf'\)/.test(html),'hai file DXF khác đuôi: _SoDoPhac / _VN2000');
   ok(/return co\?vn\+/.test(html)&&/KHÔNG khớp bản đồ/.test(html),'có GPS: nút VN-2000 đứng đầu, nút phác ghi rõ không khớp bản đồ');
   /* 22/11 bố cục thanh nút Hạ / Trung: 2 cột + lưới hình, không chồng nút Ảnh / CAD */
-  ok(/<div class="nh2"><div class="nhc">\$\{cot\}<i class="nhv"><\/i>\$\{dm\}<\/div><div class="nhc">\$\{mic\+doan\+day(\+moc)?\}<i class="nhv"><\/i>\$\{hinh\}<\/div><\/div>/.test(html)&&/function nhanhNe\(\)/.test(html)&&/#mapctl\.trai\{/.test(html),'Hạ / Trung: 2 cột (loại cột | 🎤 ✂ dây ⚑ — ⚑ thêm ở bản 50) + lưới 2×2 nút hình; chồng cụm Ảnh / CAD thì cụm đó sang trái');
+  ok(/<div class="nh2"><div class="nhc">\$\{cot\}<i class="nhv"><\/i>\$\{dm\}(<i class="nhv"><\/i>\$\{moi\+ht\})?<\/div><div class="nhc">\$\{mic\+doan\+day(\+moc)?\}<i class="nhv"><\/i>\$\{hinh\}<\/div><\/div>/.test(html)&&/function nhanhNe\(\)/.test(html)&&/#mapctl\.trai\{/.test(html),'Hạ / Trung: 2 cột (loại cột | 🎤 ✂ dây ⚑ — ⚑ thêm ở bản 50) + lưới 2×2 nút hình; chồng cụm Ảnh / CAD thì cụm đó sang trái');
   ok(/khongDay\(\)\?' · không dây':''/.test(html),'đang Không dây: nhãn «Vẽ tiếp từ …» trên bản đồ ghi thêm «· không dây»');
   /* 22/11 đoạn mới đánh lại từ đầu, lộ mới nút riêng, 4 mã dây Hạ / Trung */
   {const S=new Function(html.slice(html.indexOf('const VN=(()=>{'),html.indexOf('/* === HẾT HÀM THUẦN === */'))+';return {soDauMoi}')().soDauMoi;
@@ -483,7 +483,7 @@ console.log('17. Bản vẽ CAD phủ lên: VN-2000 → WGS-84, đọc DXF');
 console.log('18. (23/11) Cột ngoài đoạn cáp (capNgoai) + DXF: block ZP trùng POINT KS_DIEM, layer KS_NGOAI_CAP (khảo sát Đông Quang T1, lỗi #8)');
 {let C=null;try{C=new Function(html.slice(a,b)+';return {capNgoai}')().capNgoai}catch(e){}
  ok(typeof C==='function','capNgoai có trong khối hàm thuần (test chạy được không cần trang)');
- ok(/function cotNgoaiCap\(\)/.test(html)&&/a\(0,'POINT',8,'KS_NGOAI_CAP',10,f\(x\),20,f\(y\)/.test(html)&&/\['KS_NGOAI_CAP',1\]/.test(html)&&/if\(p\.shape!=='tba'\)a\(0,'POINT',8,'KS_DIEM'/.test(html),
+ ok(/function cotNgoaiCap\(\)/.test(html)&&/a\(0,'POINT',8,'KS_NGOAI_CAP',10,f\(x\),20,f\(y\)/.test(html)&&/\['KS_NGOAI_CAP',1\]/.test(html)&&/if\(p\.shape!=='tba'&&!p\.le\)a\(0,'POINT',8,'KS_DIEM'/.test(html),
     'buildDxf: layer KS_NGOAI_CAP khai báo khi có cột ngoài cáp, POINT cùng toạ độ KS_DIEM, vẫn giữ POINT KS_DIEM (L-CAD-023)');
  if(C){
   const day=(n,ghi)=>{const P=[],E=[];for(let i=1;i<=n;i++){P.push({id:String(i),code:i+';'+((ghi||{})[i]||'')});if(i>1)E.push([String(i-1),String(i)])}return {P,E}};
@@ -604,7 +604,7 @@ console.log('20. Bản 49: đổi Hạ ↔ Trung ngắt nối, ảnh Google 512 
  }
 }
 console.log('21. Bản 50: nút ⚑ Mốc ở thanh phải cả ba phần, chọn tên nhanh, đặt xong về công cụ cũ');
-{ok(/day\+moc;/.test(html)&&/mic\+doan\+day\+moc\}/.test(html),'thanh phải có ⚑ Mốc ở Chiếu sáng và Hạ / Trung');
+{ok(/day\+moc\+moi\+ht;/.test(html)&&/mic\+doan\+day\+moc\}/.test(html),'thanh phải có ⚑ Mốc ở Chiếu sáng và Hạ / Trung');
  ok(!/prompt\('Tên mốc \(vd: Ngã tư chợ/.test(html)&&/const \[x,y\]=toW\(pt\);mocTen\(x,y\)/.test(html),'đặt mốc mới: bảng chọn tên thay ô gõ prompt');
  if(typeof mocNut==='function'&&typeof document!=='undefined'){
   const D0=D,V0=V,che0=DB.che,g0=DB.mocGan,t0=tool,nh=()=>document.querySelector('#nhanh [data-nh="moc"]'),pn=document.querySelector('#panel');
@@ -627,6 +627,45 @@ console.log('21. Bản 50: nút ⚑ Mốc ở thanh phải cả ba phần, chọ
    nh().click();document.querySelector('nav.tools [data-tool="chon"]').click();ok(tool==='chon'&&mocNhanh===null&&!nh().classList.contains('on'),'đang chờ đặt mốc mà chọn công cụ khác: bỏ chờ');
    ok(JSON.stringify(DB.mocGan)==='["Cổng chợ Bến","Chợ"]','nhớ tên vừa dùng (mới nhất trước, không trùng)');
   }finally{if(!pn.hidden)closePanel();mocCho2=null;mocNhanh=null;delete DB.ds.thu50;D=D0;V=V0;DB.mocGan=g0;DB.che=che0;datChe(che0,true);tool=t0;nutCongCu();veNhanh();saveNow();draw()}
+ }
+}
+console.log('22. Bản 51: cột Làm mới / Hiện trạng (HT gạch chéo như thư viện ZP), nút Tròn / Vuông, cột HT ngoài tuyến đánh số riêng');
+{ok(/\.pole\.ht\{fill:url\(#ght\)\}/.test(html)&&/patternTransform=\\?"rotate\(45\)/.test(html)&&/'pole'\+\(!p\.moi&&p\.shape!=='tba'\?' ht':''\)/.test(html),'màn hình: cột hiện trạng tô gạch chéo 45°, cột làm mới rỗng');
+ ok(/\['tron','○','Cột tròn','Tròn'\],\['vuong','□','Cột vuông','Vuông'\]/.test(html),'thanh phải có hai nút ○ Tròn / □ Vuông riêng');
+ ok(/ZP_COT_BTLT_MOI:\(\)=>moi\(/.test(html)&&/ZP_COT_VUONG_MOI:/.test(html)&&/0_ZP_0-COT_Moi/.test(html)&&/lc\(cx\+x1,x1\+c,cx\+x2,x2\+c,150\)/.test(html),'DXF: block HT gạch chéo màu 150, block mới rỗng màu 1, layer 0-COT_Moi (theo thư viện)');
+ ok(/if\(p\.shape==='tba'\|\|p\.le\)continue;/.test(html)&&/'Làm mới','Tổng'\]/.test(html),'Excel Khối lượng: thêm cột Làm mới, cột HT ngoài tuyến không tính');
+ if(typeof htThem==='function'&&typeof document!=='undefined'){
+  const D0=D,V0=V,che0=DB.che,mb0=DB.moiBut,t0=tool,nh=k=>document.querySelector(`#nhanh [data-nh="${k}"]`);
+  try{
+   D={id:'thu51',ten:'Thử bản 51',ngay:'',roads:[],mocs:[],mocDo:[],geo:null,active:null,view:null,capNhat:0,poles:[],edges:[]};DB.ds.thu51=D;delete DB.moiBut;
+   datChe('ha');ok(moiBut()===false&&!!nh('moi')&&!!nh('ht'),'Hạ áp: mặc định hiện trạng, có nút Mới / HT và HT+');
+   addPole(0,0,null,null,false,true);addPole(30,0,null,null,false,true);const A=D.poles[0],B=D.poles[1];
+   ok(!A.moi&&!B.moi,'cột Hạ áp chấm mới: hiện trạng (không có p.moi)');
+   render();ok(document.querySelectorAll('#cv .pole.ht').length===2,'màn hình: 2 cột hiện trạng có lớp gạch chéo');
+   nh('moi').click();ok(moiBut()===true&&DB.moiBut.ha===true,'bấm Mới / HT: Hạ áp chuyển sang làm mới');
+   addPole(60,0,null,null,false,true);const C=D.poles[2];ok(C.moi===true,'cột chấm sau khi bấm: làm mới');
+   render();ok(document.querySelectorAll('#cv .pole.ht').length===2&&document.querySelectorAll('#cv .pole').length>=3,'cột làm mới không gạch chéo');
+   ok(zpCot()[C.id].bl==='ZP_COT_BTLT_MOI'&&zpCot()[C.id].ly==='0_ZP_0-COT_Moi'&&zpCot()[A.id].bl==='ZP_COT_TRON_HT','DXF: mới → ZP_COT_BTLT_MOI layer 0-COT_Moi, HT → ZP_COT_TRON_HT');
+   moCot(C);hinhNhanh('vuong');ok(C.shape==='vuong'&&zpCot()[C.id].bl==='ZP_COT_VUONG_MOI','□ Vuông: cột đang chọn thành cột vuông (mới → ZP_COT_VUONG_MOI)');
+   hinhNhanh('doi');ok(C.doi===true&&zpCot()[C.id].bl==='ZP_COT_VUONG_DOI_MOI','◎ Đôi bấm lần một: cột đôi');hinhNhanh('doi');ok(C.doi===false,'◎ Đôi bấm lần hai: về cột đơn');
+   hinhNhanh('tron');ok(C.shape==='tron','○ Tròn: về cột tròn');
+   nh('moi').click();ok(moiBut()===false&&!C.moi,'bấm Mới / HT khi đang mở cột: đổi cả cột đó về hiện trạng');dongDen();
+   D.active=C.id;const ne=D.edges.length;
+   nh('ht').click();ok(tool==='ht'&&htNhanh==='cot','bấm HT+: chờ chạm chỗ cột HT, nhớ công cụ Cột');
+   onTap({x:140,y:160},null);const H1=D.poles[3];
+   ok(H1.le===true&&parse(H1.code).so==='HT1'&&!H1.from&&D.edges.length===ne,`cột HT ngoài tuyến số HT1, không nối dây (mã «${H1.code}»)`);
+   ok(D.active===C.id&&tool==='cot'&&htNhanh===null,'chấm HT xong: cột đang nối vẫn là cột tuyến trước, về công cụ Cột');
+   dongDen();moCot(H1);ok(D.active===C.id,'mở cột HT: không đổi cột đang nối');dongDen();
+   addPole(90,0,null,null,false,true);const E=D.poles[4];
+   ok(E.from===C.id&&/^4;/.test(E.code)&&D.edges.length===ne+1,`cột tuyến chấm tiếp nối từ cột 3, số 4 — không đếm cột HT (mã «${E.code}»)`);
+   nh('ht').click();onTap({x:180,y:200},null);dongDen();ok(parse(D.poles[5].code).so==='HT2','cột HT thứ hai: HT2');
+   const dx=buildDxf(false),nP=(dx.match(/POINT\r\n8\r\nKS_DIEM\r\n/g)||[]).length;
+   ok(nP===4&&/HT1/.test(dx)&&!new RegExp('0_ZP_TEN_COT\\r\\n(?:[^\\r]*\\r\\n){8}HT1').test(dx),`DXF: POINT KS_DIEM chỉ 4 cột tuyến (đếm ${nP}), cột HT có chữ số nhưng không vào tuyến`);
+   ok(/ZP_COT_VUONG_MOI/.test(dx)&&/0_ZP_0-COT_Moi|0_ZP_0-COT_Hien_trang/.test(dx),'DXF có định nghĩa block cột mới');
+   datChe('cs');ok(moiBut()===true&&!!nh('moi')&&!!nh('ht'),'Chiếu sáng: mặc định làm mới, có nút Mới / HT và HT+');
+   ok(denGan({x:H1.x,y:H1.y},12)!==H1,'GPS Chiếu sáng: không lắp nhầm đèn vào cột HT ngoài tuyến');
+   datChe('tt');ok(moiBut()===false,'Trung thế: mặc định hiện trạng');
+  }finally{dongDen();htNhanh=null;mocNhanh=null;delete DB.ds.thu51;D=D0;V=V0;if(mb0===undefined)delete DB.moiBut;else DB.moiBut=mb0;DB.che=che0;datChe(che0,true);tool=t0;nutCongCu();veNhanh();saveNow();draw()}
  }
 }
 console.log(`\n${nOk} đạt, ${nSai} sai`);process.exit(nSai?1:0);
