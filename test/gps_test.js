@@ -721,4 +721,25 @@ console.log('24. Bản 53: Chiếu sáng Tròn / Vuông, hòm H2 / H4 / HF3 đ�
   }finally{dongDen();delete DB.ds.thu53;D=D0;V=V0;if(mb0===undefined)delete DB.moiBut;else DB.moiBut=mb0;DB.che=che0;datChe(che0,true);saveNow();draw()}
  }
 }
+console.log('25. Bản 54: nhãn tên đường / địa danh trên ảnh vệ tinh, ảnh theo đúng độ phân giải màn hình, chấm GPS lớp riêng (không dựng lại sơ đồ)');
+{ok(/nhan:\{ten:'Nhãn',zMax:19,ti:512,url:\(z,x,y\)=>`https:\/\/mt\$\{\(x\+y\)&3\}\.google\.com\/vt\/lyrs=h&scale=2&hl=vi/.test(html)&&/if\(DB\.nenNhan!==false\)\{const zn=/.test(html)&&/data-a="nen-nhan"/.test(html),'lớp nhãn Google (lyrs=h, tiếng Việt) phủ lên ảnh, có nút bật / tắt, mặc định bật');
+ ok(/if\(cors&&src!=='nhan'\)lamRo/.test(html),'ô nhãn không qua bộ làm nét (giữ nền trong suốt, chữ không bị gắt)');
+ ok(/1\/\(V\.s\*Math\.min\(DPR,3\)\)/.test(html)&&/if\(DB\.nenNguon==null\)DB\.nenNguon='ggt';/.test(html),'ảnh chọn mức theo độ phân giải màn hình tới 3×; chưa chọn nguồn thì dùng Google');
+ ok(!/if\(fix&&D\.geo&&!o\.print\)/.test(html)&&/<svg id="meo" aria-hidden="true"><\/svg>/.test(html)&&/  meVe\(\);   \/\* bản 54/.test(html)&&!/gpsVeT=nay;draw\(\)/.test(html),'GPS báo vị trí: chỉ dời chấm ở lớp #meo, không gọi draw()');
+ if(typeof meVe==='function'&&typeof document!=='undefined'){
+  const D0=D,V0=V,f0=fix;
+  try{
+   D={id:'thu54',ten:'Thử bản 54',ngay:'',roads:[],mocs:[],mocDo:[],geo:null,active:null,view:null,capNhat:0,poles:[],edges:[]};DB.ds.thu54=D;
+   geoToXY(20,105,true);for(let i=0;i<300;i++)addPole(i*30,(i%7)*5,null,null,false,true);V={s:1,tx:50,ty:200};render();
+   fix={lat:20,lon:105.0001,acc:4,t:Date.now(),song:true};
+   const html0=document.getElementById('cv').innerHTML;let s=performance.now();for(let i=0;i<20;i++){fix={...fix,lon:fix.lon+1e-6};meVe()}const tMe=(performance.now()-s)/20;
+   s=performance.now();for(let i=0;i<5;i++)render();const tRe=(performance.now()-s)/5;
+   const m=document.querySelector('#meo .me');
+   ok(!!m&&document.getElementById('cv').innerHTML===html0||document.getElementById('cv').innerHTML.length>0,'chấm GPS nằm ở lớp #meo');
+   ok(m&&Math.abs(+m.getAttribute('cx')-(geoToXY(fix.lat,fix.lon,false).x*V.s+V.tx))<0.2,'chấm GPS đúng vị trí trên màn hình');
+   ok(tMe*10<tRe,`một lần GPS báo: dời chấm ${tMe.toFixed(2)} ms thay vì dựng lại sơ đồ 300 cột ${tRe.toFixed(1)} ms`);
+   V={s:1,tx:80,ty:200};nhanh();
+  }finally{fix=f0;delete DB.ds.thu54;D=D0;V=V0;saveNow();draw()}
+ }
+}
 console.log(`\n${nOk} đạt, ${nSai} sai`);process.exit(nSai?1:0);
