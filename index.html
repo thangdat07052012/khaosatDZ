@@ -189,7 +189,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 #mapctl.trai{right:auto;left:6px}
 #nhanh .nhv{display:block;height:3px}#nhanh .dm{font-size:9px;letter-spacing:-.3px}#nhanh .dm small{color:var(--hi)}#nhanh .dm.on small{color:inherit}
 #nhanh .lo{font-size:11px}
-#nhanh .moi{font-size:14px}#nhanh .htle{font-size:10px}#nhanh .htle.on{background:var(--fg);color:var(--paper)}#nhanh .moc{font-size:13px;color:var(--moc)}#nhanh .moc.on{background:var(--moc);color:#fff;border-color:var(--moc)}
+#nhanh .moi{font-size:14px}#nhanh .hop{font-size:11px}#nhanh .htle{font-size:10px}#nhanh .htle.on{background:var(--fg);color:var(--paper)}#nhanh .moc{font-size:13px;color:var(--moc)}#nhanh .moc.on{background:var(--moc);color:#fff;border-color:var(--moc)}
 .mtw{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px}
 #nhanh .mic.on{background:#E0412F;color:#fff;border-color:#E0412F;animation:nhm 1.2s infinite}
 @keyframes nhm{50%{box-shadow:0 0 0 7px rgba(224,65,47,.28)}}
@@ -773,7 +773,7 @@ function svgInner(v,w,h,o={}){
 }
 let rafP=false,rafN=false,Vb=null;   /* Vb: khung nhìn lúc dựng SVG lần cuối */
 function draw(){if(rafP)return;rafP=true;requestAnimationFrame(()=>{rafP=false;render()})}
-function render(){Vb={s:V.s,tx:V.tx,ty:V.ty};cv.style.transform='';cv.innerHTML=svgInner(V,W,H);nenVe();status();cadNut();nenNut()}
+function render(){Vb={s:V.s,tx:V.tx,ty:V.ty};cv.style.transform='';cv.innerHTML=svgInner(V,W,H);nenVe();status();cadNut();nenNut();hopSoVe()}
 /* đang kéo / phóng: chỉ dịch + co giãn lớp SVG đã dựng (GPU) và vẽ lại ảnh nền; thả tay mới dựng lại SVG cho nét chữ chuẩn */
 function nhanh(){if(rafN)return;rafN=true;requestAnimationFrame(()=>{rafN=false;if(rafP||!Vb)return;
   const k=V.s/Vb.s;cv.style.transform=Math.abs(k-1)<1e-9&&V.tx===Vb.tx&&V.ty===Vb.ty?'':`translate(${(V.tx-k*Vb.tx).toFixed(2)}px,${(V.ty-k*Vb.ty).toFixed(2)}px) scale(${k.toFixed(5)})`;nenVe()})}
@@ -1234,7 +1234,7 @@ function denSoDau(){const b=denGanNhat();return b?soDauMoi(D.poles.filter(denCo)
 /* cờ D.doanMoi: 'lo' = lộ mới cùng tủ; 1 = đoạn mới (tủ / tuyến khác) đánh lại từ đầu */
 function denThem(x,y,gps){const k=DB.denBut||'L100',a=activeP(),noi=!!a&&denCo(a)&&k!=='hong',md=D.doanMoi||0;D.doanMoi=0;
   if(!noi)D.active=null;const so=noi?'':md==='lo'?denSoLo():md?denSoDau():denSoMoi();
-  addPole(x,y,'cs',gps,false,true);const p=activeP();if(!p)return;
+  addPole(x,y,a&&a.shape==='vuong'?'vuong':'cs',gps,false,true);const p=activeP();if(!p)return;
   const r=parse(p.code),kc=r.toks.filter(t=>t.k==='kc').map(t=>t.t);
   p.code=denDat([noi?r.so||denSoMoi():so,...kc].join(';')+';',k);save();draw();
   const m=`${parse(p.code).so||'Cột mới'}: ${k==='hong'?'đèn HỎNG (chưa rõ loại)':DEN_NGAN[k]}`;denMsg=m+' · ';toast(m)}
@@ -1322,14 +1322,17 @@ function veNhanh(){const kb=cotBut(),kd=khongDay();
   const day=`<button type="button" data-nh="day" class="phu day${kd?' tat':''}" aria-label="${kd?'Đang không vẽ dây — chạm để vẽ dây':'Đang vẽ dây nối cột — chạm để tắt'}">${kd?'⌀':'〰'}<small>${kd?'Không dây':'Có dây'}</small></button>`;
   const mm=moiBut(),moi=`<button type="button" data-nh="moi" class="phu moi${mm?'':' on'}" aria-label="${mm?'Cột chấm tiếp: LÀM MỚI — chạm để đổi sang hiện trạng':'Cột chấm tiếp: HIỆN TRẠNG — chạm để đổi sang làm mới'}">${mm?'○':'⊘'}<small>${mm?'Mới':'HT'}</small></button>`;
   const ht=`<button type="button" data-nh="ht" class="phu htle${htNhanh!==null?' on':''}" aria-label="Chấm cột hiện trạng ngoài tuyến: đánh số HT riêng, không nối dây">HT+<small>Cột HT</small></button>`;
+  const hinhNut=v=>{const [,i,t,n]=HINH_NH.find(x=>x[0]===v);return `<button type="button" data-nh="hinh" data-v="${v}" class="phu hinh" aria-label="${t} cho cột đang chọn">${i}<small>${n}</small></button>`};
+  /* bản 53: Hạ áp thêm hòm H2 / H4 / HF3 (3 pha) — mỗi lần ấn +1 cho cột đang chọn, giữ lâu −1 */
+  const hop=DB.che==='ha'?'<i class="nhv"></i>'+HOP_NH.map(([k,l,t])=>`<button type="button" data-nh="hop" data-v="${k}" class="phu hop" aria-label="${t}: ấn mỗi lần +1 cho cột đang chọn, giữ lâu bớt 1">${l}<small data-hop="${k}">hòm</small></button>`).join(''):'';
   const moc=`<button type="button" data-nh="moc" class="phu moc${mocNhanh?' on':''}" aria-label="Thêm mốc lưu ý: bấm rồi chạm chỗ trên bản đồ, chọn tên">⚑<small>Mốc</small></button>`;
   let h;
-  if(DB.che==='cs')h=mic+doan+`<button type="button" data-nh="lomoi" class="phu lo" aria-label="Lộ mới: cùng tủ, lộ khác — đèn tiếp theo số lộ mới, không nối dây">L+1<small>Lộ mới</small></button>`+day+moc+moi+ht;
+  if(DB.che==='cs')h=mic+doan+`<button type="button" data-nh="lomoi" class="phu lo" aria-label="Lộ mới: cùng tủ, lộ khác — đèn tiếp theo số lộ mới, không nối dây">L+1<small>Lộ mới</small></button>`+day+moc+moi+ht+'<i class="nhv"></i>'+hinhNut('tron')+hinhNut('vuong');
   else{const cot=nhanhCua().cot.slice(0,4).map(v=>`<button type="button" data-nh="cot" data-v="${esc(v)}" class="${v===kb?'on':''}" aria-label="Chọn sẵn cột ${esc(v)}: chạm chỗ trống là thêm cột loại này">${esc(v)}<small>cột</small></button>`).join('');
     const db=dayBut(),dm=nhanhCua().day.slice(0,4).map(v=>`<button type="button" data-nh="dayma" data-v="${esc(v)}" class="dm${v===db?' on':''}" aria-label="Chọn sẵn dây ${esc(v)}: cột chấm tiếp mang dây này">${esc(v.replace(/^ABC/i,''))}<small>${/^ABC/i.test(v)?'ABC':'dây'}</small></button>`).join('');
-    const hinh=HINH_NH.map(([v,i,t,n])=>`<button type="button" data-nh="hinh" data-v="${v}" class="phu hinh" aria-label="${t} cho cột đang chọn">${i}<small>${n}</small></button>`).join('');
-    h=`<div class="nh2"><div class="nhc">${cot}<i class="nhv"></i>${dm}<i class="nhv"></i>${moi+ht}</div><div class="nhc">${mic+doan+day+moc}<i class="nhv"></i>${hinh}</div></div>`}
-  $('#nhanh').innerHTML=h;nhanhNe()}
+    const hinh=HINH_NH.map(([v])=>hinhNut(v)).join('');
+    h=`<div class="nh2"><div class="nhc">${cot}<i class="nhv"></i>${dm}<i class="nhv"></i>${moi+ht}</div><div class="nhc">${mic+doan+day+moc}<i class="nhv"></i>${hinh}${hop}</div></div>`}
+  $('#nhanh').innerHTML=h;hopSoVe();nhanhNe()}
 /* bản 50 (Truong 24/11): ⚑ Mốc ở thanh phải cả ba phần — bấm rồi chạm bản đồ, chọn tên nhanh; đặt xong về công cụ đang dùng */
 const MOC_SAN=['Cổng UBND','Chợ','Trường học','Nhà văn hoá','Trạm y tế','Đình / chùa','Ngã ba','Ngã tư','Cầu','Cống','Trạm biến áp','Cây to'];
 function nutCongCu(){for(const x of document.querySelectorAll('[data-tool]'))x.classList.toggle('on',tool==='den'?x.dataset.den===(DB.denBut||'L100'):x.dataset.tool===tool)}
@@ -1374,11 +1377,22 @@ function doanBao(m){if(DB.che==='cs')return m==='lo'?`L+1 LỘ MỚI (cùng tủ
 /* 22/11 Truong: nút hay dùng — đặt cho cột đang chọn (vừa chấm / đang mở); cột sau tự theo hình + đơn/đôi của cột trước */
 /* bản 51: tròn / vuông tách hai nút rõ ký hiệu; ◎ Đôi bấm lại là về cột đơn */
 const HINH_NH=[['tba','▣','TBA','TBA'],['tron','○','Cột tròn','Tròn'],['vuong','□','Cột vuông','Vuông'],['doi','◎','Cột đôi / đơn','Đôi'],['cd','⏚','Cầu dao','Cầu dao']];
+const HOP_NH=[['h2','H2','Hòm H2'],['h4','H4','Hòm H4'],['p3','HF3','Hòm 3 pha (HF3)']];
+function hopCot(){return (denId&&byId(denId))||activeP()}
+function hopNhanh(k,d){if(editId)finishSheet();const p=hopCot(),ten=HOP_NH.find(x=>x[0]===k)[1];
+  if(!p||p.shape==='tba'){toast('Chấm hoặc chạm cột trước rồi ấn '+ten);return}
+  const f=parse(p.code),n=Math.max(0,(f[k]||0)+d);if(n===(f[k]||0)){toast((f.so||'Cột')+': chưa có hòm '+ten);return}
+  snap();f[k]=n;p.code=chuanHoa(codeOf(f));p.auto=false;save();draw();if(denId===p.id&&!qsheet.hidden)veCot();
+  const tg=HOP_NH.map(([q,l])=>f[q]?l+' × '+f[q]:'').filter(Boolean).join(' · ');
+  toast(`${f.so||'Cột'}: ${tg||'không còn hòm'}${d>0?' — giữ lâu nút để bớt':''}`)}
+/* số hòm của cột đang chọn hiện ngay dưới nút (gọi mỗi lần vẽ lại) */
+function hopSoVe(){const e=document.querySelectorAll('#nhanh [data-hop]');if(!e.length)return;const p=hopCot(),f=p&&parse(p.code);
+  for(const x of e){const n=f?f[x.dataset.hop]||0:0;x.textContent=n?'× '+n:'hòm';x.parentNode.classList.toggle('on',!!n)}}
 function hinhNhanh(v){if(editId)finishSheet();const p=(denId&&byId(denId))||activeP();
   if(!p){toast('Chấm cột trước rồi bấm '+HINH_NH.find(x=>x[0]===v)[2]);return}
   snap();let m;
   if(v==='tba'){p.shape=p.shape==='tba'?'tron':'tba';if(p.shape==='tba')p.doi=false;m=p.shape==='tba'?'TBA':'bỏ TBA → cột tròn'}
-  else if(v==='tron'||v==='vuong'){p.shape=v;m=v==='vuong'?'cột vuông':'cột tròn'}
+  else if(v==='tron'||v==='vuong'){p.shape=v==='tron'&&DB.che==='cs'?'cs':v;m=v==='vuong'?'cột vuông':'cột tròn'}   /* Chiếu sáng: tròn = cột CS tròn (ký hiệu CS) */
   else if(v==='doi'){if(p.shape==='tba')p.shape='tron';p.doi=!p.doi;m=p.doi?'cột đôi':'cột đơn'}
   else if(v==='don'){if(p.shape==='tba')p.shape='tron';p.doi=false;m='cột đơn'}
   else{const f=parse(p.code),i=f.dd.findIndex(x=>norm(x)==='CẦUDAO');if(i>=0)f.dd.splice(i,1);else f.dd.push('Cầu dao');p.code=chuanHoa(codeOf(f));m=i>=0?'bỏ cầu dao':'cột cầu dao'}
@@ -1387,6 +1401,7 @@ function micNhanh(){if(editId&&!sheet.hidden){$('#sh-mic').click();return}
   const p=(denId&&byId(denId))||activeP()||D.poles[D.poles.length-1];
   if(!p){toast('Chấm cột trước (GPS hoặc chạm bản đồ) rồi bấm 🎤');return}
   dongDen();datAct(p);save();openSheet(p);$('#sh-mic').click()}
+$('#nhanh').addEventListener('contextmenu',e=>{const b=e.target.closest('[data-nh="hop"]');if(!b)return;e.preventDefault();hopNhanh(b.dataset.v,-1)});   /* giữ lâu = bớt 1 */
 $('#nhanh').addEventListener('click',e=>{const b=e.target.closest('[data-nh]');if(!b)return;const k=b.dataset.nh;
   if(k==='mic'){micNhanh();return}
   if(k==='moc'){mocNut();return}
@@ -1398,6 +1413,7 @@ $('#nhanh').addEventListener('click',e=>{const b=e.target.closest('[data-nh]');i
     const p=B[DB.che]&&denId&&!qsheet.hidden&&byId(denId);if(p)cotSua(f=>{f.dayHT[0]=v});veNhanh();
     toast(B[DB.che]?`Đã chọn sẵn dây ${v}: cột chấm tiếp mang dây này${p?' (đã đặt cho cột '+(parse(p.code).so||'đang mở')+')':''} — chạm lại phím để thôi`:'Thôi chọn sẵn loại dây');return}
   if(k==='hinh'){hinhNhanh(b.dataset.v);return}
+  if(k==='hop'){hopNhanh(b.dataset.v,1);return}
   if(k==='day'){const K=DB.khongDay||(DB.khongDay={}),c=DB.che||'ha';K[c]=!K[c];saveNow();veNhanh();draw();
     toast(K[c]?'Không vẽ dây: cột / đèn chấm tiếp vẫn đánh số tiếp, không nối dây. Cần nối tay: công cụ Nối dây':'Có dây: cột / đèn chấm tiếp nối dây với cột trước');return}
   const B=DB.cotBut||(DB.cotBut={});B[DB.che]=B[DB.che]===b.dataset.v?'':b.dataset.v;saveNow();
@@ -2135,7 +2151,8 @@ function gpsLoc(ds0){
   for(const q of ds0){const l=ds[ds.length-1];
     if(l&&q.tsd&&(l.tsd===q.tsd||(l.lat===q.lat&&l.lon===q.lon&&l.acc===q.acc))){boTrung++;continue}ds.push(q)}   /* chỉ xét khi có giờ của máy (tsd) */
   let st=ds.length>2?1:0;
-  while(st<ds.length-2&&ds[st].ts<2000&&ds[st].acc>1.2*ds[st+1].acc)st++;
+  if(ds[0]&&ds[0].truoc)st=0;   /* bản 53: phiên có lần đo lúc đứng chờ trước khi bấm → GPS đã bám, không bỏ lần đầu */
+  while(st<ds.length-2&&ds[st].ts>=0&&ds[st].ts<2000&&ds[st].acc>1.2*ds[st+1].acc)st++;
   let a=ds.slice(st);
   /* 03/11: bỏ lần đo lúc ĐANG ĐI (tốc độ máy báo > 0,8 m/s); đi suốt cả phiên thì giữ và báo */
   const dung=a.filter(q=>!(q.v>GPS_V)),boDiChuyen=a.length-dung.length,diChuyen=!dung.length;
@@ -2469,7 +2486,7 @@ function giongGop(list,them,ghiDe){
 /* 🎤 KHẨU LỆNH ở CUỐI câu nói (07/11): «điền» · «tiếp» (= Tiếp ▸) · «dừng» (= Dừng) · «đoạn mới» · «nói lại» / «xoá câu»
    → {lenh:'dien'|'tiep'|'dung'|'doan'|'xoa'|null, con: phần câu trước lệnh}. Chỉ nhận ở CUỐI câu, có chốt chặn:
    «tiếp địa», «nối tiếp», «trạm dừng», «xã Quảng Điền» không thành lệnh */
-const BAN_APP='kstuyen-52';
+const BAN_APP='kstuyen-53';
 /* 🎤 chờ bao lâu (ms) rồi mới làm khẩu lệnh cuối câu (07/11 rút ngắn ⚑): máy đã chốt câu → làm gần như ngay;
    còn chữ tạm → chờ ngắn xem có nói tiếp không («tiếp», «dừng» chờ lâu hơn chút vì hay đi tiếp chữ, vd «tiếp địa»);
    gõ tay / 🎤 bàn phím chờ lâu nhất; lai = nghỉ trước khi mở phiên nghe mới */
@@ -2892,7 +2909,7 @@ function gpsCheDo(){return GPS_CHE_DO[DB.gpsCheDo]?DB.gpsCheDo:'chuan'}
 let gpsM=null;   /* phiên đang đo: {t0, ms, muc:'cot'|'moc', ds:[{lat,lon,acc,ts}], kq, tm} */
 function gpsDung(){if(gpsM)clearInterval(gpsM.tm);gpsM=null;draw()}   /* chỉ hết phiên đo — GPS vẫn theo dõi */
 /* 23/11: GPS theo dõi liên tục từ lần bấm đầu: chấm xanh đi theo người; app ẩn thì tắt (đỡ pin), mở lại thì bật */
-let gpsCuoi=null,gpsVeT=0,gpsTheoBat=false;   /* gpsCuoi: lần đo thô gần nhất {lat,lon,acc,t} */
+let gpsCuoi=null,gpsVeT=0,gpsTheoBat=false,gpsTruoc=[],gpsLoc1=null;   /* bản 53: gpsTruoc = lần đo thô 6 s gần nhất; gpsLoc1 = chấm vị trí lọc mượt */   /* gpsCuoi: lần đo thô gần nhất {lat,lon,acc,t} */
 function gpsTat(){if(watchId!==null)navigator.geolocation.clearWatch(watchId);watchId=null;gpsTheoBat=false;gpsDung()}
 function gpsTheo(){if(watchId!==null||!('geolocation' in navigator))return;
   watchId=navigator.geolocation.watchPosition(gpsNhan,
@@ -2905,13 +2922,28 @@ function gpsNhan(pos){
     gpsM.kq=gpsLoc(gpsM.ds);fix={...d,lat:gpsM.kq.lat,lon:gpsM.kq.lon,acc:gpsM.kq.acc,t:nay};gpsLab();
     if(gpsXongSom(gpsM.ds,d.ts))gpsXong();else draw();return}
   if(pos.timestamp&&nay-pos.timestamp>15000)return;
-  gpsCuoi={lat:q.lat,lon:q.lon,acc:q.acc,t:nay};fix={lat:q.lat,lon:q.lon,acc:q.acc,t:nay,song:true};gpsLab();
+  gpsTruoc.push({...q,t:nay});while(gpsTruoc.length&&nay-gpsTruoc[0].t>6000)gpsTruoc.shift();
+  const k=gpsMuot(gpsLoc1,q,nay);gpsLoc1=k;
+  gpsCuoi={lat:q.lat,lon:q.lon,acc:q.acc,t:nay};fix={lat:k.lat,lon:k.lon,acc:k.acc,t:nay,song:true};gpsLab();
   if(!G&&nay-gpsVeT>=1000){gpsVeT=nay;draw()}   /* chấm xanh: vẽ lại ≤ 1 lần / giây, không vẽ khi đang kéo / phóng */
 }
 document.addEventListener('visibilitychange',()=>{if(document.hidden){if(watchId!==null&&!gpsM){navigator.geolocation.clearWatch(watchId);watchId=null}}else if(gpsTheoBat)gpsTheo()});
 /* đưa màn hình về một điểm (lat, lon): giữa ngang, 40 % chiều cao (chừa chỗ bảng cột phía dưới) */
 function veToi(lat,lon){if(!D.geo||lat==null||lon==null)return false;const m=geoToXY(lat,lon,false);V.tx=W/2-m.x*V.s;V.ty=H*0.4-m.y*V.s;persistView();return true}
 function ngoaiManHinh(lat,lon){if(!D.geo)return false;const m=geoToXY(lat,lon,false),x=V.tx+m.x*V.s,y=V.ty+m.y*V.s;return x<40||x>W-40||y<60||y>H-160}
+/* bản 53 (Truong 24/11 «tối ưu GPS khi di chuyển»): chấm vị trí khi đi = lọc Kalman đơn giản theo sai số máy báo:
+   đứng yên thì gộp dần cho bớt nhảy, đi nhanh thì bám theo (độ bất định tăng theo tốc độ × thời gian). Chỉ để hiện — đo cột vẫn dùng số thô */
+function gpsMuot(k,q,nay){if(!k||nay-k.t>8000||!isFinite(k.acc))return {lat:q.lat,lon:q.lon,acc:q.acc,t:nay,vx:0,vy:0};
+  /* vận tốc không đổi (alpha-beta): dự đoán theo vận tốc ước lượng rồi kéo về số đo theo tỉ lệ sai số; máy báo đứng yên (< 0,3 m/s) thì vận tốc = 0 */
+  const dt=Math.max((nay-k.t)/1000,0.05),ky=110574,kx=111320*Math.cos(q.lat*Math.PI/180),dung=q.v!=null&&q.v<0.3;
+  let vx=dung?0:k.vx||0,vy=dung?0:k.vy||0;const px=(k.lon-q.lon)*kx+vx*dt,py=(k.lat-q.lat)*ky+vy*dt;
+  const P=k.acc*k.acc+(0.7*dt)**2,K=P/(P+q.acc*q.acc),nx=px-K*px,ny=py-K*py;
+  if(!dung){vx-=0.5*px/dt;vy-=0.5*py/dt;const sp=Math.hypot(vx,vy),cap=Math.max(q.v>0?q.v*1.5:3,0.5);if(sp>cap){vx*=cap/sp;vy*=cap/sp}}
+  return {lat:q.lat+ny/ky,lon:q.lon+nx/kx,acc:Math.sqrt((1-K)*P),t:nay,vx,vy}}
+/* lần đo lúc ĐỨNG YÊN trong 4 s trước khi bấm, cách chỗ đứng mới nhất ≤ 3 m, sai số ≤ 6 m → cộng vào phiên (đo nhanh hơn, ít nhảy hơn) */
+function gpsLayTruoc(t0){const a=gpsTruoc.filter(q=>t0-q.t<=4000&&q.acc<=GPS_VANG&&!(q.v>0.5));if(a.length<2)return [];
+  const c=a[a.length-1],kx=111320*Math.cos(c.lat*Math.PI/180),ky=110574;
+  return a.filter(q=>Math.hypot((q.lon-c.lon)*kx,(q.lat-c.lat)*ky)<=3).map(q=>({lat:q.lat,lon:q.lon,acc:q.acc,tsd:q.tsd,v:q.v,ts:q.t-t0,truoc:1}))}
 function gpsXong(){
   const M=gpsM;if(!M)return;const ds=M.ds,t=Date.now()-M.t0;gpsDung();
   if(!ds.length){toast('Chưa bắt được GPS, ra chỗ thoáng rồi bấm lại');return}
@@ -2920,7 +2952,7 @@ function gpsXong(){
   if(M.muc==='moc'){showMocForm(fix);return}
   denMsg='';placeGps();if(M.veSau||ngoaiManHinh(fix.lat,fix.lon)){veToi(fix.lat,fix.lon);draw()}
   const m=gpsMau(r.acc),dm=denMsg;
-  setTimeout(()=>toast(dm+`Đo ${vn1(t/1000)} s · ${r.n}/${r.tong} lần · ±${vn1(r.acc)} m — ${MAU_TEN[m]}${m==='do'?'. '+GPS_NHAC+', rồi đo lại':''}${r.diChuyen?' · Máy đang di chuyển: đứng yên tại chân cột rồi đo lại':r.boDiChuyen?` · bỏ ${r.boDiChuyen} lần đang đi`:''}`),60);
+  setTimeout(()=>toast(dm+`Đo ${vn1(t/1000)} s · ${r.n}/${r.tong} lần${M.nTruoc?` (+${M.nTruoc} lúc đứng chờ)`:''} · ±${vn1(r.acc)} m — ${MAU_TEN[m]}${m==='do'?'. '+GPS_NHAC+', rồi đo lại':''}${r.diChuyen?' · Máy đang di chuyển: đứng yên tại chân cột rồi đo lại':r.boDiChuyen?` · bỏ ${r.boDiChuyen} lần đang đi`:''}`),60);
 }
 function gpsTien(){
   if(!gpsM)return;const t=Date.now()-gpsM.t0;
@@ -2939,7 +2971,8 @@ function gpsBatDau(muc){
   if(gpsM)return;   /* đang đo: dừng bằng nút Dừng sớm */
   const nay=Date.now(),song=gpsCuoi&&nay-gpsCuoi.t<=60000;
   const veSau=!(song&&veToi(gpsCuoi.lat,gpsCuoi.lon));   /* bấm GPS → màn hình về vị trí hiện tại */
-  gpsM={t0:nay,ms:gpsThoiGian(gpsCheDo(),gpsCuoi,nay),muc:muc||'cot',ds:[],kq:null,veSau,tm:setInterval(gpsTien,250)};
+  const tr=gpsLayTruoc(nay);
+  gpsM={t0:nay,ms:gpsThoiGian(gpsCheDo(),gpsCuoi,nay),muc:muc||'cot',ds:tr,nTruoc:tr.length,kq:tr.length?gpsLoc(tr):null,veSau,tm:setInterval(gpsTien,250)};
   gpsTheoBat=true;gpsTheo();
   draw();
 }
