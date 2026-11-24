@@ -630,7 +630,7 @@ console.log('21. Bản 50: nút ⚑ Mốc ở thanh phải cả ba phần, chọ
  }
 }
 console.log('22. Bản 51: cột Làm mới / Hiện trạng (HT gạch chéo như thư viện ZP), nút Tròn / Vuông, cột HT ngoài tuyến đánh số riêng');
-{ok(/\.pole\.ht\{fill:url\(#ght\)\}/.test(html)&&/patternTransform=\\?"rotate\(45\)/.test(html)&&/'pole'\+\(!p\.moi&&p\.shape!=='tba'\?' ht':''\)/.test(html),'màn hình: cột hiện trạng tô gạch chéo 45°, cột làm mới rỗng');
+{ok(/\.pole\.ht\{fill:url\(#ght\)\}/.test(html)&&/patternTransform=\\?"rotate\(45\)/.test(html)&&/'pole'\+\(p\.shape==='tba'\?' tba':th\?' th':p\.moi\?' moi':' ht'\)/.test(html),'màn hình: cột hiện trạng tô gạch chéo 45°, cột làm mới rỗng');
  ok(/\['tron','○','Cột tròn','Tròn'\],\['vuong','□','Cột vuông','Vuông'\]/.test(html),'thanh phải có hai nút ○ Tròn / □ Vuông riêng');
  ok(/ZP_COT_BTLT_MOI:\(\)=>moi\(/.test(html)&&/ZP_COT_VUONG_MOI:/.test(html)&&/0_ZP_0-COT_Moi/.test(html)&&/lc\(cx\+x1,x1\+c,cx\+x2,x2\+c,150\)/.test(html),'DXF: block HT gạch chéo màu 150, block mới rỗng màu 1, layer 0-COT_Moi (theo thư viện)');
  ok(/if\(p\.shape==='tba'\|\|p\.le\)continue;/.test(html)&&/'Làm mới','Tổng'\]/.test(html),'Excel Khối lượng: thêm cột Làm mới, cột HT ngoài tuyến không tính');
@@ -666,6 +666,23 @@ console.log('22. Bản 51: cột Làm mới / Hiện trạng (HT gạch chéo nh
    ok(denGan({x:H1.x,y:H1.y},12)!==H1,'GPS Chiếu sáng: không lắp nhầm đèn vào cột HT ngoài tuyến');
    datChe('tt');ok(moiBut()===false,'Trung thế: mặc định hiện trạng');
   }finally{dongDen();htNhanh=null;mocNhanh=null;delete DB.ds.thu51;D=D0;V=V0;if(mb0===undefined)delete DB.moiBut;else DB.moiBut=mb0;DB.che=che0;datChe(che0,true);tool=t0;nutCongCu();veNhanh();saveNow();draw()}
+ }
+}
+console.log('23. Bản 52: màu cột theo thư viện ZP (HT xanh 150, mới đỏ 1, thu hồi cam 30, TBA đỏ), màu layer DXF theo thư viện');
+{ok(/--c-ht:#0A63D6; --c-moi:#D42222; --c-th:#E07000;/.test(html)&&/\.pole\.ht\{stroke:var\(--c-ht\)\}\.pole\.moi\{stroke:var\(--c-moi\)\}\.pole\.th\{stroke:var\(--c-th\)\}/.test(html)&&/\.ghtl\{stroke:var\(--c-ht\)\}/.test(html),'màn hình: biến màu HT / mới / thu hồi, nét gạch cùng màu HT');
+ ok(/'0_ZP_0-COT_Moi':42,'0_ZP_0-COT_Hien_trang':8,'0_ZP_0-COT_CS_Moi':100,'0_ZP_0-COT_Thu_hoi':30/.test(html)&&/\['0_ZP_TEN_COT',202\]/.test(html),'DXF: màu layer cột / dây / tên cột đúng bảng layer thư viện');
+ if(typeof render==='function'&&typeof document!=='undefined'){
+  const D0=D,V0=V,che0=DB.che,mb0=DB.moiBut;
+  try{
+   D={id:'thu52',ten:'Thử bản 52',ngay:'',roads:[],mocs:[],mocDo:[],geo:null,active:null,view:null,capNhat:0,poles:[],edges:[]};DB.ds.thu52=D;delete DB.moiBut;datChe('ha');
+   addPole(0,0,null,null,false,true);addPole(30,0,null,null,false,true);addPole(60,0,null,null,false,true);addPole(90,0,'tba',null,false,true);
+   const [A,B,C,T]=D.poles;B.moi=true;C.code='3;LT8,5>Nhổ bỏ;';D.active=null;V={s:2,tx:50,ty:200};render();
+   const cl=p=>{const e=[...document.querySelectorAll('#cv .pole')].find(x=>Math.abs(+(x.getAttribute('cx')??(+x.getAttribute('x')+(+x.getAttribute('width'))/2))-(p.x*2+50))<1);return e?getComputedStyle(e).stroke:''};
+   const sHT=cl(A),sMoi=cl(B),sTH=cl(C),sTBA=cl(T);
+   ok(sHT&&sMoi&&sTH&&sTBA&&new Set([sHT,sMoi,sTH]).size===3&&sTBA===sMoi,`màu nét: HT ${sHT} · mới ${sMoi} · thu hồi ${sTH} · TBA ${sTBA} (ba màu khác nhau, TBA đỏ như thư viện)`);
+   ok(document.querySelectorAll('#cv path.pole.th').length===1,'cột nhổ bỏ có gạch chéo X như ZP_COT_THU_HOI');
+   const dx=buildDxf(false);ok(/LAYER\r\n2\r\n0_ZP_0-COT_Moi\r\n70\r\n0\r\n62\r\n42/.test(dx)&&/LAYER\r\n2\r\n0_ZP_0-COT_Thu_hoi\r\n70\r\n0\r\n62\r\n30/.test(dx),'DXF: layer 0-COT_Moi màu 42, 0-COT_Thu_hoi màu 30');
+  }finally{delete DB.ds.thu52;D=D0;V=V0;if(mb0===undefined)delete DB.moiBut;else DB.moiBut=mb0;DB.che=che0;datChe(che0,true);saveNow();draw()}
  }
 }
 console.log(`\n${nOk} đạt, ${nSai} sai`);process.exit(nSai?1:0);

@@ -17,6 +17,7 @@
   --wire:#2F5FA8; --warn:#B4361F; --road:rgba(120,130,126,.22); --road-c:rgba(120,130,126,.55); --moc:#B4361F;
   --k-cot:#12443B; --k-day:#2F5FA8; --k-ct:#8A4B00; --k-sau:#6B3FA0; --k-kc:#1F7A4D; --k-gc:#56655F;
   --q-xanh:#1E9E50; --q-vang:#E0A100; --q-do:#D93025;
+  --c-ht:#0A63D6; --c-moi:#D42222; --c-th:#E07000;   /* bản 52: màu cột theo thư viện ZP — HT màu 150, mới màu 1, thu hồi màu 30 */
   --f:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   --mono:ui-monospace,"Cascadia Mono",Consolas,"Roboto Mono",monospace;
   color-scheme:light;
@@ -27,6 +28,7 @@
   --wire:#7FA8EC; --warn:#F08A6E; --road:rgba(170,185,178,.16); --road-c:rgba(170,185,178,.4); --moc:#F08A6E;
   --k-cot:#6FD0B6; --k-day:#8FB4F0; --k-ct:#F0B060; --k-sau:#C3A0F0; --k-kc:#7AD6A0; --k-gc:#9AABA4;
   --q-xanh:#4CC77F; --q-vang:#F5C542; --q-do:#FF6B5E;
+  --c-ht:#4FA2FF; --c-moi:#FF5C5C; --c-th:#FF9A3C;
   color-scheme:dark }}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -66,9 +68,10 @@ button{font:inherit;color:inherit;cursor:pointer}
 .jn{fill:var(--paper);stroke:var(--muted);stroke-width:1.6}
 .ed{stroke:var(--wire);stroke-width:2.2}
 .pole{fill:var(--paper);stroke:var(--fg);stroke-width:2.2}
+.pole.ht{stroke:var(--c-ht)}.pole.moi{stroke:var(--c-moi)}.pole.th{stroke:var(--c-th)}.pole.tba{stroke:var(--c-moi)}.pole.tba~.fillk,.fillk.tba{fill:var(--c-moi)}
 .pole.act{stroke:var(--hi);stroke-width:3.5}
 /* bản 51: cột hiện trạng = gạch chéo (như block ZP_COT_*_HT thư viện), cột làm mới = rỗng (như ZP_COT_BTLT_MOI) */
-.pole.ht{fill:url(#ght)}.ghtn{fill:var(--paper)}.ghtl{stroke:var(--fg)}
+.pole.ht{fill:url(#ght)}.ghtn{fill:var(--paper)}.ghtl{stroke:var(--c-ht)}
 /* thẻ đèn cạnh cột (21/11 Truong «các loại đèn cần phân biệt rõ hơn, không phải chấm nhỏ»): màu + chữ 60 / 100 / 150 / SĐ */
 .db{stroke:var(--paper);stroke-width:1.5}.db-L60{fill:#8E44AD}.db-L100{fill:#2E9E5B}.db-L150{fill:#2F6FD0}.db-SD{fill:#F0A30A}.db-x{fill:#7A8580}.db-L200{fill:#8D5524}
 .db.dbh{stroke:#E0412F;stroke-width:3}
@@ -619,7 +622,7 @@ function symSvg(p,x,y,R,cls,r){
   const one=(cx)=>p.shape==='vuong'?`<rect class="${cls}" x="${cx-R}" y="${y-R}" width="${2*R}" height="${2*R}"/>`
     :p.shape==='cs'?`<circle class="${cls}" cx="${cx}" cy="${y}" r="${R}"/><path class="${cls}" style="fill:none" d="M${cx-R*.7} ${y-R*.7}L${cx+R*.7} ${y+R*.7}M${cx+R*.7} ${y-R*.7}L${cx-R*.7} ${y+R*.7}"/>`
     :`<circle class="${cls}" cx="${cx}" cy="${y}" r="${R}"/>`;
-  if(p.shape==='tba'){const a=R*1.5;return `<rect class="${cls}" x="${x-a}" y="${y-a}" width="${2*a}" height="${2*a}"/><path class="fillk" d="M${x-a} ${y+a}L${x+a} ${y-a}L${x+a} ${y+a}Z"/>`}
+  if(p.shape==='tba'){const a=R*1.5;return `<rect class="${cls}" x="${x-a}" y="${y-a}" width="${2*a}" height="${2*a}"/><path class="fillk tba" d="M${x-a} ${y+a}L${x+a} ${y-a}L${x+a} ${y+a}Z"/>`}
   return isDoi(p,r)?one(x-R*0.95)+one(x+R*0.95):one(x);
 }
 /* ---------- đặt nhãn tránh đè nhau ----------
@@ -741,10 +744,12 @@ function svgInner(v,w,h,o={}){
     g+=`<text class="lb mc" x="${x+13*k}" y="${y-6*k}">${esc(m.ten)}</text>`}
   const R=7*k;
   for(const p of D.poles){if(!inW(p.x,p.y))continue;
-    const x=X(p.x),y=Y(p.y),c='pole'+(!p.moi&&p.shape!=='tba'?' ht':'')+(p.id===D.active&&!o.print?' act':''),r=pr[p.id],doi=isDoi(p,r)&&p.shape!=='tba';
+    const r=pr[p.id],th=r.cotTT[0]==='Nhổ bỏ',x=X(p.x),y=Y(p.y),doi=isDoi(p,r)&&p.shape!=='tba',
+      c='pole'+(p.shape==='tba'?' tba':th?' th':p.moi?' moi':' ht')+(p.id===D.active&&!o.print?' act':'');   /* bản 52: màu theo thư viện, nhổ bỏ = cam + gạch chéo X như ZP_COT_THU_HOI */
     if((p.id===editId||p.id===denId)&&!o.print)g+=`<circle class="ring" cx="${x}" cy="${y}" r="${R*(doi?2:1)+7}"/>`;
     if(p.id===noiA)g+=`<circle class="noiA" cx="${x}" cy="${y}" r="${R*(doi?2:1)+6}"/>`;
     g+=symSvg(p,x,y,R,c,r);
+    if(th){const d=R*1.25,w=doi?R*0.95:0;g+=`<path class="pole th" style="fill:none" d="M${f1(x-w-d)} ${f1(y-d)}L${f1(x+w+d)} ${f1(y+d)}M${f1(x-w-d)} ${f1(y+d)}L${f1(x+w+d)} ${f1(y-d)}"/>`}
     if(!o.print){const dn=denDoc(p.code);if(dn.loai||dn.hong){const t=p.shape==='tba';g+=denSvg(dn,x,y,R,R*(t?1.5:doi?2:1),R*(t?1.5:1))}}
     if(!o.print){const t=p.shape==='tba',rw=R*(t?1.5:doi?2:1),rh=R*(t?1.5:1),cx=f1(x-rw-3),cy=f1(y+rh+3),m=p.lat!=null?gpsMau(p.acc):'';
       if(p.nan)g+=`<rect class="nanmk" x="${f1(cx-5.5)}" y="${f1(cy-5.5)}" width="11" height="11" rx="2"/>`;
@@ -2464,7 +2469,7 @@ function giongGop(list,them,ghiDe){
 /* 🎤 KHẨU LỆNH ở CUỐI câu nói (07/11): «điền» · «tiếp» (= Tiếp ▸) · «dừng» (= Dừng) · «đoạn mới» · «nói lại» / «xoá câu»
    → {lenh:'dien'|'tiep'|'dung'|'doan'|'xoa'|null, con: phần câu trước lệnh}. Chỉ nhận ở CUỐI câu, có chốt chặn:
    «tiếp địa», «nối tiếp», «trạm dừng», «xã Quảng Điền» không thành lệnh */
-const BAN_APP='kstuyen-51';
+const BAN_APP='kstuyen-52';
 /* 🎤 chờ bao lâu (ms) rồi mới làm khẩu lệnh cuối câu (07/11 rút ngắn ⚑): máy đã chốt câu → làm gần như ngay;
    còn chữ tạm → chờ ngắn xem có nói tiếp không («tiếp», «dừng» chờ lâu hơn chút vì hay đi tiếp chữ, vd «tiếp địa»);
    gõ tay / 🎤 bàn phím chờ lâu nhất; lai = nghỉ trước khi mở phiên nghe mới */
@@ -3145,9 +3150,12 @@ function buildDxf(that){
   const dsDen=sorted().map(p=>({p,d:denDoc(p.code)})).filter(o=>o.d.loai||o.d.hong);
   /* 22/11 đồng bộ LispcadZP: layer / block theo thư viện ZP (ChuanBanVe\ThuVien_Layer_KyHieu.dwg) → mở DXF là KEDUONGDAY / XUATDUONGDAY /
      DOITRANGTHAI chạy được; bản vẽ đã có block thư viện cùng tên thì AutoCAD dùng ký hiệu thư viện. Vẫn giữ POINT KS_DIEM + chữ số cột KS_CHU (VVETUYENTUCOT) */
-  const zc=zpCot(),zd=zpDay(),LZ=[...new Set([...D.poles.map(p=>zc[p.id].ly),...zd.map(d=>d.ly)])].map(n=>[n,/Thu_hoi/.test(n)?8:/_22_/.test(n)?1:/_CS_/.test(n)?3:/DZ/.test(n)?5:7]);
+  /* bản 52: màu layer lấy đúng bảng layer thư viện (ThuVien_Layer_KyHieu.dwg 24/11) */
+  const MAU_TV={'0_ZP_0-COT_Moi':42,'0_ZP_0-COT_Hien_trang':8,'0_ZP_0-COT_CS_Moi':100,'0_ZP_0-COT_Thu_hoi':30,'0_ZP_0-TBA_Moi':42,'0_ZP_0-TBA_Hien_trang':1,'0_ZP_0-TBA_Thu_hoi':30,
+    '0_ZP_0-DZ_CS_Hien_trang':140,'0_ZP_0-DZ_04_Hien_trang':140,'0_ZP_0-DZ_22_Hien_trang':140,'0_ZP_0-DZ_CS_Thu_hoi':30,'0_ZP_0-DZ_04_Thu_hoi':30,'0_ZP_0-DZ_22_Thu_hoi':30,'0_ZP_TEN_COT':202};
+  const zc=zpCot(),zd=zpDay(),LZ=[...new Set([...D.poles.map(p=>zc[p.id].ly),...zd.map(d=>d.ly)])].map(n=>[n,MAU_TV[n]||(/Thu_hoi/.test(n)?30:/_22_/.test(n)?1:/_CS_/.test(n)?3:/DZ/.test(n)?5:7)]);
   const NGC=new Set(cotNgoaiCap().ngoai);   /* cột ngoài đoạn cáp → thêm POINT + chữ layer KS_NGOAI_CAP (xem capNgoai) */
-  const LY=[['KS_DIEM',7],...LZ,['0_ZP_TEN_COT',7],['KS_CHU',7],['KS_KHOANG',3],['KS_DUONG',8],['KS_MOC',6]].concat(that?[['KS_COT_KHONG_GPS',30],['KS_MOC_HIEU_CHINH',6]]:[])
+  const LY=[['KS_DIEM',7],...LZ,['0_ZP_TEN_COT',202],['KS_CHU',7],['KS_KHOANG',3],['KS_DUONG',8],['KS_MOC',6]].concat(that?[['KS_COT_KHONG_GPS',30],['KS_MOC_HIEU_CHINH',6]]:[])
     .concat(NGC.size?[['KS_NGOAI_CAP',1]]:[])
     .concat(dsDen.length?[...Object.values(DL),['KS_DEN_HONG',1],['KS_DEN_THONG_KE',7]]:[]);
   a(0,'TABLE',2,'LAYER',70,LY.length);for(const [n,c] of LY)a(0,'LAYER',2,n,70,0,62,c,6,'CONTINUOUS');a(0,'ENDTAB');
@@ -3277,7 +3285,7 @@ function xuatJson(){
     poles,edges:D.edges,roads:D.roads,mocs:D.mocs,mocDo:D.mocDo||[],hcTat:!!D.hcTat,...(DB.giongTu&&DB.giongTu.length?{giongTu:DB.giongTu}:{})};
   giao(new Blob([JSON.stringify(out,null,1)],{type:'application/json'}),fname('.json'));
 }
-const PNGCSS=`.ed{stroke:#2F5FA8;stroke-width:3}.pole{fill:#fff;stroke:#15201C;stroke-width:3}.pole.ht{fill:url(#ght)}.ghtn{fill:#fff}.ghtl{stroke:#15201C}.fillk{fill:#15201C}
+const PNGCSS=`.ed{stroke:#2F5FA8;stroke-width:3}.pole{fill:#fff;stroke:#15201C;stroke-width:3}.pole.ht{fill:url(#ght);stroke:#0A63D6}.pole.moi{stroke:#D42222}.pole.th{stroke:#E07000}.pole.tba{stroke:#D42222}.ghtn{fill:#fff}.ghtl{stroke:#0A63D6}.fillk{fill:#15201C}.fillk.tba{fill:#D42222}
 .road{stroke:rgba(120,130,126,.22);fill:none;stroke-linecap:round;stroke-linejoin:round}.roadc{stroke:rgba(120,130,126,.55);fill:none;stroke-width:1.5;stroke-dasharray:8 8}
 .jn{fill:#fff;stroke:#5A6964;stroke-width:2}.moc{fill:#B4361F;stroke:#fff;stroke-width:2}
 .lb{fill:#15201C;paint-order:stroke;stroke:#fff;stroke-width:5px;stroke-linejoin:round;font-family:Arial,sans-serif}
