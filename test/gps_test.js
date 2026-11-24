@@ -541,4 +541,38 @@ console.log('18. (23/11) Cột ngoài đoạn cáp (capNgoai) + DXF: block ZP tr
   }finally{D=D0}
  }else console.log('   bỏ qua: phần DXF thật cần chạy trong trang (buildDxf, D) — Node không có trang; chạy bằng test/chay_trinh_duyet.js')
 }
+console.log('19. Bản 48: xoá nhầm cột, mét dây «Không dây», lưu trữ, sw.js');
+{const sw=fs.readFileSync(path.join(__dirname,'..','sw.js'),'utf8');
+ ok(!/addAll\(FILES\)/.test(sw)&&/FILES\.map\(/.test(sw)&&/cache: 'reload'/.test(sw),'sw.js cất TỪNG file (không addAll tất-cả-hoặc-không), hỏi thẳng máy chủ');
+ ok(/f === '\.\/index\.html'\) throw err/.test(sw),'sw.js: trang chính không tải được thì cài hỏng → máy giữ bản cũ; file phụ lỗi chỉ bỏ qua');
+ ok(/text\/html/.test(sw)&&/t\.includes\('const BAN_APP='\)/.test(sw)&&!/if \(r\.ok\) \{ const copy/.test(sw),'sw.js chỉ cất trang chính khi đúng trang app (có BAN_APP), không cất trang đăng nhập wifi');
+ ok(/cong\(KD,/.test(html)&&/p\.from&&byId\(p\.from\)&&hasEdge\(p\.id,p\.from\)\)cong\(KD,/.test(html),'Excel «Khoi luong»: mét dây chỉ cộng khoảng CÓ dây nối (đoạn «Không dây» không tính)');
+ ok(/function persistView\(\)\{[^\n]*setTimeout\(luuView/.test(html)&&!/function persistView\(\)\{[^\n]*save\(\)/.test(html),'kéo / phóng: cất khung nhìn ở khoá riêng, không ghi lại cả kho, không đổi giờ sửa');
+ ok(/_hong_/.test(html)&&/chanGhi=true/.test(html)&&/function saveNow\(\)\{[^\n]*if\(chanGhi\)return/.test(html),'dữ liệu hỏng: cất bản hỏng trước, cất không được thì chặn ghi tới khi đã tải bản hỏng về máy');
+ ok(/storage[^\n]*persist\(\)/.test(html),'xin trình duyệt giữ dữ liệu lâu dài (navigator.storage.persist)');
+ if(typeof huyXoa==='function'&&typeof document!=='undefined'){
+  const D0=D,V0=V,set0=Storage.prototype.setItem,sl0=window.saoLuuHet;
+  try{
+   D={id:'thu48',ten:'Thử bản 48',ngay:'',roads:[{id:'r1',w:7,ten:'',pts:[[0,0],[50,0]]},{id:'r2',w:7,ten:'',pts:[[0,20],[50,20]]}],mocs:[],mocDo:[],geo:null,active:null,view:null,capNhat:0,
+     poles:[{id:'a',x:0,y:0,shape:'tron',code:'1;',from:null},{id:'b',x:30,y:0,shape:'tron',code:'2;30;',from:'a'}],edges:[['a','b']]};DB.ds.thu48=D;
+   const del=document.querySelector('#sh-del');
+   openSheet(D.poles[0]);del.click();openSheet(D.poles[1]);del.click();
+   ok(D.poles.length===2&&D.poles.some(p=>p.id==='b'),'bấm Xoá ở cột 1, sang cột 2 bấm Xoá: cột 2 KHÔNG bị xoá (phải bấm lần nữa)');
+   ok(del.textContent==='Xoá thật?','… nút cột 2 đang chờ bấm lần hai «Xoá thật?»');
+   del.click();ok(D.poles.length===1&&!D.poles.some(p=>p.id==='b'),'bấm lần hai mới xoá cột 2');
+   const rd=document.querySelector('#rs-del');openRoad(D.roads[0]);rd.click();openRoad(D.roads[1]);rd.click();
+   ok(D.roads.length===2,'đường: bấm Xoá ở đường 1, sang đường 2 bấm Xoá — đường 2 KHÔNG bị xoá');
+   closeRoad();huyXoa();
+   const cn=D.capNhat=12345;V={s:2,tx:10,ty:20};persistView();luuView();
+   const vw=JSON.parse(localStorage.getItem(LSV)||'{}');
+   ok(D.capNhat===cn&&vw.thu48&&vw.thu48.s===2&&vw.thu48.ty===20,'persistView: khung nhìn vào khoá riêng, giờ sửa bản vẽ không đổi');
+   let goiSL=0;window.saoLuuHet=()=>{goiSL++};
+   Storage.prototype.setItem=function(k,v){if(k===LSK){const e=new Error('đầy');e.name='QuotaExceededError';throw e}return set0.call(this,k,v)};
+   saveNow();saveNow();
+   ok(!!document.getElementById('luu-loi')&&goiSL===1,`bộ nhớ đầy: băng đỏ đứng yên + tự tải sao lưu đúng MỘT lần (${goiSL} lần)`);
+   Storage.prototype.setItem=set0;saveNow();
+   ok(!document.getElementById('luu-loi'),'lưu lại được: băng đỏ tự tắt');
+  }finally{Storage.prototype.setItem=set0;window.saoLuuHet=sl0;if(editId)closeSheet();delete DB.ds.thu48;D=D0;V=V0;huyXoa();saveNow();luuView();draw()}
+ }else console.log('   bỏ qua phần chạy trong trang (openSheet, D) — chạy bằng test/chay_trinh_duyet.js')
+}
 console.log(`\n${nOk} đạt, ${nSai} sai`);process.exit(nSai?1:0);

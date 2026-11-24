@@ -348,7 +348,12 @@ const LSK='kstuyen_v1';
 const SHAPE_NAME={tron:'Cột tròn',vuong:'Cột vuông',cs:'Cột CS',tba:'TBA'};
 
 /* ================= lưu trữ ================= */
-let DB=(()=>{try{return JSON.parse(localStorage.getItem(LSK))||{ds:{},cur:null}}catch(e){return {ds:{},cur:null}}})();
+/* 24/11 (bản 48): dữ liệu đọc không được thì CẤT bản hỏng sang khoá riêng trước khi ghi bản mới; cất không được (máy đầy)
+   thì chặn ghi tới lúc khởi động xong đã tải bản hỏng ra Tải xuống — không ghi đè mất dữ liệu cũ */
+let DB_HONG=null,chanGhi=false;
+let DB=(()=>{let s=null;try{s=localStorage.getItem(LSK);return JSON.parse(s)||{ds:{},cur:null}}catch(e){
+  if(s){DB_HONG={s,k:LSK+'_hong_'+Date.now()};try{localStorage.setItem(DB_HONG.k,s)}catch(_){DB_HONG.k=null;chanGhi=true}}
+  return {ds:{},cur:null}}})();
 DB.snap=true;
 /* nâng cấp một lần: đường vẽ mới mặc định rộng 15 m (bản cũ 7 m); người dùng vẫn chỉnh −/+ như cũ, đường đã vẽ giữ nguyên */
 if(DB.roadWv!==2){if(!DB.roadW||DB.roadW<15)DB.roadW=15;DB.roadWv=2}
@@ -361,13 +366,29 @@ function doiVX(code){
 /* nạp danh sách cột (localStorage, file mở / gộp): đổi VX → ABC, bỏ cột toạ độ VN-2000 do lần xuất trước ghi kèm */
 function napPoles(ps){let n=0;for(const p of ps||[]){const c=doiVX(p.code);if(c!==p.code){p.code=c;n++}for(const k of ['X_VN2000','Y_VN2000','X_VN2000_goc','Y_VN2000_goc','hieuChinhTheoMoc','chatLuongGPS'])delete p[k]}return n}
 let saveT=null;
-function saveNow(){clearTimeout(saveT);saveT=null;try{localStorage.setItem(LSK,JSON.stringify(DB))}catch(e){toast('Bộ nhớ đầy — xuất file rồi xoá bớt bản vẽ cũ')}}
+/* lưu không được (bộ nhớ đầy): băng đỏ đứng yên trên màn + tự tải bản sao lưu MỘT lần; lần lưu sau được thì băng tự tắt */
+let luuLoi=false;
+function baoLuuLoi(bat){let el=document.getElementById('luu-loi');
+  if(!bat){if(el)el.remove();return}
+  if(!el){el=document.createElement('div');el.id='luu-loi';
+    el.style.cssText='position:fixed;left:8px;right:8px;top:calc(8px + env(safe-area-inset-top));z-index:60;background:#b00020;color:#fff;padding:10px 12px;border-radius:10px;font:600 14px/1.35 system-ui,sans-serif;box-shadow:0 2px 10px #0006';
+    el.innerHTML='Chưa lưu được — bộ nhớ máy đầy. Đã tải bản sao lưu về máy. Xoá bớt bản vẽ cũ rồi làm tiếp. <button style="margin-left:6px;font:inherit;padding:4px 10px;border-radius:8px;border:0" id="luu-loi-sl">Sao lưu lại</button>';
+    document.body.append(el);el.querySelector('#luu-loi-sl').addEventListener('click',()=>{try{saoLuuHet()}catch(e){}})}}
+function saveNow(){clearTimeout(saveT);saveT=null;if(chanGhi)return;
+  try{localStorage.setItem(LSK,JSON.stringify(DB));if(luuLoi){luuLoi=false;baoLuuLoi(false)}}
+  catch(e){if(!luuLoi){luuLoi=true;try{baoLuuLoi(true);saoLuuHet()}catch(_){}}}}
 function save(){if(D)D.capNhat=Date.now();clearTimeout(saveT);saveT=setTimeout(saveNow,400)}
-document.addEventListener('visibilitychange',()=>{if(document.hidden&&saveT)saveNow()});
-window.addEventListener('pagehide',()=>{if(saveT)saveNow()});
+/* khung nhìn (kéo / phóng) cất ở khoá nhỏ riêng: không ghi lại cả kho, không đổi giờ "sửa gần nhất" của bản vẽ (bản 48).
+   D.view vẫn nằm trong kho chính (lần lưu sau mang theo) → lùi về bản cũ vẫn đọc được */
+const LSV=LSK+'_view';let viewT=null;
+function luuView(){clearTimeout(viewT);viewT=null;const o={};for(const d of Object.values(DB.ds))if(d.view)o[d.id]=d.view;
+  try{localStorage.setItem(LSV,JSON.stringify(o))}catch(e){}}
+document.addEventListener('visibilitychange',()=>{if(document.hidden){if(saveT)saveNow();if(viewT)luuView()}});
+window.addEventListener('pagehide',()=>{if(saveT)saveNow();if(viewT)luuView()});
 function newD(ten){const d={id:uid(),ten:ten||('Tuyến '+today()),ngay:today(),poles:[],edges:[],roads:[],mocs:[],mocDo:[],geo:null,active:null,view:null,capNhat:Date.now()};
   DB.ds[d.id]=d;DB.cur=d.id;saveNow();return d}
 for(const d of Object.values(DB.ds)){d.poles=d.poles||[];d.roads=d.roads||[];d.mocs=d.mocs||[];d.edges=d.edges||[];d.mocDo=d.mocDo||[]}  /* bản vẽ cũ thiếu mảng -> trắng trang (rà 01/11) */
+try{const vw=JSON.parse(localStorage.getItem(LSV)||'{}');for(const id in vw)if(DB.ds[id]&&vw[id]&&isFinite(vw[id].s))DB.ds[id].view=vw[id]}catch(e){}
 let D=DB.ds[DB.cur]||Object.values(DB.ds).sort((a,b)=>b.capNhat-a.capNhat)[0]||newD();
 DB.cur=D.id;D.mocDo=D.mocDo||[];
 
@@ -763,7 +784,7 @@ function status(){
     if(g.m==='do')h+=`<span class="pill solo nhac">${GPS_NHAC}</span>`}
   $('#status').innerHTML=h;
 }
-function persistView(){D.view={s:V.s,tx:V.tx,ty:V.ty};save()}
+function persistView(){D.view={s:V.s,tx:V.tx,ty:V.ty};clearTimeout(viewT);viewT=setTimeout(luuView,400)}
 
 /* ================= ảnh nền (canvas #nen, dưới lớp SVG) =================
    Ô ảnh tải một lần vào bộ nhớ OC (giữ ~180 ô gần nhất); kéo / phóng chỉ vẽ lại canvas từ ô có sẵn, không tạo lại thẻ ảnh.
@@ -1739,7 +1760,7 @@ function openSheet(p){
   editId=p.id;F=parse(p.code);sheetSnap=false;
   slot=!F.so?'so':F.cotHT.length?'ct':'cot';
   sheet.hidden=false;renderSlots();renderOpts();$('#opts').scrollTop=0;veAnhCot();
-  const del=$('#sh-del');del.classList.remove('armed');del.textContent='Xoá';
+  huyXoa();
   /* cột đang sửa phải nằm trong phần bản vẽ còn thấy (trên ô nhập), cách mép ≥ 60px; đo ô nhập sau khi đã render xong.
      offsetHeight không bị ảnh hưởng bởi hiệu ứng trượt lên, nên đo được đúng chiều cao ngay khung hình đầu. */
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
@@ -1784,6 +1805,10 @@ $('#sh-ok').addEventListener('click',()=>giongNut('tiep'));
 $('#sh-end').addEventListener('click',()=>giongNut('dung'));
 $('#sh-new').addEventListener('click',()=>giongNut('doan'));
 let delT=null;
+/* bản 48: mở cột / đường khác thì huỷ lần bấm "Xoá" thứ nhất — trước đây bấm Xoá ở cột A, sang cột B bấm Xoá là xoá luôn B không hỏi */
+function huyXoa(){clearTimeout(delT);delT=null;clearTimeout(rdelT);rdelT=null;
+  const a=$('#sh-del');if(a){a.classList.remove('armed');a.textContent='Xoá'}
+  const b=$('#rs-del');if(b){b.classList.remove('armed');b.textContent='Xoá đường'}}
 $('#sh-del').addEventListener('click',e=>{
   const b=e.currentTarget;
   if(!delT){b.classList.add('armed');b.textContent='Xoá thật?';delT=setTimeout(()=>{delT=null;b.classList.remove('armed');b.textContent='Xoá'},3000);return}
@@ -1795,7 +1820,7 @@ $('#sh-del').addEventListener('click',e=>{
 const selR=()=>selRoad&&D.roads.find(r=>r.id===selRoad);
 function openRoad(r){
   finishSheet();selRoad=r.id;rsheet.hidden=false;$('#rs-ten').value=r.ten||'';$('#rs-wv').textContent=r.w;
-  const d=$('#rs-del');d.classList.remove('armed');d.textContent='Xoá đường';draw();
+  huyXoa();draw();
 }
 function closeRoad(){selRoad=null;rsheet.hidden=true;if(document.activeElement)document.activeElement.blur();draw()}
 $('#rs-ten').addEventListener('change',e=>{const r=selR();if(!r)return;snap();r.ten=e.target.value.trim();save();draw()});
@@ -2372,7 +2397,7 @@ function giongGop(list,them,ghiDe){
 /* 🎤 KHẨU LỆNH ở CUỐI câu nói (07/11): «điền» · «tiếp» (= Tiếp ▸) · «dừng» (= Dừng) · «đoạn mới» · «nói lại» / «xoá câu»
    → {lenh:'dien'|'tiep'|'dung'|'doan'|'xoa'|null, con: phần câu trước lệnh}. Chỉ nhận ở CUỐI câu, có chốt chặn:
    «tiếp địa», «nối tiếp», «trạm dừng», «xã Quảng Điền» không thành lệnh */
-const BAN_APP='kstuyen-47';
+const BAN_APP='kstuyen-48';
 /* 🎤 chờ bao lâu (ms) rồi mới làm khẩu lệnh cuối câu (07/11 rút ngắn ⚑): máy đã chốt câu → làm gần như ngay;
    còn chữ tạm → chờ ngắn xem có nói tiếp không («tiếp», «dừng» chờ lâu hơn chút vì hay đi tiếp chữ, vd «tiếp địa»);
    gõ tay / 🎤 bàn phím chờ lâu nhất; lai = nghỉ trước khi mở phiên nghe mới */
@@ -3013,14 +3038,14 @@ async function xuatXlsx(){
   /* tổng hợp khối lượng dễ đọc (22/11): cột theo loại × hiện trạng / nhổ bỏ; dây theo loại × mét hiện trạng / thu hồi (mét = khoảng cột ghi ở cột phía sau) */
   const KC={},KD={},cong=(T,k,i,v)=>{(T[k]=T[k]||[0,0])[i]+=v};
   for(const p of D.poles){const r=parse(p.code);if(p.shape==='tba')continue;cong(KC,(r.cotHT[0]||'(chưa ghi loại)')+(isDoi(p,r)?' (đôi)':''),r.cotTT[0]==='Nhổ bỏ'?1:0,1);
-    const m=+String(r.kc).replace(',','.')||0,dy=r.dayHT[0];if(m&&p.from&&byId(p.from))cong(KD,dy||'(chưa ghi loại)',r.dayTT[0]==='Thu hồi'?1:0,m)}
+    const m=+String(r.kc).replace(',','.')||0,dy=r.dayHT[0];if(m&&p.from&&byId(p.from)&&hasEdge(p.id,p.from))cong(KD,dy||'(chưa ghi loại)',r.dayTT[0]==='Thu hồi'?1:0,m)}
   const xs=T=>Object.entries(T).sort((a,b)=>a[0].localeCompare(b[0],'vi'));
   const wsK=XLSX.utils.aoa_to_sheet([[`TỔNG HỢP KHỐI LƯỢNG KHẢO SÁT: ${D.ten}`],[],['CỘT','Loại cột','Hiện trạng giữ lại','Nhổ bỏ','Tổng'],
     ...xs(KC).map(([k,[g,b]],i)=>[i+1,k,g-0||'',b||'',g+b]),['','Cộng',xs(KC).reduce((s,x)=>s+x[1][0],0),xs(KC).reduce((s,x)=>s+x[1][1],0),D.poles.filter(p=>p.shape!=='tba').length],[],
     ['DÂY','Loại dây','Hiện trạng giữ lại (m)','Thu hồi (m)','Tổng (m)'],
     ...xs(KD).map(([k,[g,b]],i)=>[i+1,k,+g.toFixed(1)||'',+b.toFixed(1)||'',+(g+b).toFixed(1)]),
     [],['','TBA',D.poles.filter(p=>p.shape==='tba').length],[],
-    ['','Ghi chú','Mét dây = khoảng cột ghi ở cột phía sau (cột đầu đoạn không có khoảng). Cột đôi tách dòng riêng. Bản vẽ DXF cùng lần xuất có layer chuẩn LispcadZP: KEDUONGDAY đối chiếu được số này.']]);
+    ['','Ghi chú','Mét dây = khoảng cột ghi ở cột phía sau, chỉ tính khoảng có dây nối (cột đầu đoạn và đoạn "Không dây" không tính). Cột đôi tách dòng riêng. Bản vẽ DXF cùng lần xuất có layer chuẩn LispcadZP: KEDUONGDAY đối chiếu được số này.']]);
   wsK['!cols']=[6,22,18,12,10].map(w=>({wch:w}));
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,wsK,'Khoi luong');XLSX.utils.book_append_sheet(wb,ws,'Bang ke');XLSX.utils.book_append_sheet(wb,ws2,'Toa do');if((D.mocDo||[]).length)XLSX.utils.book_append_sheet(wb,ws3,'Moc hieu chinh');
   const dsDen=sorted().filter(p=>{const d=denDoc(p.code);return d.loai||d.hong});
@@ -3424,6 +3449,10 @@ if('serviceWorker' in navigator&&location.protocol==='https:'){const coSan=!!nav
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!coSan||banMoi)return;banMoi=true;
     if(rong())taiLai();else toast('⟳ Có bản app mới — xong việc đang làm là app tự tải lại')});
   document.addEventListener('visibilitychange',()=>{if(document.hidden)return;if(swDk)swDk.update().catch(()=>{});if(banMoi&&rong())taiLai()})}
+/* bản 48: xin trình duyệt giữ dữ liệu lâu dài (không tự xoá khi máy thiếu chỗ); dữ liệu cũ hỏng thì báo đã cất ở đâu */
+try{const S=navigator.storage;if(S&&S.persist)S.persisted().then(p=>p||S.persist()).catch(()=>{})}catch(e){}
+if(DB_HONG){if(!DB_HONG.k){try{giao(new Blob([DB_HONG.s],{type:'application/json'}),'KhaoSat_du_lieu_hong_'+today()+'.json')}catch(e){}chanGhi=false;saveNow()}
+  setTimeout(()=>toast(DB_HONG.k?'Dữ liệu cũ đọc không được — đã cất bản hỏng trên máy':'Dữ liệu cũ đọc không được — đã tải bản hỏng về máy'),4500)}
 /* bản quyền: xét ngay lúc mở (không mạng vẫn xét hạn), hỏi máy chủ sau 3 s, mỗi 6 giờ, và khi mở lại app quá 1 giờ */
 kqXet();setTimeout(kiemQuyen,3000);setInterval(kiemQuyen,216e5);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Date.now()-(kqDoc().ok||0)>36e5)kiemQuyen()});
