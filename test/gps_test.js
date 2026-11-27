@@ -742,4 +742,40 @@ console.log('25. Bản 54: nhãn tên đường / địa danh trên ảnh vệ t
   }finally{fix=f0;delete DB.ds.thu54;D=D0;V=V0;saveNow();draw()}
  }
 }
+console.log('26. Bản 55: cột thép hiện trạng (ZP_COT_THEP_HT) + tủ ĐKCS HT / mới trên cột (ZP_TU_CS_HT / ZP_TU_CS), không nhầm tủ công tơ');
+{ok(/'Cột gỗ','Cột thép'\]/.test(html)&&/'Tủ ĐKCS HT','Tủ ĐKCS mới'/.test(html),'chip: thêm «Cột thép»; «Tủ ĐKCS» tách thành «Tủ ĐKCS HT» / «Tủ ĐKCS mới»');
+ const g1=giongMa('cột số 5 cột thép 8 mét tủ điều khiển chiếu sáng mới',{}),g2=giongMa('cột số 6 tủ đkcs',{});
+ ok(JSON.stringify(g1.cotHT||[])==='["Cột thép 8m"]'&&(g1.gc||[]).includes('Tủ ĐKCS mới'),'giọng nói «cột thép 8 mét … tủ điều khiển chiếu sáng mới» → Cột thép 8m + Tủ ĐKCS mới → '+JSON.stringify({c:g1.cotHT,g:g1.gc}));
+ ok((g2.gc||[]).includes('Tủ ĐKCS HT')&&!(g2.gc||[]).includes('Tủ ĐKCS mới'),'giọng nói «tủ đkcs» (không nói mới) → Tủ ĐKCS HT → '+JSON.stringify(g2.gc));
+ if(typeof buildDxf==='function'&&typeof document!=='undefined'){
+  const D0=D;
+  const docDxf=s=>{const t=s.split(/\r?\n/),E=[];let sec='',cur=null;
+    for(let i=0;i+1<t.length;i+=2){const c=t[i].trim(),v=t[i+1];
+      if(c==='0'){cur=null;if(v==='SECTION')sec='?';else if(v==='ENDSEC')sec='';else if(sec==='ENTITIES'){cur={k:v,g:{}};E.push(cur)}continue}
+      if(c==='2'&&sec==='?'){sec=v;continue}
+      if(cur&&!(c in cur.g))cur.g[c]=v}
+    return E.map(e=>({k:e.k,ly:e.g['8'],n:e.g['2'],x:+e.g['10'],y:+e.g['20'],s:e.g['1']}))};
+  try{
+   const pc=(id,x,y,code,from,o)=>Object.assign({id,x,y,shape:'tron',doi:false,code,from,t:1.8e12+(+id)*1e3},o||{});
+   D={id:'thu55',ten:'Thử bản 55',ngay:'',roads:[{pts:[[-10,-6],[200,-6]],w:6,ten:''}],mocs:[],mocDo:[],geo:null,active:null,view:null,capNhat:0,
+      poles:[pc('1',0,0,'1;Cột thép 8m;Tủ ĐKCS HT;',null),pc('2',30,0,'2;H8,5;Tủ ĐKCS mới;','1'),pc('3',60,0,'3;2H7,5;TỦ:1;','2'),pc('4',90,0,'4;LT8,5;Tủ ĐKCS;','3'),
+             pc('5',120,0,'5;Cột thép 8,5m;','4',{moi:true}),pc('6',150,0,'6;Cột sắt;','5')],
+      edges:[['1','2'],['2','3'],['3','4'],['4','5'],['5','6']]};
+   ok(kindOf('Cột thép 8m')==='cot'&&kindOf('Cột thép 8,5m')==='cot'&&kindOf('Cột thép')==='cot'&&parse(D.poles[0].code).cotHT[0]==='Cột thép 8m','ô nhập «Cột thép 8m» / «8,5m» đọc là loại cột (không thành ghi chú)');
+   const zc=zpCot();
+   ok(zc['1'].bl==='ZP_COT_THEP_HT'&&zc['1'].ly==='0_ZP_0-COT_Hien_trang'&&zc['6'].bl==='ZP_COT_THEP_HT','cột thép / cột sắt hiện trạng → ZP_COT_THEP_HT, layer 0-COT_Hien_trang');
+   ok(zc['2'].bl==='ZP_COT_TRON_HT'&&zc['3'].bl==='ZP_COT_TRON_DOI_HT'&&zc['5'].bl==='ZP_COT_BTLT_MOI','cột BT HT giữ ZP_COT_TRON_HT, đôi giữ ZP_COT_TRON_DOI_HT, cột thép làm mới không thành ký hiệu HT');
+   D.poles[1].shape='cs';ok(zpCot()['2'].bl==='ZP_COT_BT_HT_DEN_MOI','cột CS BT hiện trạng giữ ZP_COT_BT_HT_DEN_MOI');
+   ok(tuCS(parse(D.poles[0].code))==='ht'&&tuCS(parse(D.poles[1].code))==='moi'&&tuCS(parse(D.poles[3].code))==='ht'&&tuCS(parse(D.poles[2].code))===''&&tuCS(parse('7;Tủ bù;'))==='',
+     'tuCS: HT / mới / «Tủ ĐKCS» trơn (dữ liệu bản 54) = HT; tủ công tơ TỦ:1 và tủ bù không phải tủ ĐKCS');
+   const E=docDxf(buildDxf(false)),tu=E.filter(e=>e.k==='INSERT'&&/^ZP_TU_CS/.test(e.n)),cot=E.filter(e=>e.k==='INSERT'&&/^ZP_COT/.test(e.n));
+   const t1=tu.filter(e=>e.n==='ZP_TU_CS_HT'),t2=tu.filter(e=>e.n==='ZP_TU_CS');
+   ok(tu.length===3&&t1.length===2&&t2.length===1&&t1.every(e=>e.ly==='0_ZP_0-TU_CS_Hien_trang')&&t2[0].ly==='0_ZP_0-TU_CS',`DXF: 2 tủ HT (ZP_TU_CS_HT, 0-TU_CS_Hien_trang) + 1 tủ mới (ZP_TU_CS, 0-TU_CS); tủ công tơ cột 3 không ra tủ ĐKCS (${tu.map(e=>e.n).join(',')})`);
+   const c2=cot.find(e=>Math.abs(e.x-30)<0.01),k2=t2[0]&&c2?Math.hypot(t2[0].x-c2.x,t2[0].y-c2.y):0;
+   ok(Math.abs(k2-2)<0.01&&t2[0].y<c2.y,`tủ đặt lệch 2 m khỏi tâm cột, về phía xa đường (đường ở y = +6 trong DXF, tủ ở y = ${t2[0]?t2[0].y.toFixed(2):'?'})`);
+   const dx=buildDxf(false);ok(/BLOCK\r\n8\r\n0\r\n2\r\nZP_COT_THEP_HT\r\n/.test(dx)&&/BLOCK\r\n8\r\n0\r\n2\r\nZP_TU_CS_HT\r\n/.test(dx)&&/LAYER\r\n2\r\n0_ZP_0-TU_CS\r\n70\r\n0\r\n62\r\n42/.test(dx),'DXF có định nghĩa block ZP_COT_THEP_HT, ZP_TU_CS_HT + layer tủ');
+   const cu={...D.poles[3]},s54=JSON.stringify(cu);D.poles[3]=JSON.parse(s54);ok(JSON.stringify(D.poles[3])===s54&&D.poles[3].code==='4;LT8,5;Tủ ĐKCS;','cột dữ liệu bản 54 mở lại y nguyên (mã «Tủ ĐKCS» không bị đổi)');
+  }finally{D=D0;draw()}
+ }
+}
 console.log(`\n${nOk} đạt, ${nSai} sai`);process.exit(nSai?1:0);

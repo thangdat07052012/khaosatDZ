@@ -413,7 +413,7 @@ function kindOf(tok){
   if(/^TỦCŨ[:=]?\d+$/.test(u))return 'tucu';
   if(/^(TỦ|TỦMỚI|TM)[:=]?\d+$/.test(u))return 'tu';
   const parts=u.split(/>|→/), base=parts[0]||parts[1]||'';
-  if(/^\d*(LT|H|BT|NPC)\d+([.,]\d+)?M?$/.test(base)||/^\d*CỘT(GỖ|THÉP|SẮT)$/.test(base)||base==='NHỔBỎ')return 'cot';
+  if(/^\d*(LT|H|BT|NPC)\d+([.,]\d+)?M?$/.test(base)||/^\d*CỘT(GỖ|THÉP|SẮT)(\d+([.,]\d+)?M?)?$/.test(base)||base==='NHỔBỎ')return 'cot';
   if(/^\d*(CXV|DSTA)/.test(base)||/^\d*MULLER/.test(base))return 'sau';   /* cáp ngầm Cu/XLPE/PVC/DSTA đi cùng nhóm CXV */
   if(/^\d*(ABC|VX|AV|A|CU|M|AC)\d/.test(base)||base==='THUHỒI')return 'day';   /* VX = mã cũ của ABC, vẫn nhận khi đọc dữ liệu cũ */
   if(DD.test(u))return 'dd';
@@ -436,6 +436,9 @@ function parse(code){
   }
   return r;
 }
+/* bản 55 — tủ ĐKCS trên cột (ô Ghi chú): «Tủ ĐKCS mới» = làm mới; «Tủ ĐKCS HT», «Tủ ĐKCS» trơn (dữ liệu ≤ bản 54), «tủ CS» = hiện trạng.
+   KHÔNG phải tủ công tơ (TỦ:n / TỦCŨ:n ở r.tuMoi / r.tuCu) */
+function tuCS(r){let k='';for(const g of r.gc){const u=String(g).toLowerCase().trim();if(!/^tủ\s*(đkcs|cs|điều khiển|chiếu sáng)/.test(u))continue;if(/mới/.test(u))return 'moi';k='ht'}return k}
 /* viết hoa chữ ký hiệu (abc4x120 → ABC4x120) khi chốt cột; ghi chú để nguyên */
 function chuanHoa(code){
   const t=splitCode(code);
@@ -1437,14 +1440,14 @@ $('#nhanh').addEventListener('click',e=>{const b=e.target.closest('[data-nh]');i
 /* ================= ô nhập cột (dạng ô) ================= */
 const sheet=$('#sheet'), rsheet=$('#rsheet'), dsheet=$('#dsheet'), qsheet=$('#qsheet');
 const BASE={
-  cot:['LT8,5','LT10','LT12','H7,5','H8,5','2LT8,5','2H7,5','LT7,5','H6,5','Cột gỗ'],
+  cot:['LT8,5','LT10','LT12','H7,5','H8,5','2LT8,5','2H7,5','LT7,5','H6,5','Cột gỗ','Cột thép'],
   cotTT:['LT8,5','LT10','LT12','H7,5','H8,5','2LT8,5','2H7,5','Nhổ bỏ'],
   day:['ABC4x120','ABC4x95','ABC4x70','ABC4x50','ABC4x150','ABC4x240','ABC4x35','ABC2x25','AV70','AV95','A50'],
   dayTT:['ABC4x120','ABC4x95','ABC4x70','ABC4x50','ABC4x150','ABC4x240','Thu hồi'],
   sau:['CXV4x10','CXV2x10','CXV2x6','CXV4x16','CXV4x25','DSTA4x50','DSTA3x10+1x6','ABC4x35','2ABC4x35','ABC4x25','ABC4x50'],
   kc:['20','25','30','35','40','45','50'],
   dd:['Néo','Góc','Cuối','Rẽ nhánh','Đầu nguồn','Nghiêng','Nứt'],
-  gc:['Tủ bù','Tủ ĐKCS','Tiếp địa','Hộp đấu dây','Chống sét']
+  gc:['Tủ bù','Tủ ĐKCS HT','Tủ ĐKCS mới','Tiếp địa','Hộp đấu dây','Chống sét']
 };
 /* ⚑ phần Trung thế dùng chung công cụ Hạ áp, chỉ đổi danh sách cột / dây chọn nhanh */
 const BASE_TT={
@@ -2377,7 +2380,7 @@ function giongMa(text,ds,tu,bo){
   const X=(re,f)=>{c=c.replace(re,(...a)=>' '+(f(...a)||'')).replace(/ {2,}/g,' ')};
   /* thiết bị trên cột → Ghi chú */
   X(/ tủ (bù|tụ bù)(?= )/g,()=>{add(gc,'Tủ bù')});
-  X(/ tủ (điều khiển chiếu sáng|điều khiển|đkcs)(?= )/g,()=>{add(gc,'Tủ ĐKCS')});
+  X(/ tủ (điều khiển chiếu sáng|điều khiển|đkcs|chiếu sáng)( mới| làm mới| hiện trạng| cũ)?(?= )/g,(m,a,b)=>{add(gc,/mới/.test(b||'')?'Tủ ĐKCS mới':'Tủ ĐKCS HT')});   /* bản 55: có «mới» = làm mới, không = hiện trạng */
   X(/ (tiếp địa|nối đất)(?= )/g,()=>{add(gc,'Tiếp địa')});
   X(/ hộp đấu dây(?= )/g,()=>{add(gc,'Hộp đấu dây')});
   X(/ chống sét(?= )/g,()=>{add(gc,'Chống sét')});
@@ -2397,7 +2400,7 @@ function giongMa(text,ds,tu,bo){
   /* nhổ cột, thu hồi dây, cột gỗ / thép */
   X(/ (nhổ bỏ|nhổ cột|bỏ cột|tháo cột|thu hồi cột|nhổ)(?= )/g,()=>'#nhobo');
   X(/ (thu hồi|tháo) (dây|cáp)(?= )/g,()=>'#thuhoiday');X(/ (thu hồi|tháo)(?= )/g,()=>'#thuhoi');
-  X(/ cột gỗ(?= )/g,()=>'cột #cotgo');X(/ cột (thép|sắt)(?= )/g,()=>'cột #cotthep');
+  X(/ cột gỗ(?= )/g,()=>'cột #cotgo');X(/ cột (thép|sắt)(?: (\d+(?:[.,]\d+)?)(?:m| m| mét)?)?(?= )/g,(m,a,n)=>'cột #cotthep'+(n?n.replace('.',','):''));   /* bản 55: «cột thép 8 mét» → Cột thép 8m */
   const tk=c.trim().split(' ').filter(Boolean),U=tk.map(()=>false);
   const isN=x=>/^\d+([.,]\d+)*$/.test(x||''),isI=x=>/^\d+$/.test(x||''),isM=x=>/^(m|mét)$/.test(x||'');
   /* số cột: "cột số 5", "số 1.2" (⚑ dấu phẩy đổi thành chấm), hoặc "cột 5" ở đầu câu */
@@ -2426,7 +2429,7 @@ function giongMa(text,ds,tu,bo){
     r[k]=(r[k]||0)+(n==null?1:n)}
   /* mã cột / dây theo ngữ cảnh "cột" · "dây" "cáp" · "sau công tơ"; "A thay (bằng / thành) B" = hiện trạng A, thay bằng B;
      nói "thay" mà chỉ có một mã → mã đó vào ô Thay */
-  const KIND=x=>{if(x==='#cotgo'||x==='#cotthep')return 'cot';if(/^\d+x\d/.test(x))return 'tran';
+  const KIND=x=>{if(x==='#cotgo'||/^#cotthep/.test(x))return 'cot';if(/^\d+x\d/.test(x))return 'tran';
     if(/^(2?abc|av|ac|a|vx|cu)\d/.test(x))return 'day';if(/^(cxv|dsta)\d/.test(x))return 'sau';if(/^(lt|h|bt|npc)\d+([.,]\d+)?m?$/.test(x))return 'cot';return ''};
   const NOI=/^(thay|bằng|thành|sang|đổi|qua|lên|thế|→|>)$/,BO=/^(cột|dây|cáp|loại|mới|là|cũ|hiện|trạng|có)$/;
   let ctx='',thay=false;
@@ -2434,7 +2437,7 @@ function giongMa(text,ds,tu,bo){
     if(!k&&ctx==='cot'&&/^\d+(,\d+)?$/.test(x)){const v=+x.replace(',','.');if(v>=6&&v<=20)k='cotso'}   /* ⚑ "cột tám rưỡi" = LT8,5 */
     return k};
   const giaTri=(x,kind)=>{
-    if(x==='#cotgo')return 'Cột gỗ';if(x==='#cotthep')return 'Cột thép';
+    if(x==='#cotgo')return 'Cột gỗ';if(/^#cotthep/.test(x)){const n=x.slice(8);return 'Cột thép'+(n?' '+n+'m':'')}
     if(kind==='cot'&&/^\d/.test(x))return 'LT'+x.replace(/\./g,',');
     let v=x;if(kind==='cot')v=v.replace(/m$/,'').replace(/\./g,',');
     if(/^\d+x\d/.test(v))v=(kind==='sau'?'cxv':'abc')+v;   /* ⚑ chỉ nói "4x120": dây = ABC, sau công tơ = CXV */
@@ -2501,7 +2504,7 @@ function giongGop(list,them,ghiDe){
 /* 🎤 KHẨU LỆNH ở CUỐI câu nói (07/11): «điền» · «tiếp» (= Tiếp ▸) · «dừng» (= Dừng) · «đoạn mới» · «nói lại» / «xoá câu»
    → {lenh:'dien'|'tiep'|'dung'|'doan'|'xoa'|null, con: phần câu trước lệnh}. Chỉ nhận ở CUỐI câu, có chốt chặn:
    «tiếp địa», «nối tiếp», «trạm dừng», «xã Quảng Điền» không thành lệnh */
-const BAN_APP='kstuyen-54';
+const BAN_APP='kstuyen-55';
 /* 🎤 chờ bao lâu (ms) rồi mới làm khẩu lệnh cuối câu (07/11 rút ngắn ⚑): máy đã chốt câu → làm gần như ngay;
    còn chữ tạm → chờ ngắn xem có nói tiếp không («tiếp», «dừng» chờ lâu hơn chút vì hay đi tiếp chữ, vd «tiếp địa»);
    gõ tay / 🎤 bàn phím chờ lâu nhất; lai = nghỉ trước khi mở phiên nghe mới */
@@ -3200,10 +3203,12 @@ function buildDxf(that){
      DOITRANGTHAI chạy được; bản vẽ đã có block thư viện cùng tên thì AutoCAD dùng ký hiệu thư viện. Vẫn giữ POINT KS_DIEM + chữ số cột KS_CHU (VVETUYENTUCOT) */
   /* bản 52: màu layer lấy đúng bảng layer thư viện (ThuVien_Layer_KyHieu.dwg 24/11) */
   const MAU_TV={'0_ZP_0-COT_Moi':42,'0_ZP_0-COT_Hien_trang':8,'0_ZP_0-COT_CS_Moi':100,'0_ZP_0-COT_Thu_hoi':30,'0_ZP_0-TBA_Moi':42,'0_ZP_0-TBA_Hien_trang':1,'0_ZP_0-TBA_Thu_hoi':30,
-    '0_ZP_0-DZ_CS_Hien_trang':140,'0_ZP_0-DZ_04_Hien_trang':140,'0_ZP_0-DZ_22_Hien_trang':140,'0_ZP_0-DZ_CS_Thu_hoi':30,'0_ZP_0-DZ_04_Thu_hoi':30,'0_ZP_0-DZ_22_Thu_hoi':30,'0_ZP_TEN_COT':202};
+    '0_ZP_0-DZ_CS_Hien_trang':140,'0_ZP_0-DZ_04_Hien_trang':140,'0_ZP_0-DZ_22_Hien_trang':140,'0_ZP_0-DZ_CS_Thu_hoi':30,'0_ZP_0-DZ_04_Thu_hoi':30,'0_ZP_0-DZ_22_Thu_hoi':30,'0_ZP_TEN_COT':202,'0_ZP_0-TU_CS':42,'0_ZP_0-TU_CS_Hien_trang':8};
   const zc=zpCot(),zd=zpDay(),LZ=[...new Set([...D.poles.map(p=>zc[p.id].ly),...zd.map(d=>d.ly)])].map(n=>[n,MAU_TV[n]||(/Thu_hoi/.test(n)?30:/_22_/.test(n)?1:/_CS_/.test(n)?3:/DZ/.test(n)?5:7)]);
+  const TU=D.poles.filter(p=>p.shape!=='tba').map(p=>[p,tuCS(parse(p.code))]).filter(x=>x[1]);   /* bản 55: tủ ĐKCS trên cột */
+  const LTU=[...new Set(TU.map(x=>x[1]==='moi'?'0_ZP_0-TU_CS':'0_ZP_0-TU_CS_Hien_trang'))].map(n=>[n,MAU_TV[n]]);
   const NGC=new Set(cotNgoaiCap().ngoai);   /* cột ngoài đoạn cáp → thêm POINT + chữ layer KS_NGOAI_CAP (xem capNgoai) */
-  const LY=[['KS_DIEM',7],...LZ,['0_ZP_TEN_COT',202],['KS_CHU',7],['KS_KHOANG',3],['KS_DUONG',8],['KS_MOC',6]].concat(that?[['KS_COT_KHONG_GPS',30],['KS_MOC_HIEU_CHINH',6]]:[])
+  const LY=[['KS_DIEM',7],...LZ,['0_ZP_TEN_COT',202],['KS_CHU',7],['KS_KHOANG',3],['KS_DUONG',8],['KS_MOC',6],...LTU].concat(that?[['KS_COT_KHONG_GPS',30],['KS_MOC_HIEU_CHINH',6]]:[])
     .concat(NGC.size?[['KS_NGOAI_CAP',1]]:[])
     .concat(dsDen.length?[...Object.values(DL),['KS_DEN_HONG',1],['KS_DEN_THONG_KE',7]]:[]);
   a(0,'TABLE',2,'LAYER',70,LY.length);for(const [n,c] of LY)a(0,'LAYER',2,n,70,0,62,c,6,'CONTINUOUS');a(0,'ENDTAB');
@@ -3230,6 +3235,9 @@ function buildDxf(that){
     ZP_COT_BTLT_MOI:()=>moi(0,false,R*1.12),ZP_COT_VUONG_MOI:()=>moi(0,true,R*1.07),ZP_COT_DOI:()=>{moi(-R*1.07,false,R*1.07);moi(R*1.07,false,R*1.07)},
     ZP_COT_VUONG_DOI_MOI:()=>{moi(-R*1.07,true,R*1.07);moi(R*1.07,true,R*1.07)},
     ZP_COT_BT_CS_MOI:()=>{moi(0,false,R*1.12);const d=R*0.7;lc(-d,-d,d,d,1);lc(-d,d,d,-d,1)},
+    ZP_COT_THEP_HT:()=>{ht(0,false);const d=R*0.71;lc(-d,-d,d,d,150);lc(-d,d,d,-d,150)},   /* bản 55: cột thép HT = vòng HT + chữ X (⚑ gần đúng; bản vẽ có block thư viện cùng tên thì dùng hình thư viện) */
+    ZP_TU_CS:()=>{const w=R*0.9,h=R*0.6;lc(-w,-h,w,-h,1);lc(w,-h,w,h,1);lc(w,h,-w,h,1);lc(-w,h,-w,-h,1)},
+    ZP_TU_CS_HT:()=>{const w=R*0.9,h=R*0.6;lc(-w,-h,w,-h,150);lc(w,-h,w,h,150);lc(w,h,-w,h,150);lc(-w,h,-w,-h,150);lc(-w,-h,w,h,150);lc(-w,h,w,-h,150)},
     ZP_COT_THU_HOI:()=>{KH(0,'0').tron();const d=R*1.25;line(-d,-d,d,d,'0');line(-d,d,d,-d,'0')},
     ZP_TBA_HT:()=>{const s=R*1.5;sq(0,0,s,'0');a(0,'SOLID',8,'0',10,f(-s),20,f(-s),30,'0.0',11,f(s),21,f(-s),31,'0.0',12,f(s),22,f(s),32,'0.0',13,f(s),23,f(s),33,'0.0')}};
   /* block đèn: gốc = tâm cột; thẻ ở trên-trái cột (bên phải là số cột); 3 thuộc tính ẩn */
@@ -3253,6 +3261,12 @@ function buildDxf(that){
     line(x,y+s,x+s*.87,y-s/2,'KS_MOC_HIEU_CHINH');line(x+s*.87,y-s/2,x-s*.87,y-s/2,'KS_MOC_HIEU_CHINH');line(x-s*.87,y-s/2,x,y+s,'KS_MOC_HIEU_CHINH');
     txt(x+1.6,y-0.5,'1.5',m.ten,'KS_MOC_HIEU_CHINH')}
   const XY={};for(const p of D.poles)XY[p.id]=PP(p);
+  /* bản 55: tủ ĐKCS đặt lệch 2 m khỏi tâm cột, vuông góc hướng tuyến, về phía XA đường (đường vẽ tay); không có đường thì bên trái hướng tuyến */
+  const dSeg=(x,y,p,q)=>{const dx=q[0]-p[0],dy=q[1]-p[1],l2=dx*dx+dy*dy;let t=l2?((x-p[0])*dx+(y-p[1])*dy)/l2:0;t=Math.max(0,Math.min(1,t));return Math.hypot(p[0]+t*dx-x,p[1]+t*dy-y)};
+  const RS=D.roads.map(r=>r.pts.map(q=>P(q[0],q[1]))),dR=(x,y)=>{let m=1/0;for(const s of RS)for(let i=0;i<s.length-1;i++)m=Math.min(m,dSeg(x,y,s[i],s[i+1]));return m};
+  const tuXY=(p,x,y)=>{let tx=1,ty=0;const e=D.edges.find(e=>e[0]===p.id||e[1]===p.id),nb=p.from&&XY[p.from]?p.from:e?(e[0]===p.id?e[1]:e[0]):null;
+    if(nb&&XY[nb]){const [fx,fy]=XY[nb],l=Math.hypot(x-fx,y-fy);if(l>1e-6){tx=(x-fx)/l;ty=(y-fy)/l}}
+    const k=2,a1=[x-ty*k,y+tx*k],a2=[x+ty*k,y-tx*k];return RS.length&&dR(a2[0],a2[1])>dR(a1[0],a1[1])?a2:a1};
   /* dây: mỗi chuỗi cột liền nhau cùng loại / trạng thái = MỘT polyline qua tâm cột (XUATDUONGDAY: một polyline = một tuyến, cột cách dây ≤ 1,5 m) */
   for(const d of zd){a(0,'POLYLINE',8,d.ly,66,1,10,'0.0',20,'0.0',30,'0.0',70,0);for(const id of d.ids){const [x,y]=XY[id];a(0,'VERTEX',8,d.ly,10,f(x),20,f(y),30,'0.0')}a(0,'SEQEND',8,d.ly)}
   for(const [i,j] of D.edges){const A=byId(i),B=byId(j);if(!A||!B)continue;
@@ -3262,6 +3276,7 @@ function buildDxf(that){
   for(const p of D.poles){const [x,y]=XY[p.id],r=parse(p.code),doi=isDoi(p,r)&&p.shape!=='tba';
     const LC=that&&p.lat==null&&!p.nan?'KS_COT_KHONG_GPS':'';   /* cột vẽ tay không GPS: vòng + ghi chú layer riêng màu cam để kiểm lại */
     const z=zc[p.id];let w=p.shape==='tba'?R*1.5:doi?R*2:R;ins(z.bl,x,y,z.ly);if(LC)circ(x,y,w+0.8,LC);
+    const tk=p.shape!=='tba'&&tuCS(r);if(tk){const q=tuXY(p,x,y);ins(tk==='moi'?'ZP_TU_CS':'ZP_TU_CS_HT',q[0],q[1],tk==='moi'?'0_ZP_0-TU_CS':'0_ZP_0-TU_CS_Hien_trang')}
     if(p.shape!=='tba'&&!p.le)a(0,'POINT',8,'KS_DIEM',10,f(x),20,f(y),30,'0.0');   /* POINT tâm cột: VVETUYENTUCOT chỉ lấy POINT (không nhầm mốc / TBA làm cột), tên = số cột gần nhất */
     if(NGC.has(p.id))a(0,'POINT',8,'KS_NGOAI_CAP',10,f(x),20,f(y),30,'0.0'),txt(x+w+0.4,y+(LC?4.2:2.6),'1.2','NGOAI_CAP '+(r.so||'?'),'KS_NGOAI_CAP');
     /* ^ cột ngoài đoạn cáp: POINT KS_NGOAI_CAP cùng toạ độ POINT KS_DIEM (lệch 0) + chữ «NGOAI_CAP <số cột>»; bên đọc DXF bỏ cột có POINT này trong ~0,05 m khỏi tuyến cáp. Block ZP + KS_DIEM giữ nguyên */
@@ -3294,6 +3309,7 @@ function zpCot(){const o={};for(const p of D.poles){const r=parse(p.code),doi=is
   if(p.shape==='tba'){o[p.id]={bl:'ZP_TBA_HT',ly:'0_ZP_0-TBA_Hien_trang'};continue}
   if(r.cotTT[0]==='Nhổ bỏ'){o[p.id]={bl:'ZP_COT_THU_HOI',ly:'0_ZP_0-COT_Thu_hoi'};continue}
   const m=!!p.moi,cs=p.shape==='cs'&&!doi;
+  if(!m&&!doi&&/thép|sắt/i.test(r.cotHT[0]||'')){o[p.id]={bl:'ZP_COT_THEP_HT',ly:'0_ZP_0-COT_Hien_trang'};continue}   /* bản 55: cột thép hiện trạng */
   const bl=p.shape==='vuong'?(doi?(m?'ZP_COT_VUONG_DOI_MOI':'ZP_COT_VUONG_DOI_HT'):(m?'ZP_COT_VUONG_MOI':'ZP_COT_VUONG_HT'))
     :cs?(m?'ZP_COT_BT_CS_MOI':'ZP_COT_BT_HT_DEN_MOI'):doi?(m?'ZP_COT_DOI':'ZP_COT_TRON_DOI_HT'):(m?'ZP_COT_BTLT_MOI':'ZP_COT_TRON_HT');
   o[p.id]={bl,ly:m?(cs?'0_ZP_0-COT_CS_Moi':'0_ZP_0-COT_Moi'):'0_ZP_0-COT_Hien_trang'}}return o}

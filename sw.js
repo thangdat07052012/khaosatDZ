@@ -1,5 +1,5 @@
 // Đổi PHIEN mỗi lần cập nhật app để máy tải bản mới.
-const PHIEN = 'kstuyen-54';
+const PHIEN = 'kstuyen-55';
 const FILES = ['./', './index.html', './xlsx.full.min.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './xa/38.json'];
 
 // Bản 48: cất TỪNG file (một file phụ lỗi không làm hỏng cả lần cập nhật), hỏi thẳng máy chủ (không lấy bản HTTP cache cũ).
